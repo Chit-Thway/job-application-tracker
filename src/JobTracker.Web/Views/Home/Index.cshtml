@@ -1,0 +1,123 @@
+@{
+    ViewData["Title"] = "Welcome";
+    var currentMonth = DateTime.Today;
+    var months = Enumerable.Range(0, 3)
+        .Select(offset => currentMonth.AddMonths(offset - 2).ToString("MMM"))
+        .ToArray();
+}
+
+<section class="hero">
+    <div class="shell hero-grid">
+        <div class="hero-copy">
+            <p class="eyebrow">Milestone 1 · Foundation</p>
+            <h1>Your job search,<br /><span>brought into focus.</span></h1>
+            <p class="hero-lead">
+                A private, practical place to track every application, keep the opportunities that matter,
+                and see exactly what needs your attention next.
+            </p>
+            <div class="button-row">
+                <a class="button button-primary" asp-controller="Home" asp-action="Dashboard">
+                    View dashboard shell
+                    <span aria-hidden="true">→</span>
+                </a>
+                <a class="button button-secondary" asp-controller="Home" asp-action="AddApplication">Preview add flow</a>
+            </div>
+            <p class="foundation-caption">
+                <span aria-hidden="true">●</span>
+                Navigation and layout are ready. Real data begins in Milestone 2.
+            </p>
+        </div>
+
+        <aside class="window-card" aria-labelledby="window-title">
+            <div class="window-topline">
+                <div>
+                    <p class="mini-label">One focused dashboard</p>
+                    <h2 id="window-title">Your three-month window</h2>
+                </div>
+                <span class="window-badge">Preview</span>
+            </div>
+            <div class="month-track" aria-label="Current dashboard month range">
+                @foreach (var month in months)
+                {
+                    <span class="month-chip @(month == months[^1] ? "is-current" : string.Empty)">@month</span>
+                }
+            </div>
+            <div class="metric-grid" aria-label="Future dashboard metrics">
+                <div class="metric">
+                    <span>Applications</span>
+                    <strong aria-label="No data yet">—</strong>
+                </div>
+                <div class="metric">
+                    <span>Responses</span>
+                    <strong aria-label="No data yet">—</strong>
+                </div>
+                <div class="metric">
+                    <span>Interviews</span>
+                    <strong aria-label="No data yet">—</strong>
+                </div>
+            </div>
+            <div class="next-action-preview">
+                <span class="preview-icon" aria-hidden="true">✓</span>
+                <div>
+                    <strong>Nothing needs attention yet</strong>
+                    <span>Your future follow-ups will appear here.</span>
+                </div>
+            </div>
+        </aside>
+    </div>
+</section>
+
+<section class="value-section" aria-labelledby="value-title">
+    <div class="shell">
+        <div class="section-heading">
+            <div>
+                <p class="eyebrow">Designed around the real workflow</p>
+                <h2 id="value-title">Less admin. More momentum.</h2>
+            </div>
+            <p>Every screen will answer one useful question without turning your search into another full-time job.</p>
+        </div>
+
+        <div class="value-grid">
+            <article class="value-card value-card-blue">
+                <span class="card-number">01</span>
+                <div class="card-symbol" aria-hidden="true">◎</div>
+                <h3>One clear dashboard</h3>
+                <p>See the current month and the two before it—your active search, not an endless archive.</p>
+                <a asp-controller="Home" asp-action="Dashboard">Preview dashboard <span aria-hidden="true">→</span></a>
+            </article>
+            <article class="value-card value-card-violet">
+                <span class="card-number">02</span>
+                <div class="card-symbol" aria-hidden="true">◇</div>
+                <h3>Keep what matters</h3>
+                <p>Save important applications forever. Older unsaved records get a visible 14-day grace period.</p>
+                <a asp-controller="Home" asp-action="Applications">Preview applications <span aria-hidden="true">→</span></a>
+            </article>
+            <article class="value-card value-card-green">
+                <span class="card-number">03</span>
+                <div class="card-symbol" aria-hidden="true">↗</div>
+                <h3>Know the next move</h3>
+                <p>Bring follow-ups, interviews, tasks, ghosting warnings, and deadlines into one useful queue.</p>
+                <a asp-controller="Home" asp-action="ActionCentre">Preview Action Centre <span aria-hidden="true">→</span></a>
+            </article>
+        </div>
+    </div>
+</section>
+
+<section class="foundation-section" aria-labelledby="foundation-title">
+    <div class="shell foundation-grid">
+        <div>
+            <p class="eyebrow">What works today</p>
+            <h2 id="foundation-title">A solid shell before the data.</h2>
+            <p>
+                This milestone establishes the .NET application, responsive visual system, accessible navigation,
+                health check, friendly errors, automated tests, and delivery pipeline.
+            </p>
+        </div>
+        <ul class="check-list">
+            <li><span aria-hidden="true">✓</span> ASP.NET Core MVC on .NET 10 LTS</li>
+            <li><span aria-hidden="true">✓</span> Server-rendered Razor pages</li>
+            <li><span aria-hidden="true">✓</span> No database, login, or personal data yet</li>
+            <li><span aria-hidden="true">✓</span> Automated build and test foundation</li>
+        </ul>
+    </div>
+</section>

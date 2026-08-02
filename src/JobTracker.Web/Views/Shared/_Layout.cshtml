@@ -1,0 +1,73 @@
+@{
+    var section = ViewData["Section"] as string ?? string.Empty;
+    var pageTitle = ViewData["Title"] as string;
+
+    string NavClass(string key, bool action = false)
+    {
+        var classes = action ? "nav-action" : "nav-link";
+        return section == key ? $"{classes} is-current" : classes;
+    }
+
+    string? AriaCurrent(string key) => section == key ? "page" : null;
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="A focused, private workspace for managing job applications and next actions." />
+    <title>@(string.IsNullOrWhiteSpace(pageTitle) ? "Job Application Tracker" : $"{pageTitle} · Job Application Tracker")</title>
+    <link rel="icon" href="~/favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+</head>
+<body>
+    <a class="skip-link" href="#main-content">Skip to main content</a>
+
+    <header class="site-header">
+        <div class="shell header-inner">
+            <a class="brand" asp-controller="Home" asp-action="Index" aria-label="Job Application Tracker home">
+                <span class="brand-mark" aria-hidden="true">JT</span>
+                <span class="brand-name">
+                    <strong>Job Application</strong>
+                    <span>Tracker</span>
+                </span>
+            </a>
+
+            <details class="site-nav">
+                <summary>
+                    <span>Menu</span>
+                    <span class="menu-lines" aria-hidden="true"></span>
+                </summary>
+                <nav class="nav-panel" aria-label="Primary navigation">
+                    <a class="@NavClass("dashboard")" aria-current="@AriaCurrent("dashboard")" asp-controller="Home" asp-action="Dashboard">Dashboard</a>
+                    <a class="@NavClass("applications")" aria-current="@AriaCurrent("applications")" asp-controller="Home" asp-action="Applications">Applications</a>
+                    <a class="@NavClass("actions")" aria-current="@AriaCurrent("actions")" asp-controller="Home" asp-action="ActionCentre">Action Centre</a>
+                    <a class="@NavClass("settings")" aria-current="@AriaCurrent("settings")" asp-controller="Home" asp-action="Settings">Settings</a>
+                    <a class="@NavClass("demo")" aria-current="@AriaCurrent("demo")" asp-controller="Home" asp-action="Demo">Demo</a>
+                    <a class="@NavClass("add", action: true)" aria-current="@AriaCurrent("add")" asp-controller="Home" asp-action="AddApplication">
+                        <span aria-hidden="true">+</span>
+                        Add application
+                    </a>
+                </nav>
+            </details>
+        </div>
+    </header>
+
+    <main id="main-content" tabindex="-1">
+        @RenderBody()
+    </main>
+
+    <footer class="site-footer">
+        <div class="shell footer-inner">
+            <div>
+                <strong>Job Application Tracker</strong>
+                <p>Built for a calmer, more deliberate job search.</p>
+            </div>
+            <div class="footer-status">
+                <span class="status-dot" aria-hidden="true"></span>
+                Milestone 1 · Foundation
+            </div>
+        </div>
+    </footer>
+</body>
+</html>

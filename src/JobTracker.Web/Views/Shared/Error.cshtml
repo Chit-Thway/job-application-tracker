@@ -1,0 +1,18 @@
+@model ErrorViewModel
+@{
+    ViewData["Title"] = "Something went wrong";
+}
+
+<section class="message-page">
+    <div class="message-card">
+        <span class="message-code">500</span>
+        <p class="eyebrow">Unexpected error</p>
+        <h1>We hit a snag.</h1>
+        <p>The page could not be completed. Your information has not been changed.</p>
+        <a class="button button-primary" asp-controller="Home" asp-action="Index">Return home</a>
+        @if (Model.ShowRequestId)
+        {
+            <p class="request-id">Reference: <code>@Model.RequestId</code></p>
+        }
+    </div>
+</section>
