@@ -1,0 +1,22 @@
+@model ApplicationFormViewModel
+@{
+    ViewData["Title"] = "Edit application";
+}
+
+<section class="form-page">
+    <div class="shell narrow-shell">
+        <a class="back-link" asp-action="Details" asp-route-id="@Model.Id">← Application details</a>
+        <div class="form-heading">
+            <p class="eyebrow">Application details</p>
+            <h1>Edit @Model.RoleTitle.</h1>
+            <p>Update the application facts without changing its status history.</p>
+        </div>
+        <form method="post" class="editor-card">
+            <partial name="_Form" model="Model" />
+            <div class="editor-actions">
+                <button class="button button-primary" type="submit">Save changes</button>
+                <a class="button button-secondary" asp-action="Details" asp-route-id="@Model.Id">Cancel</a>
+            </div>
+        </form>
+    </div>
+</section>

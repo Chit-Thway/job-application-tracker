@@ -20,36 +20,6 @@ public static class FoundationPageCatalog
                 "Follow-ups, appointments, and Chopping Block warnings",
             ]),
         new(
-            Action: "Applications",
-            Section: "applications",
-            Route: "/applications",
-            NavigationLabel: "Applications",
-            Eyebrow: "Your application library",
-            Title: "Every opportunity, easy to find.",
-            Description: "This is where applications will be searchable by role, company, date, status, and whether you chose to keep them forever.",
-            NextMilestone: "Manual application management arrives in Milestone 3.",
-            PreviewItems:
-            [
-                "Search, sort, and focused filters",
-                "Saved — keep forever state",
-                "Clear Recent and Chopping Block labels",
-            ]),
-        new(
-            Action: "AddApplication",
-            Section: "add",
-            Route: "/applications/new",
-            NavigationLabel: "Add application",
-            Eyebrow: "Capture an opportunity",
-            Title: "Start with what you have.",
-            Description: "You will be able to enter an application manually, paste a job posting, or provide a public URL—then review every detected field before saving.",
-            NextMilestone: "Manual entry arrives in Milestone 3; extraction follows in Milestones 4 and 5.",
-            PreviewItems:
-            [
-                "Manual entry for reliable control",
-                "Rule-based pasted-text extraction",
-                "Safe URL import with a review step",
-            ]),
-        new(
             Action: "ActionCentre",
             Section: "actions",
             Route: "/actions",

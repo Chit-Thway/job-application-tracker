@@ -1,0 +1,24 @@
+@model ApplicationDeleteViewModel
+@{
+    ViewData["Title"] = "Delete application";
+}
+
+<section class="form-page danger-page">
+    <div class="shell confirmation-shell">
+        <a class="back-link" asp-action="Details" asp-route-id="@Model.Application.Id">← Application details</a>
+        <div class="confirmation-card">
+            <span class="danger-symbol" aria-hidden="true">!</span>
+            <p class="eyebrow">Permanent action</p>
+            <h1>Delete @Model.Application.RoleTitle?</h1>
+            <p>This permanently removes the application and its status history. This cannot be undone.</p>
+            <dl class="confirmation-summary">
+                <div><dt>Company</dt><dd>@(Model.Application.CompanyName ?? "Not selected")</dd></div>
+                <div><dt>Applied</dt><dd>@Model.Application.AppliedOn.ToString("d MMMM yyyy")</dd></div>
+            </dl>
+            <form method="post" class="editor-actions">
+                <button class="button button-danger" type="submit">Delete permanently</button>
+                <a class="button button-secondary" asp-action="Details" asp-route-id="@Model.Application.Id">Cancel</a>
+            </form>
+        </div>
+    </div>
+</section>

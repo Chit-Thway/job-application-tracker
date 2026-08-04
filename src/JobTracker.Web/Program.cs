@@ -1,5 +1,6 @@
 using JobTracker.Web.Data;
 using JobTracker.Web.Identity;
+using JobTracker.Web.Applications;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
@@ -81,6 +82,8 @@ builder.Services.AddScoped<InvitationCommandRunner>();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUserContext, HttpCurrentUserContext>();
 builder.Services.AddScoped<OwnedApplicationService>();
+builder.Services.AddScoped<ApplicationTrackerService>();
+builder.Services.AddScoped<CompanyTrackerService>();
 
 var app = builder.Build();
 

@@ -10,8 +10,6 @@ public sealed class FoundationPageCatalogTests
         string[] expectedRoutes =
         [
             "/dashboard",
-            "/applications",
-            "/applications/new",
             "/actions",
             "/settings",
             "/demo",

@@ -1,0 +1,28 @@
+@model CompanyFormViewModel
+
+<div asp-validation-summary="All" class="validation-summary" role="alert" tabindex="-1" autofocus></div>
+
+<div class="form-grid">
+    <div class="field form-span-2">
+        <label asp-for="Name"></label>
+        <input asp-for="Name" autocomplete="organization" />
+        <span asp-validation-for="Name" class="field-error"></span>
+    </div>
+    <div class="field form-span-2">
+        <label asp-for="Location"></label>
+        <input asp-for="Location" autocomplete="address-level2" placeholder="Perth, WA or Remote" />
+        <span asp-validation-for="Location" class="field-error"></span>
+    </div>
+    <div class="field form-span-2">
+        <label asp-for="Website"></label>
+        <input asp-for="Website" type="url" inputmode="url" placeholder="https://…" />
+        <span asp-validation-for="Website" class="field-error"></span>
+    </div>
+    <div class="field form-span-2">
+        <label asp-for="Notes"></label>
+        <textarea asp-for="Notes" rows="7" placeholder="Useful context about this company."></textarea>
+        <span asp-validation-for="Notes" class="field-error"></span>
+    </div>
+</div>
+
+<p class="form-note">A company with the same name and location will be rejected rather than automatically merged.</p>

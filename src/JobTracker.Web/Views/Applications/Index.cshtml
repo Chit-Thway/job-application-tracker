@@ -1,0 +1,135 @@
+@model ApplicationIndexViewModel
+@{
+    ViewData["Title"] = "Applications";
+}
+
+<section class="workspace-hero">
+    <div class="shell workspace-heading">
+        <div>
+            <p class="eyebrow">Your application library</p>
+            <h1>Every opportunity, easy to find.</h1>
+            <p>Track the essentials now. Status changes, contacts, tasks, and appointments arrive in later milestones.</p>
+        </div>
+        <a class="button button-primary" asp-action="Create">+ Add application</a>
+    </div>
+</section>
+
+<section class="workspace-content">
+    <div class="shell">
+        <form method="get" class="filter-panel" aria-label="Application filters">
+            <div class="filter-grid">
+                <div class="field filter-search">
+                    <label for="application-search">Search</label>
+                    <input id="application-search" name="Query" value="@Model.Filters.Query" placeholder="Role or company" />
+                </div>
+                <div class="field">
+                    <label for="company-filter">Company</label>
+                    <select id="company-filter" name="CompanyId">
+                        <option value="">All companies</option>
+                        @foreach (var company in Model.Companies)
+                        {
+                            <option value="@company.Id" selected="@(Model.Filters.CompanyId == company.Id)">@company.Name@(string.IsNullOrWhiteSpace(company.Location) ? string.Empty : $" — {company.Location}")</option>
+                        }
+                    </select>
+                </div>
+                <div class="field">
+                    <label for="stage-filter">Stage</label>
+                    <select id="stage-filter" name="Stage">
+                        <option value="">All stages</option>
+                        @foreach (var stage in Enum.GetValues<PipelineStage>())
+                        {
+                            <option value="@stage" selected="@(Model.Filters.Stage == stage)">@ApplicationDisplay.Stage(stage)</option>
+                        }
+                    </select>
+                </div>
+                <div class="field">
+                    <label for="outcome-filter">Outcome</label>
+                    <select id="outcome-filter" name="Outcome">
+                        <option value="">All outcomes</option>
+                        @foreach (var outcome in Enum.GetValues<ApplicationOutcome>())
+                        {
+                            <option value="@outcome" selected="@(Model.Filters.Outcome == outcome)">@ApplicationDisplay.Outcome(outcome)</option>
+                        }
+                    </select>
+                </div>
+                <div class="field">
+                    <label for="saved-filter">Saved state</label>
+                    <select id="saved-filter" name="IsSavedForever">
+                        <option value="">All applications</option>
+                        <option value="true" selected="@(Model.Filters.IsSavedForever == true)">Saved</option>
+                        <option value="false" selected="@(Model.Filters.IsSavedForever == false)">Not saved</option>
+                    </select>
+                </div>
+                <div class="field">
+                    <label for="applied-from">Applied from</label>
+                    <input id="applied-from" type="date" name="AppliedFrom" value="@Model.Filters.AppliedFrom?.ToString("yyyy-MM-dd")" />
+                </div>
+                <div class="field">
+                    <label for="applied-to">Applied to</label>
+                    <input id="applied-to" type="date" name="AppliedTo" value="@Model.Filters.AppliedTo?.ToString("yyyy-MM-dd")" />
+                </div>
+                <div class="field">
+                    <label for="sort-filter">Sort</label>
+                    <select id="sort-filter" name="Sort">
+                        <option value="newest" selected="@(Model.Filters.Sort == "newest")">Newest applied</option>
+                        <option value="oldest" selected="@(Model.Filters.Sort == "oldest")">Oldest applied</option>
+                        <option value="title" selected="@(Model.Filters.Sort == "title")">Role title</option>
+                        <option value="company" selected="@(Model.Filters.Sort == "company")">Company</option>
+                    </select>
+                </div>
+            </div>
+            <div class="filter-actions">
+                <button class="button button-primary" type="submit">Apply filters</button>
+                <a class="button button-secondary" asp-action="Index">Clear</a>
+                <a class="text-link" asp-controller="Companies" asp-action="Index">Manage companies →</a>
+            </div>
+        </form>
+
+        <div class="result-heading">
+            <p><strong>@Model.Applications.Count</strong> application@(Model.Applications.Count == 1 ? string.Empty : "s")</p>
+        </div>
+
+        @if (Model.Applications.Count == 0)
+        {
+            <div class="empty-state">
+                <span class="empty-symbol" aria-hidden="true">+</span>
+                <h2>No applications found.</h2>
+                <p>Add your first application, or clear the filters to see everything.</p>
+                <a class="button button-primary" asp-action="Create">Add application</a>
+            </div>
+        }
+        else
+        {
+            <div class="record-grid">
+                @foreach (var application in Model.Applications)
+                {
+                    <article class="record-card">
+                        <div class="record-card-top">
+                            <div>
+                                <p class="record-company">@(application.CompanyName ?? "No company selected")</p>
+                                <h2><a asp-action="Details" asp-route-id="@application.Id">@application.RoleTitle</a></h2>
+                            </div>
+                            <span class="state-badge @(application.IsSavedForever ? "state-saved" : "state-recent")">
+                                @(application.IsSavedForever ? "Saved" : "Not saved")
+                            </span>
+                        </div>
+                        <dl class="record-meta">
+                            <div><dt>Applied</dt><dd>@application.AppliedOn.ToString("d MMM yyyy")</dd></div>
+                            <div><dt>Stage</dt><dd>@ApplicationDisplay.Stage(application.Stage)</dd></div>
+                            <div><dt>Outcome</dt><dd>@ApplicationDisplay.Outcome(application.Outcome)</dd></div>
+                        </dl>
+                        <div class="record-actions">
+                            <a class="text-link" asp-action="Details" asp-route-id="@application.Id">View details</a>
+                            <a class="text-link" asp-action="Edit" asp-route-id="@application.Id">Edit</a>
+                            <form method="post" asp-action="SetSavedForever" asp-route-id="@application.Id">
+                                <input type="hidden" name="isSavedForever" value="@(!application.IsSavedForever ? "true" : "false")" />
+                                <input type="hidden" name="returnTo" value="index" />
+                                <button class="link-button" type="submit">@(application.IsSavedForever ? "Unsave" : "Save")</button>
+                            </form>
+                        </div>
+                    </article>
+                }
+            </div>
+        }
+    </div>
+</section>

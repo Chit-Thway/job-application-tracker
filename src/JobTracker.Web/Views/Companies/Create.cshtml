@@ -1,0 +1,22 @@
+@model CompanyFormViewModel
+@{
+    ViewData["Title"] = "Add company";
+}
+
+<section class="form-page">
+    <div class="shell narrow-shell">
+        <a class="back-link" asp-action="Index">← Companies</a>
+        <div class="form-heading">
+            <p class="eyebrow">Company directory</p>
+            <h1>Add a company.</h1>
+            <p>Create one private company record, then connect applications to it.</p>
+        </div>
+        <form method="post" class="editor-card">
+            <partial name="_Form" model="Model" />
+            <div class="editor-actions">
+                <button class="button button-primary" type="submit">Add company</button>
+                <a class="button button-secondary" asp-action="Index">Cancel</a>
+            </div>
+        </form>
+    </div>
+</section>

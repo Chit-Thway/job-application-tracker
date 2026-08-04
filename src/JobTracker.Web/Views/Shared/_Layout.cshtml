@@ -43,7 +43,8 @@
                     @if (User.Identity?.IsAuthenticated == true)
                     {
                         <a class="@NavClass("dashboard")" aria-current="@AriaCurrent("dashboard")" asp-controller="Home" asp-action="Dashboard">Dashboard</a>
-                        <a class="@NavClass("applications")" aria-current="@AriaCurrent("applications")" asp-controller="Home" asp-action="Applications">Applications</a>
+                        <a class="@NavClass("applications")" aria-current="@AriaCurrent("applications")" asp-controller="Applications" asp-action="Index">Applications</a>
+                        <a class="@NavClass("companies")" aria-current="@AriaCurrent("companies")" asp-controller="Companies" asp-action="Index">Companies</a>
                         <a class="@NavClass("actions")" aria-current="@AriaCurrent("actions")" asp-controller="Home" asp-action="ActionCentre">Action Centre</a>
                         <a class="@NavClass("settings")" aria-current="@AriaCurrent("settings")" asp-controller="Home" asp-action="Settings">Settings</a>
                     }
@@ -54,7 +55,7 @@
                     }
                     @if (User.Identity?.IsAuthenticated == true)
                     {
-                        <a class="@NavClass("add", action: true)" aria-current="@AriaCurrent("add")" asp-controller="Home" asp-action="AddApplication">
+                        <a class="@NavClass("add", action: true)" aria-current="@AriaCurrent("add")" asp-controller="Applications" asp-action="Create">
                             <span aria-hidden="true">+</span>
                             Add application
                         </a>
@@ -72,6 +73,12 @@
     </header>
 
     <main id="main-content" tabindex="-1">
+        @if (TempData["Success"] is string successMessage)
+        {
+            <div class="shell flash-wrap">
+                <div class="flash-message" role="status">@successMessage</div>
+            </div>
+        }
         @RenderBody()
     </main>
 
@@ -83,7 +90,7 @@
             </div>
             <div class="footer-status">
                 <span class="status-dot" aria-hidden="true"></span>
-                Milestone 2 · Identity and data
+                Milestone 3 · Manual tracking
             </div>
         </div>
     </footer>

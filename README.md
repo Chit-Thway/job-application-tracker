@@ -4,9 +4,9 @@ A private ASP.NET Core job-search organizer for tracking applications, follow-up
 
 ## Current status
 
-Milestone 2 adds the private data and identity foundation. The application connects to Supabase-hosted PostgreSQL through Entity Framework Core and includes invitation-only account creation, verified-email login, logout, password recovery, login throttling, and owner-scoped data access.
+Milestone 3 adds the first complete private tracking workflow on top of the Supabase PostgreSQL and Identity foundation. A verified user can manage companies and manually create, search, filter, sort, edit, save forever, and delete job applications.
 
-Applications and related product pages remain placeholders until their feature milestones, but they now require a verified private account.
+Dashboard, Action Centre, settings, extraction, contacts, tasks, appointments, retention automation, and the public demo remain scoped to their later milestones.
 
 ## Technology
 
@@ -60,14 +60,25 @@ Then open [https://localhost:7239](https://localhost:7239).
 | `/account/resend-verification` | Email-verification resend |
 | `/dev/mail` | Local-only verification/reset message sink |
 | `/dashboard` | Authenticated three-month dashboard placeholder |
-| `/applications` | Authenticated applications placeholder |
-| `/applications/new` | Authenticated add-application placeholder |
+| `/applications` | Searchable, filterable private application library |
+| `/applications/new` | Manual application entry |
+| `/applications/{id}` | Private application details and saved-state control |
+| `/companies` | Searchable private company directory |
+| `/companies/new` | Manual company entry |
 | `/actions` | Authenticated Action Centre placeholder |
 | `/settings` | Authenticated settings placeholder |
 | `/demo` | Public synthetic demo placeholder |
 | `/health` | Minimal plain-text health response |
 
 The registration page is public, but account creation requires an unexpired, unused, unrevoked invitation code.
+
+## Manual tracking
+
+Create companies separately, then select one while adding or editing an application. A duplicate company with the same case-insensitive name and location is rejected rather than silently merged. A company cannot be deleted while applications still reference it.
+
+New applications begin at the `Applied` pipeline stage with an `Active` outcome and receive an initial append-only history event. Stage and outcome transitions arrive in Milestone 6.
+
+New applications default to not saved. **Saved** applications are exempt from future automatic retention deletion, and the setting can be changed from the application list, details page, or edit form. Milestone 8 will add the visible Chopping Block grace period and scheduled cleanup; changing the setting in Milestone 3 never immediately deletes anything.
 
 ## Database setup
 

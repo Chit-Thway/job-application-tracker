@@ -1,0 +1,76 @@
+@model ApplicationDetails
+@{
+    ViewData["Title"] = Model.RoleTitle;
+}
+
+<section class="workspace-hero detail-hero">
+    <div class="shell">
+        <a class="back-link" asp-action="Index">← Applications</a>
+        <div class="detail-heading">
+            <div>
+                <p class="eyebrow">@(Model.CompanyName ?? "No company selected")</p>
+                <h1>@Model.RoleTitle</h1>
+                <p>Applied @Model.AppliedOn.ToString("d MMMM yyyy")</p>
+            </div>
+            <div class="detail-actions">
+                <a class="button button-primary" asp-action="Edit" asp-route-id="@Model.Id">Edit application</a>
+                <a class="button button-secondary" asp-action="Delete" asp-route-id="@Model.Id">Delete</a>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="workspace-content">
+    <div class="shell detail-grid">
+        <div class="detail-main">
+            <article class="detail-card">
+                <div class="detail-card-heading">
+                    <div>
+                        <p class="mini-label">Current state</p>
+                        <h2>Application overview</h2>
+                    </div>
+                    <span class="state-badge @(Model.IsSavedForever ? "state-saved" : "state-recent")">
+                        @(Model.IsSavedForever ? "Saved" : "Not saved")
+                    </span>
+                </div>
+                <dl class="detail-list">
+                    <div><dt>Company</dt><dd>@if (Model.CompanyId is not null) { <a class="text-link" asp-controller="Companies" asp-action="Details" asp-route-id="@Model.CompanyId">@Model.CompanyName</a> } else { <span>Not selected</span> }</dd></div>
+                    <div><dt>Application date</dt><dd>@Model.AppliedOn.ToString("d MMMM yyyy")</dd></div>
+                    <div><dt>Pipeline stage</dt><dd>@ApplicationDisplay.Stage(Model.Stage)</dd></div>
+                    <div><dt>Outcome</dt><dd>@ApplicationDisplay.Outcome(Model.Outcome)</dd></div>
+                    <div><dt>Job posting</dt><dd>@if (!string.IsNullOrWhiteSpace(Model.SourceUrl)) { <a class="text-link" href="@Model.SourceUrl" target="_blank" rel="noreferrer">Open source URL ↗</a> } else { <span>Not provided</span> }</dd></div>
+                </dl>
+            </article>
+
+            <article class="detail-card">
+                <p class="mini-label">Notes</p>
+                <h2>Your context</h2>
+                @if (string.IsNullOrWhiteSpace(Model.Notes))
+                {
+                    <p class="muted-copy">No notes added yet.</p>
+                }
+                else
+                {
+                    <p class="preserved-text">@Model.Notes</p>
+                }
+            </article>
+        </div>
+
+        <aside class="retention-card">
+            <p class="mini-label">Retention choice</p>
+            <h2>@(Model.IsSavedForever ? "This application is saved." : "This application is not saved.")</h2>
+            <p>
+                @(Model.IsSavedForever
+                    ? "It is exempt from automatic retention deletion."
+                    : "It may become eligible for the Chopping Block after three months. Automatic cleanup arrives in Milestone 8.")
+            </p>
+            <form method="post" asp-action="SetSavedForever" asp-route-id="@Model.Id">
+                <input type="hidden" name="isSavedForever" value="@(!Model.IsSavedForever ? "true" : "false")" />
+                <button class="button @(Model.IsSavedForever ? "button-secondary" : "button-primary")" type="submit">
+                    @(Model.IsSavedForever ? "Unsave" : "Save")
+                </button>
+            </form>
+            <p class="retention-note">Changing this setting never deletes the application immediately.</p>
+        </aside>
+    </div>
+</section>

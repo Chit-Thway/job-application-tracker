@@ -1,5 +1,6 @@
 using JobTracker.Web.Data;
 using JobTracker.Web.Identity;
+using JobTracker.Web.Applications;
 using Microsoft.EntityFrameworkCore;
 
 namespace JobTracker.IntegrationTests;
@@ -54,6 +55,65 @@ public sealed class OwnerIsolationTests
         Assert.Equal(
             [nameof(TaskItem.JobApplicationId), nameof(TaskItem.OwnerId)],
             applicationForeignKey.Properties.Select(property => property.Name));
+    }
+
+    [Fact]
+    public async Task MilestoneThreeServices_RejectCrossOwnerRecordsAndCompanyLinks()
+    {
+        var options = new DbContextOptionsBuilder<ApplicationDbContext>()
+            .UseInMemoryDatabase($"milestone-three-owner-{Guid.NewGuid()}")
+            .Options;
+        await using var database = new ApplicationDbContext(options);
+        var ownerA = User("owner-a-m3");
+        var ownerB = User("owner-b-m3");
+        var companyB = new Company
+        {
+            OwnerId = ownerB.Id,
+            Name = "Synthetic Other Owner Company",
+        };
+        var applicationB = new JobApplication
+        {
+            OwnerId = ownerB.Id,
+            CompanyId = companyB.Id,
+            RoleTitle = "Other Owner Role",
+            AppliedOn = new DateOnly(2026, 8, 1),
+        };
+        database.Users.AddRange(ownerA, ownerB);
+        database.Companies.Add(companyB);
+        database.JobApplications.Add(applicationB);
+        await database.SaveChangesAsync();
+
+        var currentUser = new FixedCurrentUser(ownerA.Id);
+        var applicationService = new ApplicationTrackerService(
+            database,
+            currentUser,
+            TimeProvider.System);
+        var companyService = new CompanyTrackerService(database, currentUser);
+        var input = new ApplicationInput(
+            companyB.Id,
+            "Forged company attempt",
+            new DateOnly(2026, 8, 4),
+            null,
+            null,
+            false);
+
+        Assert.Null(await applicationService.FindAsync(applicationB.Id));
+        Assert.Equal(
+            ApplicationWriteResult.NotFound,
+            await applicationService.UpdateAsync(applicationB.Id, input));
+        Assert.Equal(
+            ApplicationWriteResult.NotFound,
+            await applicationService.SetSavedForeverAsync(applicationB.Id, true));
+        Assert.Equal(
+            ApplicationWriteResult.NotFound,
+            await applicationService.DeleteAsync(applicationB.Id));
+
+        var createResult = await applicationService.CreateAsync(input);
+        Assert.Equal(ApplicationWriteResult.InvalidCompany, createResult.Result);
+        Assert.Null(createResult.Id);
+        Assert.Null(await companyService.FindAsync(companyB.Id));
+        Assert.Equal(CompanyWriteResult.NotFound, await companyService.DeleteAsync(companyB.Id));
+        Assert.Single(database.JobApplications);
     }
 
     private static ApplicationUser User(string id) => new()

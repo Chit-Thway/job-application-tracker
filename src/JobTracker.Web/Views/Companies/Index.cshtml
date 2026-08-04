@@ -1,0 +1,70 @@
+@model CompanyIndexViewModel
+@{
+    ViewData["Title"] = "Companies";
+}
+
+<section class="workspace-hero">
+    <div class="shell workspace-heading">
+        <div>
+            <p class="eyebrow">Your company directory</p>
+            <h1>Keep the organisations clear.</h1>
+            <p>Companies are private to your account and can be connected to multiple applications.</p>
+        </div>
+        <a class="button button-primary" asp-action="Create">+ Add company</a>
+    </div>
+</section>
+
+<section class="workspace-content">
+    <div class="shell">
+        <form method="get" class="filter-panel compact-filter" aria-label="Company search">
+            <div class="field filter-search">
+                <label for="company-search">Search</label>
+                <input id="company-search" name="Query" value="@Model.Filters.Query" placeholder="Company or location" />
+            </div>
+            <div class="filter-actions">
+                <button class="button button-primary" type="submit">Search</button>
+                <a class="button button-secondary" asp-action="Index">Clear</a>
+                <a class="text-link" asp-controller="Applications" asp-action="Index">View applications →</a>
+            </div>
+        </form>
+
+        <div class="result-heading">
+            <p><strong>@Model.Companies.Count</strong> compan@(Model.Companies.Count == 1 ? "y" : "ies")</p>
+        </div>
+
+        @if (Model.Companies.Count == 0)
+        {
+            <div class="empty-state">
+                <span class="empty-symbol" aria-hidden="true">+</span>
+                <h2>No companies found.</h2>
+                <p>Add a company before connecting it to an application.</p>
+                <a class="button button-primary" asp-action="Create">Add company</a>
+            </div>
+        }
+        else
+        {
+            <div class="record-grid company-grid">
+                @foreach (var company in Model.Companies)
+                {
+                    <article class="record-card">
+                        <div class="record-card-top">
+                            <div>
+                                <p class="record-company">@(company.Location ?? "Location not provided")</p>
+                                <h2><a asp-action="Details" asp-route-id="@company.Id">@company.Name</a></h2>
+                            </div>
+                            <span class="count-badge">@company.ApplicationCount application@(company.ApplicationCount == 1 ? string.Empty : "s")</span>
+                        </div>
+                        @if (!string.IsNullOrWhiteSpace(company.Website))
+                        {
+                            <a class="text-link company-website" href="@company.Website" target="_blank" rel="noreferrer">Visit website ↗</a>
+                        }
+                        <div class="record-actions">
+                            <a class="text-link" asp-action="Details" asp-route-id="@company.Id">View details</a>
+                            <a class="text-link" asp-action="Edit" asp-route-id="@company.Id">Edit</a>
+                        </div>
+                    </article>
+                }
+            </div>
+        }
+    </div>
+</section>

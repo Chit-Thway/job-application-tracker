@@ -1,0 +1,32 @@
+@model CompanyDeleteViewModel
+@{
+    ViewData["Title"] = "Delete company";
+}
+
+<section class="form-page danger-page">
+    <div class="shell confirmation-shell">
+        <a class="back-link" asp-action="Details" asp-route-id="@Model.Company.Id">← Company details</a>
+        <div class="confirmation-card">
+            <span class="danger-symbol" aria-hidden="true">!</span>
+            <p class="eyebrow">Permanent action</p>
+            <h1>Delete @Model.Company.Name?</h1>
+            @if (!string.IsNullOrWhiteSpace(Model.ConflictMessage))
+            {
+                <div class="inline-alert inline-alert-error" role="alert">@Model.ConflictMessage</div>
+            }
+            <p>Deleting an unused company is permanent. Applications are never silently deleted or moved.</p>
+            <dl class="confirmation-summary">
+                <div><dt>Location</dt><dd>@(Model.Company.Location ?? "Not provided")</dd></div>
+                <div><dt>Applications</dt><dd>@Model.Company.Applications.Count</dd></div>
+            </dl>
+            <form method="post" class="editor-actions">
+                <button class="button button-danger" type="submit" disabled="@(Model.Company.Applications.Count > 0)">Delete company</button>
+                <a class="button button-secondary" asp-action="Details" asp-route-id="@Model.Company.Id">Cancel</a>
+            </form>
+            @if (Model.Company.Applications.Count > 0)
+            {
+                <p class="form-note">Move or delete the linked applications before deleting this company.</p>
+            }
+        </div>
+    </div>
+</section>

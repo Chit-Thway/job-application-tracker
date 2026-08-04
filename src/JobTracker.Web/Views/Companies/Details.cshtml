@@ -1,0 +1,66 @@
+@model CompanyDetails
+@{
+    ViewData["Title"] = Model.Name;
+}
+
+<section class="workspace-hero detail-hero">
+    <div class="shell">
+        <a class="back-link" asp-action="Index">← Companies</a>
+        <div class="detail-heading">
+            <div>
+                <p class="eyebrow">@(Model.Location ?? "Location not provided")</p>
+                <h1>@Model.Name</h1>
+                <p>@Model.Applications.Count linked application@(Model.Applications.Count == 1 ? string.Empty : "s")</p>
+            </div>
+            <div class="detail-actions">
+                <a class="button button-primary" asp-action="Edit" asp-route-id="@Model.Id">Edit company</a>
+                <a class="button button-secondary" asp-action="Delete" asp-route-id="@Model.Id">Delete</a>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="workspace-content">
+    <div class="shell detail-grid">
+        <div class="detail-main">
+            <article class="detail-card">
+                <p class="mini-label">Company details</p>
+                <h2>Overview</h2>
+                <dl class="detail-list">
+                    <div><dt>Location</dt><dd>@(Model.Location ?? "Not provided")</dd></div>
+                    <div><dt>Website</dt><dd>@if (!string.IsNullOrWhiteSpace(Model.Website)) { <a class="text-link" href="@Model.Website" target="_blank" rel="noreferrer">Open website ↗</a> } else { <span>Not provided</span> }</dd></div>
+                </dl>
+            </article>
+            <article class="detail-card">
+                <p class="mini-label">Notes</p>
+                <h2>Your context</h2>
+                <p class="@(string.IsNullOrWhiteSpace(Model.Notes) ? "muted-copy" : "preserved-text")">@(Model.Notes ?? "No notes added yet.")</p>
+            </article>
+        </div>
+        <aside class="linked-card">
+            <div class="linked-card-heading">
+                <div>
+                    <p class="mini-label">Connected records</p>
+                    <h2>Applications</h2>
+                </div>
+                <a class="text-link" asp-controller="Applications" asp-action="Create" asp-route-companyId="@Model.Id">Add application</a>
+            </div>
+            @if (Model.Applications.Count == 0)
+            {
+                <p class="muted-copy">No applications are connected yet.</p>
+            }
+            else
+            {
+                <ul class="linked-list">
+                    @foreach (var application in Model.Applications)
+                    {
+                        <li>
+                            <a asp-controller="Applications" asp-action="Details" asp-route-id="@application.Id">@application.RoleTitle</a>
+                            <span>@application.AppliedOn.ToString("d MMM yyyy")</span>
+                        </li>
+                    }
+                </ul>
+            }
+        </aside>
+    </div>
+</section>

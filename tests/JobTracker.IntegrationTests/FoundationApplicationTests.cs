@@ -26,7 +26,7 @@ public sealed class FoundationApplicationTests : IClassFixture<JobTrackerWebAppl
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Contains(expectedText, content, StringComparison.Ordinal);
-        Assert.Contains("Milestone 2 · Identity and data", content, StringComparison.Ordinal);
+        Assert.Contains("Milestone 3 · Manual tracking", content, StringComparison.Ordinal);
     }
 
     [Theory]

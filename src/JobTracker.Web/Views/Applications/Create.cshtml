@@ -1,0 +1,22 @@
+@model ApplicationFormViewModel
+@{
+    ViewData["Title"] = "Add application";
+}
+
+<section class="form-page">
+    <div class="shell narrow-shell">
+        <a class="back-link" asp-action="Index">← Applications</a>
+        <div class="form-heading">
+            <p class="eyebrow">Manual entry</p>
+            <h1>Add an application.</h1>
+            <p>Start with the facts you know. You can edit everything later.</p>
+        </div>
+        <form method="post" class="editor-card">
+            <partial name="_Form" model="Model" />
+            <div class="editor-actions">
+                <button class="button button-primary" type="submit">Add application</button>
+                <a class="button button-secondary" asp-action="Index">Cancel</a>
+            </div>
+        </form>
+    </div>
+</section>

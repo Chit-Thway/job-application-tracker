@@ -19,14 +19,6 @@ public class HomeController : Controller
     [Authorize]
     public IActionResult Dashboard() => FoundationPage(nameof(Dashboard));
 
-    [HttpGet("/applications")]
-    [Authorize]
-    public IActionResult Applications() => FoundationPage(nameof(Applications));
-
-    [HttpGet("/applications/new")]
-    [Authorize]
-    public IActionResult AddApplication() => FoundationPage(nameof(AddApplication));
-
     [HttpGet("/actions")]
     [Authorize]
     public IActionResult ActionCentre() => FoundationPage(nameof(ActionCentre));
