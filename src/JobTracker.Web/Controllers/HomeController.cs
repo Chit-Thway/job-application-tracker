@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using JobTracker.Web.Foundation;
 using JobTracker.Web.Models;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace JobTracker.Web.Controllers;
@@ -15,18 +16,23 @@ public class HomeController : Controller
     }
 
     [HttpGet("/dashboard")]
+    [Authorize]
     public IActionResult Dashboard() => FoundationPage(nameof(Dashboard));
 
     [HttpGet("/applications")]
+    [Authorize]
     public IActionResult Applications() => FoundationPage(nameof(Applications));
 
     [HttpGet("/applications/new")]
+    [Authorize]
     public IActionResult AddApplication() => FoundationPage(nameof(AddApplication));
 
     [HttpGet("/actions")]
+    [Authorize]
     public IActionResult ActionCentre() => FoundationPage(nameof(ActionCentre));
 
     [HttpGet("/settings")]
+    [Authorize]
     public IActionResult Settings() => FoundationPage(nameof(Settings));
 
     [HttpGet("/demo")]

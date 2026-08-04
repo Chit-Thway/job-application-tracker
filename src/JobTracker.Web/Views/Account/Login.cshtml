@@ -1,0 +1,45 @@
+@model LoginViewModel
+@{
+    ViewData["Title"] = "Sign in";
+    ViewData["Section"] = "login";
+}
+
+<section class="account-page">
+    <div class="account-card">
+        <p class="eyebrow">Private tracker</p>
+        <h1>Welcome back.</h1>
+        <p class="account-lead">Sign in with your verified Job Application Tracker account.</p>
+
+        <form method="post" asp-action="Login" class="account-form">
+            <input asp-for="ReturnUrl" type="hidden" />
+            <div asp-validation-summary="ModelOnly" class="validation-summary" role="alert"></div>
+
+            <div class="field">
+                <label asp-for="Email"></label>
+                <input asp-for="Email" autocomplete="email" />
+                <span asp-validation-for="Email" class="field-error"></span>
+            </div>
+
+            <div class="field">
+                <label asp-for="Password"></label>
+                <input asp-for="Password" autocomplete="current-password" />
+                <span asp-validation-for="Password" class="field-error"></span>
+            </div>
+
+            <label class="check-field">
+                <input asp-for="RememberMe" />
+                <span>Keep me signed in on this device</span>
+            </label>
+
+            <button class="button button-primary" type="submit">Sign in</button>
+        </form>
+
+        <div class="account-links">
+            <a asp-action="Register">Create an invited account</a>
+            <a asp-action="ForgotPassword">Forgot your password?</a>
+            <a asp-action="ResendVerification">Resend verification</a>
+        </div>
+
+        <p class="account-note">New accounts require a private, one-time invitation code.</p>
+    </div>
+</section>

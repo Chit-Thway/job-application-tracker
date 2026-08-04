@@ -1,3 +1,4 @@
+@inject IHostEnvironment HostEnvironment
 @{
     var section = ViewData["Section"] as string ?? string.Empty;
     var pageTitle = ViewData["Title"] as string;
@@ -33,21 +34,38 @@
                 </span>
             </a>
 
-            <details class="site-nav">
+            <details class="site-nav" open>
                 <summary>
                     <span>Menu</span>
                     <span class="menu-lines" aria-hidden="true"></span>
                 </summary>
                 <nav class="nav-panel" aria-label="Primary navigation">
-                    <a class="@NavClass("dashboard")" aria-current="@AriaCurrent("dashboard")" asp-controller="Home" asp-action="Dashboard">Dashboard</a>
-                    <a class="@NavClass("applications")" aria-current="@AriaCurrent("applications")" asp-controller="Home" asp-action="Applications">Applications</a>
-                    <a class="@NavClass("actions")" aria-current="@AriaCurrent("actions")" asp-controller="Home" asp-action="ActionCentre">Action Centre</a>
-                    <a class="@NavClass("settings")" aria-current="@AriaCurrent("settings")" asp-controller="Home" asp-action="Settings">Settings</a>
+                    @if (User.Identity?.IsAuthenticated == true)
+                    {
+                        <a class="@NavClass("dashboard")" aria-current="@AriaCurrent("dashboard")" asp-controller="Home" asp-action="Dashboard">Dashboard</a>
+                        <a class="@NavClass("applications")" aria-current="@AriaCurrent("applications")" asp-controller="Home" asp-action="Applications">Applications</a>
+                        <a class="@NavClass("actions")" aria-current="@AriaCurrent("actions")" asp-controller="Home" asp-action="ActionCentre">Action Centre</a>
+                        <a class="@NavClass("settings")" aria-current="@AriaCurrent("settings")" asp-controller="Home" asp-action="Settings">Settings</a>
+                    }
                     <a class="@NavClass("demo")" aria-current="@AriaCurrent("demo")" asp-controller="Home" asp-action="Demo">Demo</a>
-                    <a class="@NavClass("add", action: true)" aria-current="@AriaCurrent("add")" asp-controller="Home" asp-action="AddApplication">
-                        <span aria-hidden="true">+</span>
-                        Add application
-                    </a>
+                    @if (HostEnvironment.IsDevelopment())
+                    {
+                        <a class="nav-link" asp-controller="DevelopmentMail" asp-action="Index">Local messages</a>
+                    }
+                    @if (User.Identity?.IsAuthenticated == true)
+                    {
+                        <a class="@NavClass("add", action: true)" aria-current="@AriaCurrent("add")" asp-controller="Home" asp-action="AddApplication">
+                            <span aria-hidden="true">+</span>
+                            Add application
+                        </a>
+                        <form class="nav-form" method="post" asp-controller="Account" asp-action="Logout">
+                            <button class="nav-link nav-button" type="submit">Sign out</button>
+                        </form>
+                    }
+                    else
+                    {
+                        <a class="@NavClass("login", action: true)" aria-current="@AriaCurrent("login")" asp-controller="Account" asp-action="Login">Sign in</a>
+                    }
                 </nav>
             </details>
         </div>
@@ -65,7 +83,7 @@
             </div>
             <div class="footer-status">
                 <span class="status-dot" aria-hidden="true"></span>
-                Milestone 1 · Foundation
+                Milestone 2 · Identity and data
             </div>
         </div>
     </footer>

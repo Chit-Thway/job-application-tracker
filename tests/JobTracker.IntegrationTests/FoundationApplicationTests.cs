@@ -3,22 +3,17 @@ using Microsoft.AspNetCore.Mvc.Testing;
 
 namespace JobTracker.IntegrationTests;
 
-public sealed class FoundationApplicationTests : IClassFixture<WebApplicationFactory<Program>>
+public sealed class FoundationApplicationTests : IClassFixture<JobTrackerWebApplicationFactory>
 {
-    private readonly WebApplicationFactory<Program> factory;
+    private readonly JobTrackerWebApplicationFactory factory;
 
-    public FoundationApplicationTests(WebApplicationFactory<Program> factory)
+    public FoundationApplicationTests(JobTrackerWebApplicationFactory factory)
     {
         this.factory = factory;
     }
 
     [Theory]
     [InlineData("/", "Job Application Tracker")]
-    [InlineData("/dashboard", "The signal, without the noise.")]
-    [InlineData("/applications", "Every opportunity, easy to find.")]
-    [InlineData("/applications/new", "Start with what you have.")]
-    [InlineData("/actions", "Know your next move.")]
-    [InlineData("/settings", "Simple controls, clear consequences.")]
     [InlineData("/demo", "A realistic demo. Never real data.")]
     public async Task FoundationRoutes_ReturnSuccessfulBrandedPages(
         string route,
@@ -31,7 +26,26 @@ public sealed class FoundationApplicationTests : IClassFixture<WebApplicationFac
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Contains(expectedText, content, StringComparison.Ordinal);
-        Assert.Contains("Milestone 1 · Foundation", content, StringComparison.Ordinal);
+        Assert.Contains("Milestone 2 · Identity and data", content, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("/dashboard")]
+    [InlineData("/applications")]
+    [InlineData("/applications/new")]
+    [InlineData("/actions")]
+    [InlineData("/settings")]
+    public async Task PrivateRoutes_RedirectSignedOutVisitorsToLogin(string route)
+    {
+        var client = CreateClient();
+
+        var response = await client.GetAsync(route);
+
+        Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
+        Assert.StartsWith(
+            "/account/login?ReturnUrl=",
+            response.Headers.Location?.PathAndQuery,
+            StringComparison.Ordinal);
     }
 
     [Fact]
@@ -71,6 +85,19 @@ public sealed class FoundationApplicationTests : IClassFixture<WebApplicationFac
         Assert.Equal("DENY", GetHeader(response, "X-Frame-Options"));
         Assert.Equal("no-referrer", GetHeader(response, "Referrer-Policy"));
         Assert.Contains("frame-ancestors 'none'", GetHeader(response, "Content-Security-Policy"));
+    }
+
+    [Fact]
+    public async Task SignedOutDesktopNavigation_IsExpandedAndOffersSignIn()
+    {
+        var client = CreateClient();
+
+        var response = await client.GetAsync("/");
+        var content = await response.Content.ReadAsStringAsync();
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Contains("<details class=\"site-nav\" open>", content, StringComparison.Ordinal);
+        Assert.Contains("href=\"/account/login\">Sign in</a>", content, StringComparison.Ordinal);
     }
 
     [Fact]

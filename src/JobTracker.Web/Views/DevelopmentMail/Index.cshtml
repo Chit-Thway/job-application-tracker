@@ -1,0 +1,36 @@
+@model IReadOnlyList<JobTracker.Web.Identity.DevelopmentMailMessage>
+@{
+    ViewData["Title"] = "Local messages";
+}
+
+<section class="page-hero">
+    <div class="shell">
+        <p class="eyebrow">Development only</p>
+        <h1>Local messages.</h1>
+        <p class="page-lead">Verification and password-reset messages appear here while working locally. This page does not exist in production.</p>
+    </div>
+</section>
+
+<section class="page-content">
+    <div class="shell mail-list">
+        @if (Model.Count == 0)
+        {
+            <div class="empty-mail">
+                <h2>No messages yet</h2>
+                <p>Start the controlled account setup or request a password reset, then refresh this page.</p>
+            </div>
+        }
+        else
+        {
+            @foreach (var message in Model)
+            {
+                <article class="mail-card">
+                    <p class="mini-label">@message.SentAt.ToLocalTime().ToString("g")</p>
+                    <h2>@message.Subject</h2>
+                    <p>For <strong>@message.Recipient</strong></p>
+                    <a class="button button-primary" href="@message.ActionUrl">Open secure link</a>
+                </article>
+            }
+        }
+    </div>
+</section>
