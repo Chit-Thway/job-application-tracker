@@ -37,3 +37,9 @@ public enum AppointmentType
     Assessment,
     Other,
 }
+
+public enum ExtractionSourceType
+{
+    PastedText,
+    JobPostingUrl,
+}

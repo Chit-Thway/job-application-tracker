@@ -11,6 +11,14 @@
             <h1>Add an application.</h1>
             <p>Start with the facts you know. You can edit everything later.</p>
         </div>
+        <aside class="import-callout">
+            <div>
+                <p class="mini-label">Faster option</p>
+                <h2>Already have the job description?</h2>
+                <p>Paste it once, review the detected details, and create a new company on the same screen.</p>
+            </div>
+            <a class="button button-primary" asp-controller="ApplicationImports" asp-action="PasteText">Paste job text</a>
+        </aside>
         <form method="post" class="editor-card">
             <partial name="_Form" model="Model" />
             <div class="editor-actions">

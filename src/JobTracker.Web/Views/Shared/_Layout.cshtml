@@ -79,6 +79,12 @@
                 <div class="flash-message" role="status">@successMessage</div>
             </div>
         }
+        @if (TempData["Error"] is string errorMessage)
+        {
+            <div class="shell flash-wrap">
+                <div class="flash-message flash-error" role="alert">@errorMessage</div>
+            </div>
+        }
         @RenderBody()
     </main>
 
@@ -90,7 +96,7 @@
             </div>
             <div class="footer-status">
                 <span class="status-dot" aria-hidden="true"></span>
-                Milestone 3 · Manual tracking
+                Milestone 4 · Pasted-text extraction
             </div>
         </div>
     </footer>

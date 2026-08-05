@@ -1,6 +1,7 @@
 @model ApplicationDetails
 @{
     ViewData["Title"] = Model.RoleTitle;
+    var extraction = ExtractionDraftService.ReadMetadata(Model.ExtractionMetadataJson);
 }
 
 <section class="workspace-hero detail-hero">
@@ -54,6 +55,33 @@
                     <p class="preserved-text">@Model.Notes</p>
                 }
             </article>
+
+            @if (extraction is not null)
+            {
+                <article class="detail-card">
+                    <p class="mini-label">Reviewed extraction</p>
+                    <h2>Posting details</h2>
+                    <dl class="detail-list">
+                        @if (!string.IsNullOrWhiteSpace(extraction.WorkplaceMode)) { <div><dt>Work arrangement</dt><dd>@extraction.WorkplaceMode</dd></div> }
+                        @if (!string.IsNullOrWhiteSpace(extraction.EmploymentType)) { <div><dt>Employment type</dt><dd>@extraction.EmploymentType</dd></div> }
+                        @if (!string.IsNullOrWhiteSpace(extraction.SalaryText)) { <div><dt>Salary</dt><dd>@extraction.SalaryText</dd></div> }
+                        @if (!string.IsNullOrWhiteSpace(extraction.JobReference)) { <div><dt>Job reference</dt><dd>@extraction.JobReference</dd></div> }
+                        @if (extraction.ClosingDate is not null) { <div><dt>Closing date</dt><dd>@extraction.ClosingDate.Value.ToString("d MMMM yyyy")</dd></div> }
+                        @if (!string.IsNullOrWhiteSpace(extraction.SourceSite)) { <div><dt>Source site</dt><dd>@extraction.SourceSite</dd></div> }
+                        @if (!string.IsNullOrWhiteSpace(extraction.ContactName)) { <div><dt>Contact</dt><dd>@extraction.ContactName</dd></div> }
+                        @if (!string.IsNullOrWhiteSpace(extraction.ContactEmail)) { <div><dt>Contact email</dt><dd><a class="text-link" href="mailto:@extraction.ContactEmail">@extraction.ContactEmail</a></dd></div> }
+                    </dl>
+                </article>
+            }
+
+            @if (!string.IsNullOrWhiteSpace(Model.SourceText))
+            {
+                <details class="detail-card source-details">
+                    <summary>View original pasted job text</summary>
+                    <p class="retention-note">Stored with this application so you can check the source later.</p>
+                    <pre>@Model.SourceText</pre>
+                </details>
+            }
         </div>
 
         <aside class="retention-card">

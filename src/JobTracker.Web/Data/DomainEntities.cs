@@ -24,9 +24,22 @@ public sealed class JobApplication : OwnedEntity
     public ApplicationOutcome Outcome { get; set; } = ApplicationOutcome.Active;
     public string? SourceUrl { get; set; }
     public string? SourceText { get; set; }
+    public string? ExtractionMetadataJson { get; set; }
     public string? Notes { get; set; }
     public bool IsSavedForever { get; set; }
     public DateTimeOffset? DeletionScheduledAt { get; set; }
+}
+
+public sealed class ExtractionDraft : OwnedEntity
+{
+    public ExtractionSourceType SourceType { get; set; }
+    public required string SourceText { get; set; }
+    public required string NormalizedText { get; set; }
+    public required string ParsedFieldsJson { get; set; }
+    public required string EvidenceJson { get; set; }
+    public required string WarningsJson { get; set; }
+    public DateTimeOffset CreatedAt { get; set; }
+    public DateTimeOffset ExpiresAt { get; set; }
 }
 
 public sealed class StatusHistory : OwnedEntity

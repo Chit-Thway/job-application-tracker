@@ -22,4 +22,8 @@
     <ProjectReference Include="..\..\src\JobTracker.Web\JobTracker.Web.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Include="Fixtures\PastedJobs\**\*" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>

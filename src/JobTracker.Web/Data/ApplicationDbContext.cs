@@ -9,6 +9,7 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
     public DbSet<Company> Companies => Set<Company>();
     public DbSet<JobApplication> JobApplications => Set<JobApplication>();
     public DbSet<StatusHistory> StatusHistory => Set<StatusHistory>();
+    public DbSet<ExtractionDraft> ExtractionDrafts => Set<ExtractionDraft>();
     public DbSet<Contact> Contacts => Set<Contact>();
     public DbSet<Interaction> Interactions => Set<Interaction>();
     public DbSet<TaskItem> Tasks => Set<TaskItem>();
@@ -42,6 +43,7 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
         ConfigureOwnedEntity<Company>(builder);
         ConfigureOwnedEntity<JobApplication>(builder);
         ConfigureOwnedEntity<StatusHistory>(builder);
+        ConfigureOwnedEntity<ExtractionDraft>(builder);
         ConfigureOwnedEntity<Contact>(builder);
         ConfigureOwnedEntity<Interaction>(builder);
         ConfigureOwnedEntity<TaskItem>(builder);
@@ -67,6 +69,15 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
                 .HasPrincipalKey(company => new { company.Id, company.OwnerId })
                 .OnDelete(DeleteBehavior.Restrict);
             entity.HasIndex(application => new { application.OwnerId, application.AppliedOn });
+        });
+
+        builder.Entity<ExtractionDraft>(entity =>
+        {
+            entity.Property(draft => draft.SourceType).HasConversion<string>().HasMaxLength(30);
+            entity.Property(draft => draft.ParsedFieldsJson).IsRequired();
+            entity.Property(draft => draft.EvidenceJson).IsRequired();
+            entity.Property(draft => draft.WarningsJson).IsRequired();
+            entity.HasIndex(draft => new { draft.OwnerId, draft.ExpiresAt });
         });
 
         builder.Entity<StatusHistory>(entity =>

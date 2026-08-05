@@ -1,0 +1,29 @@
+@model PastedTextInputViewModel
+@{
+    ViewData["Title"] = "Paste job text";
+}
+
+<section class="form-page extraction-page">
+    <div class="shell narrow-shell">
+        <a class="back-link" asp-controller="Applications" asp-action="Create">← Add application</a>
+        <div class="form-heading">
+            <p class="eyebrow">Pasted-text import</p>
+            <h1>Paste once. Review everything.</h1>
+            <p>We look for explicit labels and familiar job-board layouts. Layout-based suggestions are marked medium confidence, and nothing is saved until you review and confirm it.</p>
+        </div>
+
+        <form method="post" class="editor-card">
+            <div asp-validation-summary="All" class="validation-summary" role="alert" tabindex="-1" autofocus></div>
+            <div class="field">
+                <label asp-for="SourceText"></label>
+                <textarea asp-for="SourceText" class="paste-source-input" rows="20" placeholder="Paste the complete job advertisement here…"></textarea>
+                <span asp-validation-for="SourceText" class="field-error"></span>
+                <small class="field-help">The original text is retained with the application. Do not paste passwords or private messages.</small>
+            </div>
+            <div class="editor-actions">
+                <button class="button button-primary" type="submit">Extract a review draft</button>
+                <a class="button button-secondary" asp-controller="Applications" asp-action="Create">Use manual entry</a>
+            </div>
+        </form>
+    </div>
+</section>

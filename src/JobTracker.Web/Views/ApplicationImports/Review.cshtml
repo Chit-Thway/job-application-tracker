@@ -1,0 +1,105 @@
+@model ExtractionReviewViewModel
+@{
+    ViewData["Title"] = "Review extracted application";
+}
+
+<section class="form-page extraction-page">
+    <div class="shell review-shell">
+        <a class="back-link" asp-action="PasteText">← Paste different text</a>
+        <div class="form-heading review-heading">
+            <div>
+                <p class="eyebrow">Review before saving</p>
+                <h1>Check the extracted details.</h1>
+                <p>Every field is editable. Blank fields mean the text did not provide clear evidence.</p>
+            </div>
+            <span class="review-status">Draft · expires in 24 hours</span>
+        </div>
+
+        @if (Model.Warnings.Count > 0)
+        {
+            <section class="extraction-warnings" aria-labelledby="extraction-warning-title">
+                <h2 id="extraction-warning-title">Things to check</h2>
+                <ul>
+                    @foreach (var warning in Model.Warnings)
+                    {
+                        <li>@warning</li>
+                    }
+                </ul>
+            </section>
+        }
+
+        <div class="extraction-review-grid">
+            <aside class="source-card" aria-labelledby="original-text-title">
+                <div class="source-card-heading">
+                    <div><p class="mini-label">Original source</p><h2 id="original-text-title">Pasted job text</h2></div>
+                    <span>Read only</span>
+                </div>
+                <pre>@Model.SourceText</pre>
+            </aside>
+
+            <form method="post" class="editor-card review-editor">
+                <input asp-for="DraftId" type="hidden" />
+                <div asp-validation-summary="All" class="validation-summary" role="alert" tabindex="-1" autofocus></div>
+
+                <section class="review-section" aria-labelledby="core-details-title">
+                    <p class="mini-label">Application essentials</p>
+                    <h2 id="core-details-title">Core details</h2>
+                    <div class="review-form-grid">
+                        <div class="field form-span-2">
+                            <label asp-for="RoleTitle"></label><input asp-for="RoleTitle" /><span asp-validation-for="RoleTitle" class="field-error"></span>
+                            @if (Model.EvidenceFor(nameof(Model.RoleTitle)) is not null) { <small class="evidence-note">Evidence: @Model.EvidenceFor(nameof(Model.RoleTitle))</small> }
+                        </div>
+                        <div class="field">
+                            <label asp-for="CompanyName"></label><input asp-for="CompanyName" autocomplete="organization" /><span asp-validation-for="CompanyName" class="field-error"></span>
+                            @if (Model.EvidenceFor(nameof(Model.CompanyName)) is not null) { <small class="evidence-note">Evidence: @Model.EvidenceFor(nameof(Model.CompanyName))</small> }
+                            <small class="field-help">A matching company is reused; otherwise it is created when you confirm.</small>
+                        </div>
+                        <div class="field">
+                            <label asp-for="CompanyLocation"></label><input asp-for="CompanyLocation" autocomplete="address-level2" /><span asp-validation-for="CompanyLocation" class="field-error"></span>
+                            @if (Model.EvidenceFor(nameof(Model.CompanyLocation)) is not null) { <small class="evidence-note">Evidence: @Model.EvidenceFor(nameof(Model.CompanyLocation))</small> }
+                        </div>
+                        <div class="field">
+                            <label asp-for="AppliedOn"></label><input asp-for="AppliedOn" type="date" /><span asp-validation-for="AppliedOn" class="field-error"></span>
+                            @if (Model.EvidenceFor(nameof(Model.AppliedOn)) is not null) { <small class="evidence-note">Evidence: @Model.EvidenceFor(nameof(Model.AppliedOn))</small> } else { <small class="field-help">Defaults to today when the posting does not state it.</small> }
+                        </div>
+                        <div class="field">
+                            <label asp-for="WorkplaceMode"></label><input asp-for="WorkplaceMode" placeholder="Remote, hybrid, or on-site" /><span asp-validation-for="WorkplaceMode" class="field-error"></span>
+                            @if (Model.EvidenceFor(nameof(Model.WorkplaceMode)) is not null) { <small class="evidence-note">Evidence: @Model.EvidenceFor(nameof(Model.WorkplaceMode))</small> }
+                        </div>
+                        <div class="field form-span-2">
+                            <label asp-for="SourceUrl"></label><input asp-for="SourceUrl" type="url" inputmode="url" placeholder="https://…" /><span asp-validation-for="SourceUrl" class="field-error"></span>
+                            @if (Model.EvidenceFor(nameof(Model.SourceUrl)) is not null) { <small class="evidence-note">Evidence: @Model.EvidenceFor(nameof(Model.SourceUrl))</small> }
+                        </div>
+                    </div>
+                </section>
+
+                <section class="review-section" aria-labelledby="extra-details-title">
+                    <p class="mini-label">Optional evidence</p>
+                    <h2 id="extra-details-title">Posting details</h2>
+                    <div class="review-form-grid">
+                        <div class="field"><label asp-for="SourceSite"></label><input asp-for="SourceSite" /><span asp-validation-for="SourceSite" class="field-error"></span>@if (Model.EvidenceFor(nameof(Model.SourceSite)) is not null) { <small class="evidence-note">Evidence: @Model.EvidenceFor(nameof(Model.SourceSite))</small> }</div>
+                        <div class="field"><label asp-for="JobReference"></label><input asp-for="JobReference" /><span asp-validation-for="JobReference" class="field-error"></span>@if (Model.EvidenceFor(nameof(Model.JobReference)) is not null) { <small class="evidence-note">Evidence: @Model.EvidenceFor(nameof(Model.JobReference))</small> }</div>
+                        <div class="field"><label asp-for="SalaryText"></label><input asp-for="SalaryText" /><span asp-validation-for="SalaryText" class="field-error"></span>@if (Model.EvidenceFor(nameof(Model.SalaryText)) is not null) { <small class="evidence-note">Evidence: @Model.EvidenceFor(nameof(Model.SalaryText))</small> }</div>
+                        <div class="field"><label asp-for="EmploymentType"></label><input asp-for="EmploymentType" /><span asp-validation-for="EmploymentType" class="field-error"></span>@if (Model.EvidenceFor(nameof(Model.EmploymentType)) is not null) { <small class="evidence-note">Evidence: @Model.EvidenceFor(nameof(Model.EmploymentType))</small> }</div>
+                        <div class="field"><label asp-for="ClosingDate"></label><input asp-for="ClosingDate" type="date" /><span asp-validation-for="ClosingDate" class="field-error"></span>@if (Model.EvidenceFor(nameof(Model.ClosingDate)) is not null) { <small class="evidence-note">Evidence: @Model.EvidenceFor(nameof(Model.ClosingDate))</small> }</div>
+                        <div class="field"><label asp-for="ContactName"></label><input asp-for="ContactName" autocomplete="name" /><span asp-validation-for="ContactName" class="field-error"></span>@if (Model.EvidenceFor(nameof(Model.ContactName)) is not null) { <small class="evidence-note">Evidence: @Model.EvidenceFor(nameof(Model.ContactName))</small> }</div>
+                        <div class="field form-span-2"><label asp-for="ContactEmail"></label><input asp-for="ContactEmail" type="email" autocomplete="email" /><span asp-validation-for="ContactEmail" class="field-error"></span>@if (Model.EvidenceFor(nameof(Model.ContactEmail)) is not null) { <small class="evidence-note">Evidence: @Model.EvidenceFor(nameof(Model.ContactEmail))</small> }</div>
+                        <div class="field form-span-2"><label asp-for="Notes"></label><textarea asp-for="Notes" rows="5" placeholder="Your own notes about the application or next step."></textarea><span asp-validation-for="Notes" class="field-error"></span></div>
+                    </div>
+                </section>
+
+                <label class="save-choice">
+                    <input asp-for="IsSavedForever" />
+                    <span><strong>Saved</strong><small>Saved applications are exempt from future automatic retention deletion.</small></span>
+                </label>
+
+                <div class="editor-actions">
+                    <button class="button button-primary" type="submit">Confirm and add application</button>
+                    <button class="button button-secondary" type="submit" form="cancel-import" formnovalidate>Cancel import</button>
+                </div>
+            </form>
+        </div>
+
+        <form id="cancel-import" method="post" asp-action="Cancel" asp-route-id="@Model.DraftId"></form>
+    </div>
+</section>

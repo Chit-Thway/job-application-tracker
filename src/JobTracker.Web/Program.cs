@@ -1,6 +1,7 @@
 using JobTracker.Web.Data;
 using JobTracker.Web.Identity;
 using JobTracker.Web.Applications;
+using JobTracker.Web.Extraction;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
@@ -84,6 +85,8 @@ builder.Services.AddScoped<ICurrentUserContext, HttpCurrentUserContext>();
 builder.Services.AddScoped<OwnedApplicationService>();
 builder.Services.AddScoped<ApplicationTrackerService>();
 builder.Services.AddScoped<CompanyTrackerService>();
+builder.Services.AddSingleton<PastedJobTextExtractor>();
+builder.Services.AddScoped<ExtractionDraftService>();
 
 var app = builder.Build();
 

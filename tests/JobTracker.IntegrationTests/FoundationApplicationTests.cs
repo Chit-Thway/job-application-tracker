@@ -26,13 +26,14 @@ public sealed class FoundationApplicationTests : IClassFixture<JobTrackerWebAppl
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Contains(expectedText, content, StringComparison.Ordinal);
-        Assert.Contains("Milestone 3 · Manual tracking", content, StringComparison.Ordinal);
+        Assert.Contains("Milestone 4 · Pasted-text extraction", content, StringComparison.Ordinal);
     }
 
     [Theory]
     [InlineData("/dashboard")]
     [InlineData("/applications")]
     [InlineData("/applications/new")]
+    [InlineData("/applications/import/text")]
     [InlineData("/actions")]
     [InlineData("/settings")]
     public async Task PrivateRoutes_RedirectSignedOutVisitorsToLogin(string route)

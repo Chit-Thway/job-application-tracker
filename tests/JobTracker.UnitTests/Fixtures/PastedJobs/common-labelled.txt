@@ -1,0 +1,15 @@
+Job Title: Senior Platform Engineer
+Company: Synthetic Meridian Works
+Location: Perth, WA
+Work Arrangement: Hybrid
+Employment Type: Full-time
+Salary: AUD 130,000–150,000 plus super
+Job Reference: SMW-4821
+Closing Date: 28 August 2026
+Contact: Morgan Example
+Contact Email: morgan@example.test
+Source Site: Synthetic Careers
+Job Posting URL: https://example.test/jobs/smw-4821
+
+About the role
+Build dependable internal platforms for a fictional engineering team.

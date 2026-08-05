@@ -34,6 +34,8 @@ public sealed record ApplicationDetails(
     PipelineStage Stage,
     ApplicationOutcome Outcome,
     string? SourceUrl,
+    string? SourceText,
+    string? ExtractionMetadataJson,
     string? Notes,
     bool IsSavedForever,
     DateTimeOffset? DeletionScheduledAt);
@@ -158,6 +160,8 @@ public sealed class ApplicationTrackerService(
                 application.Stage,
                 application.Outcome,
                 application.SourceUrl,
+                application.SourceText,
+                application.ExtractionMetadataJson,
                 application.Notes,
                 application.IsSavedForever,
                 application.DeletionScheduledAt))
