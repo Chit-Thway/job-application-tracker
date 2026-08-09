@@ -5,7 +5,7 @@
 
 <section class="form-page extraction-page">
     <div class="shell review-shell">
-        <a class="back-link" asp-action="PasteText">← Paste different text</a>
+        <a class="back-link" asp-action="@(Model.IsUrlImport ? "ImportUrl" : "PasteText")">← @(Model.IsUrlImport ? "Import a different link" : "Paste different text")</a>
         <div class="form-heading review-heading">
             <div>
                 <p class="eyebrow">Review before saving</p>
@@ -31,7 +31,7 @@
         <div class="extraction-review-grid">
             <aside class="source-card" aria-labelledby="original-text-title">
                 <div class="source-card-heading">
-                    <div><p class="mini-label">Original source</p><h2 id="original-text-title">Pasted job text</h2></div>
+                    <div><p class="mini-label">Original source</p><h2 id="original-text-title">@(Model.IsUrlImport ? "Fetched job-page text" : "Pasted job text")</h2></div>
                     <span>Read only</span>
                 </div>
                 <pre>@Model.SourceText</pre>

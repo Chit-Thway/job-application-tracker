@@ -9,6 +9,7 @@ namespace JobTracker.Web.Extraction;
 
 public sealed record ExtractionDraftReview(
     Guid Id,
+    ExtractionSourceType SourceType,
     string SourceText,
     ExtractedJobFields Fields,
     IReadOnlyDictionary<string, string> Evidence,
@@ -67,9 +68,32 @@ public sealed class ExtractionDraftService(
         DateOnly defaultAppliedOn,
         CancellationToken cancellationToken = default)
     {
+        var extraction = extractor.Extract(sourceText);
+        return await CreateDraftAsync(
+            ExtractionSourceType.PastedText,
+            extraction,
+            defaultAppliedOn,
+            cancellationToken);
+    }
+
+    public Task<Guid> CreateUrlDraftAsync(
+        PastedJobExtraction extraction,
+        DateOnly defaultAppliedOn,
+        CancellationToken cancellationToken = default) =>
+        CreateDraftAsync(
+            ExtractionSourceType.JobPostingUrl,
+            extraction,
+            defaultAppliedOn,
+            cancellationToken);
+
+    private async Task<Guid> CreateDraftAsync(
+        ExtractionSourceType sourceType,
+        PastedJobExtraction extraction,
+        DateOnly defaultAppliedOn,
+        CancellationToken cancellationToken)
+    {
         var ownerId = RequireOwnerId();
         var now = timeProvider.GetUtcNow();
-        var extraction = extractor.Extract(sourceText);
         var fields = extraction.Fields with
         {
             AppliedOn = extraction.Fields.AppliedOn ?? defaultAppliedOn,
@@ -83,7 +107,7 @@ public sealed class ExtractionDraftService(
         var draft = new ExtractionDraft
         {
             OwnerId = ownerId,
-            SourceType = ExtractionSourceType.PastedText,
+            SourceType = sourceType,
             SourceText = extraction.OriginalText,
             NormalizedText = extraction.NormalizedText,
             ParsedFieldsJson = JsonSerializer.Serialize(fields, JsonOptions),
@@ -182,7 +206,9 @@ public sealed class ExtractionDraftService(
                 NewStage = PipelineStage.Applied,
                 NewOutcome = ApplicationOutcome.Active,
                 EffectiveAt = now,
-                Note = "Application created from reviewed pasted text.",
+                Note = draft.SourceType == ExtractionSourceType.JobPostingUrl
+                    ? "Application created from a reviewed public job URL."
+                    : "Application created from reviewed pasted text.",
             };
 
             database.JobApplications.Add(application);
@@ -279,6 +305,7 @@ public sealed class ExtractionDraftService(
 
     private ExtractionDraftReview ToReview(ExtractionDraft draft) => new(
         draft.Id,
+        draft.SourceType,
         draft.SourceText,
         JsonSerializer.Deserialize<ExtractedJobFields>(draft.ParsedFieldsJson, JsonOptions)
             ?? throw new InvalidOperationException("The extraction draft fields are invalid."),

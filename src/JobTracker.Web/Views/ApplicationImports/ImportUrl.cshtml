@@ -1,0 +1,30 @@
+@model JobPostingUrlInputViewModel
+@{
+    ViewData["Title"] = "Import public job link";
+}
+
+<section class="form-page extraction-page">
+    <div class="shell narrow-shell">
+        <a class="back-link" asp-controller="Applications" asp-action="Create">← Add application</a>
+        <div class="form-heading">
+            <p class="eyebrow">Public-link import</p>
+            <h1>Bring in the official job page.</h1>
+            <p>We safely read public HTML and prefer the page’s official JobPosting fields—such as employer, title, location, salary, and closing date—before using text-layout suggestions.</p>
+        </div>
+
+        <form method="post" class="editor-card">
+            <div asp-validation-summary="All" class="validation-summary" role="alert" tabindex="-1" autofocus></div>
+            <div class="field">
+                <label asp-for="SourceUrl"></label>
+                <input asp-for="SourceUrl" type="url" inputmode="url" autocomplete="url" placeholder="https://example.com/jobs/…" />
+                <span asp-validation-for="SourceUrl" class="field-error"></span>
+                <small class="field-help">Only public HTTP or HTTPS pages are contacted. Some job sites block automated access; if that happens, paste the advertisement instead.</small>
+            </div>
+            <div class="editor-actions">
+                <button class="button button-primary" type="submit">Fetch a review draft</button>
+                <a class="button button-secondary" asp-action="PasteText">Paste job text</a>
+                <a class="button button-secondary" asp-controller="Applications" asp-action="Create">Use manual entry</a>
+            </div>
+        </form>
+    </div>
+</section>

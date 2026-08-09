@@ -106,7 +106,7 @@ public sealed partial class ApplicationWorkflowTests
         var detailsContent = await details.Content.ReadAsStringAsync();
         Assert.Contains("Reviewed extraction", detailsContent, StringComparison.Ordinal);
         Assert.Contains("AUD 125,000 plus super", detailsContent, StringComparison.Ordinal);
-        Assert.Contains("View original pasted job text", detailsContent, StringComparison.Ordinal);
+        Assert.Contains("View original job source text", detailsContent, StringComparison.Ordinal);
     }
 
     [Fact]

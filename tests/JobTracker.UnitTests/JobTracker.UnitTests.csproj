@@ -24,6 +24,7 @@
 
   <ItemGroup>
     <None Include="Fixtures\PastedJobs\**\*" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="Fixtures\Html\**\*" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>

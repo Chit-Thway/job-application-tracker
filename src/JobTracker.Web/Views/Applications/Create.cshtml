@@ -14,10 +14,13 @@
         <aside class="import-callout">
             <div>
                 <p class="mini-label">Faster option</p>
-                <h2>Already have the job description?</h2>
-                <p>Paste it once, review the detected details, and create a new company on the same screen.</p>
+                <h2>Already have the job advertisement?</h2>
+                <p>Import a public link or paste the text, then review every detected detail before anything is saved.</p>
             </div>
-            <a class="button button-primary" asp-controller="ApplicationImports" asp-action="PasteText">Paste job text</a>
+            <div class="import-actions">
+                <a class="button button-primary" asp-controller="ApplicationImports" asp-action="ImportUrl">Import public link</a>
+                <a class="button button-secondary" asp-controller="ApplicationImports" asp-action="PasteText">Paste job text</a>
+            </div>
         </aside>
         <form method="post" class="editor-card">
             <partial name="_Form" model="Model" />

@@ -4,9 +4,9 @@ A private ASP.NET Core job-search organizer for tracking applications, follow-up
 
 ## Current status
 
-Milestone 4 adds deterministic pasted-text extraction to the private tracking workflow. A verified user can paste a job advertisement, review evidence-backed suggestions, correct every field, and explicitly confirm before an application is created.
+Milestone 5 adds bounded public-URL extraction to the existing review-before-save workflow. A verified user can import a public job link, prefer official JobPosting metadata, review and correct every field, and explicitly confirm before an application is created.
 
-Safe URL fetching, Dashboard, Action Centre, settings, contacts, tasks, appointments, retention automation, and the public demo remain scoped to their later milestones.
+Dashboard, Action Centre, settings, contacts, tasks, appointments, retention automation, and the public demo remain scoped to their later milestones.
 
 ## Technology
 
@@ -62,6 +62,7 @@ Then open [https://localhost:7239](https://localhost:7239).
 | `/dashboard` | Authenticated three-month dashboard placeholder |
 | `/applications` | Searchable, filterable private application library |
 | `/applications/new` | Manual application entry |
+| `/applications/import/url` | Safely import a public HTML job page into a review draft |
 | `/applications/import/text` | Paste a job description for deterministic extraction |
 | `/applications/import/{id}/review` | Review and correct an owner-scoped extraction draft |
 | `/applications/{id}` | Private application details and saved-state control |
@@ -87,6 +88,12 @@ New applications default to not saved. **Saved** applications are exempt from fu
 The extractor normalizes pasted text and reads explicit labels such as `Job Title`, `Company`, `Location`, `Employment Type`, `Salary`, `Job Reference`, and `Closing Date`. It also recognises corroborated stacked job-board headers, Australian location formats, standalone pay lines, multi-line metadata headings, common platform title phrases, posting bylines, and explicit applications-close or apply-by sentences. Salary suggestions pass field-specific plausibility checks, so ratings and review counts are ignored while annual ranges, `70k–80k`, hourly rates, and daily rates remain supported. Every detected field includes a high- or medium-confidence evidence note. Uncertain values remain blank rather than being guessed.
 
 Review drafts are private, owner-scoped, and expire after 24 hours. Cancelling removes the draft and creates no application. Confirming stores the original pasted text, the reviewed values, the initial Applied/Active history event, and any new company in one database operation. Extraction is deterministic and makes no external AI or network call.
+
+## Public-URL extraction
+
+URL import allows only public HTTP or HTTPS pages with default ports. It rejects credentials in URLs and blocks loopback, private, link-local, metadata, documentation, multicast, transition, and other non-public IPv4/IPv6 destinations. DNS answers are checked before every request and redirect and checked again when the production socket connects. Redirects are manual and limited; browser cookies, credentials, authorization, referrer, and proxy credentials are not forwarded. Responses must be HTML, complete within the configured timeout, and remain under the decompressed size limit.
+
+The HTML parser reads official Schema.org `JobPosting` JSON-LD first, including hiring organisation, title, location, employment type, base salary, identifier, application contact, work mode, and `validThrough`. Page metadata and visible text then feed the existing deterministic rules as fallbacks. If a page blocks automated access or cannot be imported safely, the form keeps the URL visible and offers pasted-text and manual-entry alternatives.
 
 ## Database setup
 

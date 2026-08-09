@@ -2,6 +2,7 @@ using JobTracker.Web.Data;
 using JobTracker.Web.Identity;
 using JobTracker.Web.Applications;
 using JobTracker.Web.Extraction;
+using System.Net;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
@@ -71,6 +72,16 @@ builder.Services.AddRateLimiter(options =>
                 QueueLimit = 0,
                 AutoReplenishment = true,
             }));
+    options.AddPolicy("imports", context =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            context.Connection.RemoteIpAddress?.ToString() ?? "local",
+            _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = builder.Environment.IsEnvironment("Testing") ? 100 : 10,
+                Window = TimeSpan.FromMinutes(5),
+                QueueLimit = 0,
+                AutoReplenishment = true,
+            }));
 });
 
 builder.Services.AddSingleton<DevelopmentMailStore>();
@@ -86,7 +97,39 @@ builder.Services.AddScoped<OwnedApplicationService>();
 builder.Services.AddScoped<ApplicationTrackerService>();
 builder.Services.AddScoped<CompanyTrackerService>();
 builder.Services.AddSingleton<PastedJobTextExtractor>();
+builder.Services.AddSingleton<JobPostingHtmlExtractor>();
+builder.Services.AddSingleton(JobPostingFetchOptions.Default);
+builder.Services.AddSingleton<IHostAddressResolver, SystemHostAddressResolver>();
+builder.Services.AddSingleton<PublicUrlSafetyPolicy>();
+builder.Services.AddSingleton<IPublicAddressConnector, SystemPublicAddressConnector>();
+builder.Services.AddSingleton(SafeHttpConnectionOptions.Default);
+builder.Services.AddSingleton<SafeHttpConnectionFactory>();
+builder.Services
+    .AddHttpClient<IJobPostingFetcher, SafeJobPostingFetcher>(client =>
+    {
+        client.Timeout = Timeout.InfiniteTimeSpan;
+    })
+    .ConfigurePrimaryHttpMessageHandler(serviceProvider =>
+    {
+        var connections = serviceProvider.GetRequiredService<SafeHttpConnectionFactory>();
+        return new SocketsHttpHandler
+        {
+            ActivityHeadersPropagator = null,
+            AllowAutoRedirect = false,
+            AutomaticDecompression = DecompressionMethods.GZip
+                | DecompressionMethods.Deflate
+                | DecompressionMethods.Brotli,
+            ConnectCallback = connections.ConnectAsync,
+            ConnectTimeout = TimeSpan.FromSeconds(5),
+            MaxConnectionsPerServer = 4,
+            MaxResponseHeadersLength = 32,
+            PooledConnectionLifetime = TimeSpan.FromMinutes(2),
+            UseCookies = false,
+            UseProxy = false,
+        };
+    });
 builder.Services.AddScoped<ExtractionDraftService>();
+builder.Services.AddScoped<JobPostingUrlImportService>();
 
 var app = builder.Build();
 

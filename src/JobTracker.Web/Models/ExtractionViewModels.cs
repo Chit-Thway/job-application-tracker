@@ -10,9 +10,20 @@ public sealed class PastedTextInputViewModel
     public string SourceText { get; set; } = string.Empty;
 }
 
+public sealed class JobPostingUrlInputViewModel
+{
+    [Required]
+    [StringLength(2048)]
+    [Url]
+    [Display(Name = "Public job-posting URL")]
+    public string SourceUrl { get; set; } = string.Empty;
+}
+
 public sealed class ExtractionReviewViewModel
 {
     public Guid DraftId { get; set; }
+
+    public bool IsUrlImport { get; set; }
 
     public string SourceText { get; set; } = string.Empty;
 

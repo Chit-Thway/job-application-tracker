@@ -2,6 +2,7 @@ using JobTracker.Web.Extraction;
 using JobTracker.Web.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace JobTracker.Web.Controllers;
 
@@ -9,8 +10,42 @@ namespace JobTracker.Web.Controllers;
 [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
 public sealed class ApplicationImportsController(
     ExtractionDraftService drafts,
+    JobPostingUrlImportService urlImports,
     TimeProvider timeProvider) : Controller
 {
+    [HttpGet("/applications/import/url")]
+    public IActionResult ImportUrl()
+    {
+        SetSection();
+        return View(new JobPostingUrlInputViewModel());
+    }
+
+    [HttpPost("/applications/import/url")]
+    [EnableRateLimiting("imports")]
+    [RequestSizeLimit(32_000)]
+    public async Task<IActionResult> ImportUrl(
+        JobPostingUrlInputViewModel model,
+        CancellationToken cancellationToken)
+    {
+        SetSection();
+        if (!ModelState.IsValid)
+        {
+            return View(model);
+        }
+
+        var result = await urlImports.ImportAsync(
+            model.SourceUrl,
+            LocalToday(),
+            cancellationToken);
+        if (!result.IsSuccess)
+        {
+            ModelState.AddModelError(nameof(model.SourceUrl), UrlFailureMessage(result.Failure));
+            return View(model);
+        }
+
+        return RedirectToAction(nameof(Review), new { id = result.DraftId });
+    }
+
     [HttpGet("/applications/import/text")]
     public IActionResult PasteText()
     {
@@ -134,6 +169,7 @@ public sealed class ApplicationImportsController(
     private static ExtractionReviewViewModel ModelFrom(ExtractionDraftReview draft) => new()
     {
         DraftId = draft.Id,
+        IsUrlImport = draft.SourceType == Data.ExtractionSourceType.JobPostingUrl,
         SourceText = draft.SourceText,
         ExpiresAt = draft.ExpiresAt,
         Evidence = draft.Evidence,
@@ -164,4 +200,17 @@ public sealed class ApplicationImportsController(
     }
 
     private void SetSection() => ViewData["Section"] = "add";
+
+    private static string UrlFailureMessage(JobPostingImportFailure failure) => failure switch
+    {
+        JobPostingImportFailure.InvalidUrl => "Enter a complete public HTTP or HTTPS job-posting URL.",
+        JobPostingImportFailure.BlockedDestination => "That address points to a network destination the importer is not allowed to contact.",
+        JobPostingImportFailure.CouldNotResolve => "We could not find that public website. Check the address and try again.",
+        JobPostingImportFailure.TimedOut => "The job site took too long to respond. Paste the job text or use manual entry instead.",
+        JobPostingImportFailure.TooManyRedirects => "The job site redirected too many times. Paste the job text or use manual entry instead.",
+        JobPostingImportFailure.ResponseTooLarge => "That page is too large to import safely. Paste the relevant job text instead.",
+        JobPostingImportFailure.UnsupportedContentType => "That address did not return a normal HTML job page. Paste the job text instead.",
+        JobPostingImportFailure.EmptyContent => "The page did not contain readable job text. Paste the job text instead.",
+        _ => "We could not safely read that job page. It may block automated access; paste the job text or use manual entry instead.",
+    };
 }

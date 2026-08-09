@@ -1934,6 +1934,13 @@ textarea:focus-visible {
   flex: 0 0 auto;
 }
 
+.import-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  justify-content: flex-end;
+}
+
 .paste-source-input {
   min-height: 28rem;
   line-height: 1.6;
