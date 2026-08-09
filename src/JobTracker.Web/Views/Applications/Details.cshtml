@@ -1,58 +1,427 @@
-@model ApplicationDetails
+@model ApplicationWorkflowPageViewModel
 @{
-    ViewData["Title"] = Model.RoleTitle;
-    var extraction = ExtractionDraftService.ReadMetadata(Model.ExtractionMetadataJson);
+    var workflow = Model.Workflow;
+    var application = workflow.Application;
+    ViewData["Title"] = application.RoleTitle;
+    var extraction = ExtractionDraftService.ReadMetadata(application.ExtractionMetadataJson);
+    var openTasks = workflow.Tasks.Where(item => item.CompletedAt is null).ToList();
+    var nextTask = openTasks.FirstOrDefault();
+    var nextAppointment = workflow.Appointments.FirstOrDefault(item => item.EndsAt >= workflow.CurrentTime);
+    var timeline = new List<(DateTimeOffset At, string Kind, string Title, string? Details, WorkflowInteractionItem? Interaction)>();
+
+    foreach (var status in workflow.StatusHistory)
+    {
+        var changes = new List<string>();
+        if (status.NewStage is not null)
+        {
+            changes.Add(status.PreviousStage is null
+                ? $"Stage set to {ApplicationDisplay.Stage(status.NewStage.Value)}"
+                : $"Stage changed from {ApplicationDisplay.Stage(status.PreviousStage.Value)} to {ApplicationDisplay.Stage(status.NewStage.Value)}");
+        }
+        if (status.NewOutcome is not null)
+        {
+            changes.Add(status.PreviousOutcome is null
+                ? $"Outcome set to {ApplicationDisplay.Outcome(status.NewOutcome.Value)}"
+                : $"Outcome changed from {ApplicationDisplay.Outcome(status.PreviousOutcome.Value)} to {ApplicationDisplay.Outcome(status.NewOutcome.Value)}");
+        }
+
+        timeline.Add((status.EffectiveAt, "Status", string.Join(". ", changes), status.Note, null));
+    }
+
+    foreach (var interaction in workflow.Interactions)
+    {
+        var title = interaction.ContactName is null
+            ? ApplicationDisplay.Interaction(interaction.Type)
+            : $"{ApplicationDisplay.Interaction(interaction.Type)} with {interaction.ContactName}";
+        timeline.Add((interaction.OccurredAt, "Interaction", title, interaction.Notes, interaction));
+    }
 }
 
 <section class="workspace-hero detail-hero">
     <div class="shell">
-        <a class="back-link" asp-action="Index">← Applications</a>
+        <a class="back-link" asp-action="Index">&larr; Applications</a>
         <div class="detail-heading">
             <div>
-                <p class="eyebrow">@(Model.CompanyName ?? "No company selected")</p>
-                <h1>@Model.RoleTitle</h1>
-                <p>Applied @Model.AppliedOn.ToString("d MMMM yyyy")</p>
+                <p class="eyebrow">@(application.CompanyName ?? "No company selected")</p>
+                <h1>@application.RoleTitle</h1>
+                <p>Applied @application.AppliedOn.ToString("d MMMM yyyy")</p>
             </div>
             <div class="detail-actions">
-                <a class="button button-primary" asp-action="Edit" asp-route-id="@Model.Id">Edit application</a>
-                <a class="button button-secondary" asp-action="Delete" asp-route-id="@Model.Id">Delete</a>
+                <a class="button button-primary" asp-action="Edit" asp-route-id="@application.Id">Edit application</a>
+                <a class="button button-secondary" asp-action="Delete" asp-route-id="@application.Id">Delete</a>
             </div>
         </div>
     </div>
 </section>
 
-<section class="workspace-content">
-    <div class="shell detail-grid">
+<section class="workspace-content workflow-workspace">
+    <div class="shell workflow-layout">
         <div class="detail-main">
-            <article class="detail-card">
+            <article class="detail-card" id="status">
                 <div class="detail-card-heading">
                     <div>
                         <p class="mini-label">Current state</p>
-                        <h2>Application overview</h2>
+                        <h2>@ApplicationDisplay.Stage(application.Stage) &middot; @ApplicationDisplay.Outcome(application.Outcome)</h2>
                     </div>
-                    <span class="state-badge @(Model.IsSavedForever ? "state-saved" : "state-recent")">
-                        @(Model.IsSavedForever ? "Saved" : "Not saved")
+                    <span class="state-badge @(application.IsSavedForever ? "state-saved" : "state-recent")">
+                        @(application.IsSavedForever ? "Saved" : "Not saved")
                     </span>
                 </div>
-                <dl class="detail-list">
-                    <div><dt>Company</dt><dd>@if (Model.CompanyId is not null) { <a class="text-link" asp-controller="Companies" asp-action="Details" asp-route-id="@Model.CompanyId">@Model.CompanyName</a> } else { <span>Not selected</span> }</dd></div>
-                    <div><dt>Application date</dt><dd>@Model.AppliedOn.ToString("d MMMM yyyy")</dd></div>
-                    <div><dt>Pipeline stage</dt><dd>@ApplicationDisplay.Stage(Model.Stage)</dd></div>
-                    <div><dt>Outcome</dt><dd>@ApplicationDisplay.Outcome(Model.Outcome)</dd></div>
-                    <div><dt>Job posting</dt><dd>@if (!string.IsNullOrWhiteSpace(Model.SourceUrl)) { <a class="text-link" href="@Model.SourceUrl" target="_blank" rel="noreferrer">Open source URL ↗</a> } else { <span>Not provided</span> }</dd></div>
+                <dl class="detail-list compact-detail-list">
+                    <div><dt>Company</dt><dd>@if (application.CompanyId is not null) { <a class="text-link" asp-controller="Companies" asp-action="Details" asp-route-id="@application.CompanyId">@application.CompanyName</a> } else { <span>Not selected</span> }</dd></div>
+                    <div><dt>First response</dt><dd>@(workflow.FirstEmployerResponseAt is null ? "Not recorded" : ApplicationTime.Display(workflow.FirstEmployerResponseAt.Value, workflow.TimeZoneId))</dd></div>
+                    <div><dt>Job posting</dt><dd>@if (!string.IsNullOrWhiteSpace(application.SourceUrl)) { <a class="text-link" href="@application.SourceUrl" target="_blank" rel="noreferrer">Open source URL &nearr;</a> } else { <span>Not provided</span> }</dd></div>
                 </dl>
+
+                <details class="inline-editor" @(ViewData.ModelState.Keys.Any(key => key.StartsWith("Status", StringComparison.Ordinal)) ? "open" : null)>
+                    <summary>Record a status change</summary>
+                    <form method="post" asp-action="TransitionStatus" asp-route-id="@application.Id" class="workflow-form">
+                        <div asp-validation-summary="ModelOnly" class="validation-summary"></div>
+                        <div class="workflow-form-grid">
+                            <div class="field">
+                                <label asp-for="Status.Stage"></label>
+                                <select asp-for="Status.Stage">
+                                    @foreach (var stage in Enum.GetValues<PipelineStage>())
+                                    {
+                                        <option value="@stage">@ApplicationDisplay.Stage(stage)</option>
+                                    }
+                                </select>
+                                <span asp-validation-for="Status.Stage" class="field-error"></span>
+                            </div>
+                            <div class="field">
+                                <label asp-for="Status.Outcome"></label>
+                                <select asp-for="Status.Outcome">
+                                    @foreach (var outcome in Enum.GetValues<ApplicationOutcome>())
+                                    {
+                                        var ghostedUnavailable = outcome == ApplicationOutcome.Ghosted
+                                            && !workflow.CanConfirmGhosted
+                                            && application.Outcome != ApplicationOutcome.Ghosted;
+                                        <option value="@outcome" disabled="@ghostedUnavailable">
+                                            @ApplicationDisplay.Outcome(outcome)@(ghostedUnavailable ? " — available after 30 days" : null)
+                                        </option>
+                                    }
+                                </select>
+                                <span asp-validation-for="Status.Outcome" class="field-error"></span>
+                            </div>
+                            <div class="field form-span-2">
+                                <label asp-for="Status.Note"></label>
+                                <textarea asp-for="Status.Note" rows="3" placeholder="For example: Recruiter scheduled a phone screen."></textarea>
+                                <span asp-validation-for="Status.Note" class="field-error"></span>
+                            </div>
+                        </div>
+                        <button class="button button-primary" type="submit">Add to history</button>
+                    </form>
+                </details>
+            </article>
+
+            <article class="detail-card" id="history">
+                <div class="detail-card-heading">
+                    <div>
+                        <p class="mini-label">Chronological record</p>
+                        <h2>History and interactions</h2>
+                    </div>
+                    @if (workflow.FirstEmployerResponseAt is not null)
+                    {
+                        <span class="response-badge">Employer responded</span>
+                    }
+                </div>
+                <p class="section-copy">Status updates and conversations stay together, so later corrections never erase the story.</p>
+
+                <details class="inline-editor" @(ViewData.ModelState.Keys.Any(key => key.StartsWith("Interaction", StringComparison.Ordinal)) ? "open" : null)>
+                    <summary>Record an interaction</summary>
+                    <form method="post" asp-action="AddInteraction" asp-route-id="@application.Id" class="workflow-form">
+                        <div class="workflow-form-grid">
+                            <div class="field">
+                                <label asp-for="Interaction.Type"></label>
+                                <select asp-for="Interaction.Type">
+                                    @foreach (var type in Enum.GetValues<InteractionType>())
+                                    {
+                                        <option value="@type">@ApplicationDisplay.Interaction(type)</option>
+                                    }
+                                </select>
+                            </div>
+                            <div class="field">
+                                <label asp-for="Interaction.ContactId"></label>
+                                <select asp-for="Interaction.ContactId">
+                                    <option value="">No contact selected</option>
+                                    @foreach (var contact in workflow.Contacts)
+                                    {
+                                        <option value="@contact.Id">@contact.Name</option>
+                                    }
+                                </select>
+                            </div>
+                            <div class="field">
+                                <label asp-for="Interaction.OccurredAtLocal"></label>
+                                <input asp-for="Interaction.OccurredAtLocal" type="datetime-local" />
+                                <span asp-validation-for="Interaction.OccurredAtLocal" class="field-error"></span>
+                                <small>@workflow.TimeZoneId</small>
+                            </div>
+                            <label class="workflow-check">
+                                <input asp-for="Interaction.IsEmployerResponse" />
+                                <span><strong>Employer response</strong><small>Use this only when the employer meaningfully replies.</small></span>
+                            </label>
+                            <div class="field form-span-2">
+                                <label asp-for="Interaction.Notes"></label>
+                                <textarea asp-for="Interaction.Notes" rows="3" placeholder="What was discussed or agreed?"></textarea>
+                                <span asp-validation-for="Interaction.Notes" class="field-error"></span>
+                            </div>
+                        </div>
+                        <button class="button button-primary" type="submit">Record interaction</button>
+                    </form>
+                </details>
+
+                @if (timeline.Count == 0)
+                {
+                    <p class="workflow-empty">No history has been recorded yet.</p>
+                }
+                else
+                {
+                    <ol class="timeline-list">
+                        @foreach (var item in timeline.OrderByDescending(item => item.At))
+                        {
+                            <li class="timeline-item">
+                                <span class="timeline-marker" aria-hidden="true"></span>
+                                <div class="timeline-content">
+                                    <div class="timeline-heading">
+                                        <div>
+                                            <p class="timeline-kind">@item.Kind</p>
+                                            <h3>@item.Title</h3>
+                                        </div>
+                                        <time datetime="@item.At.ToString("O")">@ApplicationTime.Display(item.At, workflow.TimeZoneId)</time>
+                                    </div>
+                                    @if (item.Interaction?.IsEmployerResponse == true)
+                                    {
+                                        <span class="response-badge">Counts as employer response</span>
+                                    }
+                                    @if (!string.IsNullOrWhiteSpace(item.Details))
+                                    {
+                                        <p class="preserved-text">@item.Details</p>
+                                    }
+                                    @if (item.Interaction is not null)
+                                    {
+                                        var interaction = item.Interaction;
+                                        <div class="timeline-actions">
+                                            <details class="compact-editor">
+                                                <summary>Correct</summary>
+                                                <form method="post" asp-action="UpdateInteraction" asp-route-id="@application.Id" asp-route-interactionId="@interaction.Id" class="workflow-form compact-workflow-form">
+                                                    <div class="workflow-form-grid">
+                                                        <div class="field">
+                                                            <label for="interaction-type-@interaction.Id">Type</label>
+                                                            <select id="interaction-type-@interaction.Id" name="Type">
+                                                                @foreach (var type in Enum.GetValues<InteractionType>())
+                                                                {
+                                                                    <option value="@type" selected="@(type == interaction.Type)">@ApplicationDisplay.Interaction(type)</option>
+                                                                }
+                                                            </select>
+                                                        </div>
+                                                        <div class="field">
+                                                            <label for="interaction-contact-@interaction.Id">Contact</label>
+                                                            <select id="interaction-contact-@interaction.Id" name="ContactId">
+                                                                <option value="">No contact selected</option>
+                                                                @foreach (var contact in workflow.Contacts)
+                                                                {
+                                                                    <option value="@contact.Id" selected="@(contact.Id == interaction.ContactId)">@contact.Name</option>
+                                                                }
+                                                            </select>
+                                                        </div>
+                                                        <div class="field">
+                                                            <label for="interaction-time-@interaction.Id">When it happened</label>
+                                                            <input id="interaction-time-@interaction.Id" name="OccurredAtLocal" type="datetime-local" value="@ApplicationTime.ToLocal(interaction.OccurredAt, workflow.TimeZoneId).ToString("yyyy-MM-ddTHH:mm")" required />
+                                                        </div>
+                                                        <label class="workflow-check">
+                                                            <input type="checkbox" name="IsEmployerResponse" value="true" checked="@interaction.IsEmployerResponse" />
+                                                            <input type="hidden" name="IsEmployerResponse" value="false" />
+                                                            <span><strong>Employer response</strong><small>Changing this recalculates the first response.</small></span>
+                                                        </label>
+                                                        <div class="field form-span-2">
+                                                            <label for="interaction-notes-@interaction.Id">Notes</label>
+                                                            <textarea id="interaction-notes-@interaction.Id" name="Notes" rows="3">@interaction.Notes</textarea>
+                                                        </div>
+                                                    </div>
+                                                    <button class="button button-primary button-small" type="submit">Save correction</button>
+                                                </form>
+                                            </details>
+                                            <form method="post" asp-action="DeleteInteraction" asp-route-id="@application.Id" asp-route-interactionId="@interaction.Id">
+                                                <button class="link-button danger-link" type="submit">Delete</button>
+                                            </form>
+                                        </div>
+                                    }
+                                </div>
+                            </li>
+                        }
+                    </ol>
+                }
+            </article>
+
+            <article class="detail-card" id="contacts">
+                <div class="detail-card-heading">
+                    <div><p class="mini-label">People</p><h2>Contacts</h2></div>
+                    <span class="count-badge">@workflow.Contacts.Count</span>
+                </div>
+                @if (workflow.Contacts.Count == 0)
+                {
+                    <p class="workflow-empty">No recruiter or hiring contact added yet.</p>
+                }
+                else
+                {
+                    <ul class="workflow-record-list">
+                        @foreach (var contact in workflow.Contacts)
+                        {
+                            <li>
+                                <div>
+                                    <h3>@contact.Name</h3>
+                                    @if (!string.IsNullOrWhiteSpace(contact.JobTitle)) { <p>@contact.JobTitle</p> }
+                                    <div class="contact-links">
+                                        @if (!string.IsNullOrWhiteSpace(contact.Email)) { <a class="text-link" href="mailto:@contact.Email">@contact.Email</a> }
+                                        @if (!string.IsNullOrWhiteSpace(contact.Phone)) { <a class="text-link" href="tel:@contact.Phone">@contact.Phone</a> }
+                                    </div>
+                                    @if (!string.IsNullOrWhiteSpace(contact.Notes)) { <p class="preserved-text">@contact.Notes</p> }
+                                </div>
+                                <form method="post" asp-action="DeleteContact" asp-route-id="@application.Id" asp-route-contactId="@contact.Id">
+                                    <button class="link-button danger-link" type="submit">Delete</button>
+                                </form>
+                            </li>
+                        }
+                    </ul>
+                }
+                <details class="inline-editor" @(ViewData.ModelState.Keys.Any(key => key.StartsWith("Contact", StringComparison.Ordinal)) ? "open" : null)>
+                    <summary>Add a contact</summary>
+                    <form method="post" asp-action="AddContact" asp-route-id="@application.Id" class="workflow-form">
+                        <div class="workflow-form-grid">
+                            <div class="field"><label asp-for="Contact.Name"></label><input asp-for="Contact.Name" autocomplete="name" /><span asp-validation-for="Contact.Name" class="field-error"></span></div>
+                            <div class="field"><label asp-for="Contact.JobTitle"></label><input asp-for="Contact.JobTitle" /><span asp-validation-for="Contact.JobTitle" class="field-error"></span></div>
+                            <div class="field"><label asp-for="Contact.Email"></label><input asp-for="Contact.Email" type="email" autocomplete="email" /><span asp-validation-for="Contact.Email" class="field-error"></span></div>
+                            <div class="field"><label asp-for="Contact.Phone"></label><input asp-for="Contact.Phone" type="tel" autocomplete="tel" /><span asp-validation-for="Contact.Phone" class="field-error"></span></div>
+                            <div class="field form-span-2"><label asp-for="Contact.Notes"></label><textarea asp-for="Contact.Notes" rows="3"></textarea><span asp-validation-for="Contact.Notes" class="field-error"></span></div>
+                        </div>
+                        <button class="button button-primary" type="submit">Add contact</button>
+                    </form>
+                </details>
+            </article>
+
+            <article class="detail-card" id="tasks">
+                <div class="detail-card-heading">
+                    <div><p class="mini-label">Next actions</p><h2>Tasks</h2></div>
+                    <span class="count-badge">@openTasks.Count open</span>
+                </div>
+                @if (workflow.Tasks.Count == 0)
+                {
+                    <p class="workflow-empty">No follow-up task added yet.</p>
+                }
+                else
+                {
+                    <ul class="workflow-record-list task-list">
+                        @foreach (var task in workflow.Tasks)
+                        {
+                            var isOverdue = task.CompletedAt is null && task.DueAt is not null && task.DueAt < workflow.CurrentTime;
+                            <li class="@(task.CompletedAt is not null ? "is-complete" : null)">
+                                <div>
+                                    <h3>@task.Title</h3>
+                                    <p class="task-state @(isOverdue ? "is-overdue" : null)">
+                                        @if (task.CompletedAt is not null) { <text>Completed @ApplicationTime.Display(task.CompletedAt.Value, workflow.TimeZoneId)</text> }
+                                        else if (task.DueAt is not null) { <text>@(isOverdue ? "Overdue" : "Due") @ApplicationTime.Display(task.DueAt.Value, workflow.TimeZoneId)</text> }
+                                        else { <text>No due date</text> }
+                                    </p>
+                                    @if (!string.IsNullOrWhiteSpace(task.Notes)) { <p class="preserved-text">@task.Notes</p> }
+                                </div>
+                                <div class="record-inline-actions">
+                                    <form method="post" asp-action="SetTaskCompleted" asp-route-id="@application.Id" asp-route-taskId="@task.Id">
+                                        <input type="hidden" name="completed" value="@(task.CompletedAt is null ? "true" : "false")" />
+                                        <button class="link-button" type="submit">@(task.CompletedAt is null ? "Complete" : "Reopen")</button>
+                                    </form>
+                                    <form method="post" asp-action="DeleteTask" asp-route-id="@application.Id" asp-route-taskId="@task.Id">
+                                        <button class="link-button danger-link" type="submit">Delete</button>
+                                    </form>
+                                </div>
+                            </li>
+                        }
+                    </ul>
+                }
+                <details class="inline-editor" @(ViewData.ModelState.Keys.Any(key => key.StartsWith("Task", StringComparison.Ordinal)) ? "open" : null)>
+                    <summary>Add a task</summary>
+                    <form method="post" asp-action="AddTask" asp-route-id="@application.Id" class="workflow-form">
+                        <div class="workflow-form-grid">
+                            <div class="field"><label asp-for="Task.Title"></label><input asp-for="Task.Title" placeholder="Follow up with the recruiter" /><span asp-validation-for="Task.Title" class="field-error"></span></div>
+                            <div class="field"><label asp-for="Task.DueAtLocal"></label><input asp-for="Task.DueAtLocal" type="datetime-local" /><span asp-validation-for="Task.DueAtLocal" class="field-error"></span><small>@workflow.TimeZoneId</small></div>
+                            <div class="field form-span-2"><label asp-for="Task.Notes"></label><textarea asp-for="Task.Notes" rows="3"></textarea><span asp-validation-for="Task.Notes" class="field-error"></span></div>
+                        </div>
+                        <button class="button button-primary" type="submit">Add task</button>
+                    </form>
+                </details>
+            </article>
+
+            <article class="detail-card" id="appointments">
+                <div class="detail-card-heading">
+                    <div><p class="mini-label">Scheduled time</p><h2>Appointments</h2></div>
+                    <span class="count-badge">@workflow.Appointments.Count</span>
+                </div>
+                @if (workflow.Appointments.Count == 0)
+                {
+                    <p class="workflow-empty">No interview, call, or assessment scheduled yet.</p>
+                }
+                else
+                {
+                    <ul class="workflow-record-list appointment-list">
+                        @foreach (var appointment in workflow.Appointments)
+                        {
+                            <li>
+                                <div>
+                                    <p class="timeline-kind">@ApplicationDisplay.Appointment(appointment.Type)</p>
+                                    <h3>@ApplicationTime.Display(appointment.StartsAt, appointment.TimeZoneId)</h3>
+                                    <p>Ends @ApplicationTime.Display(appointment.EndsAt, appointment.TimeZoneId)</p>
+                                    @if (!string.IsNullOrWhiteSpace(appointment.LocationOrLink))
+                                    {
+                                        if (Uri.TryCreate(appointment.LocationOrLink, UriKind.Absolute, out var locationUri) && (locationUri.Scheme == "http" || locationUri.Scheme == "https"))
+                                        {
+                                            <a class="text-link" href="@appointment.LocationOrLink" target="_blank" rel="noreferrer">Open meeting link &nearr;</a>
+                                        }
+                                        else
+                                        {
+                                            <p>@appointment.LocationOrLink</p>
+                                        }
+                                    }
+                                    @if (!string.IsNullOrWhiteSpace(appointment.Notes)) { <p class="preserved-text">@appointment.Notes</p> }
+                                </div>
+                                <form method="post" asp-action="DeleteAppointment" asp-route-id="@application.Id" asp-route-appointmentId="@appointment.Id">
+                                    <button class="link-button danger-link" type="submit">Delete</button>
+                                </form>
+                            </li>
+                        }
+                    </ul>
+                }
+                <details class="inline-editor" @(ViewData.ModelState.Keys.Any(key => key.StartsWith("Appointment", StringComparison.Ordinal)) ? "open" : null)>
+                    <summary>Add an appointment</summary>
+                    <form method="post" asp-action="AddAppointment" asp-route-id="@application.Id" class="workflow-form">
+                        <div class="workflow-form-grid">
+                            <div class="field">
+                                <label asp-for="Appointment.Type"></label>
+                                <select asp-for="Appointment.Type">
+                                    @foreach (var type in Enum.GetValues<AppointmentType>())
+                                    {
+                                        <option value="@type">@ApplicationDisplay.Appointment(type)</option>
+                                    }
+                                </select>
+                            </div>
+                            <div class="field"><label asp-for="Appointment.LocationOrLink"></label><input asp-for="Appointment.LocationOrLink" placeholder="Office address or https://..." /><span asp-validation-for="Appointment.LocationOrLink" class="field-error"></span></div>
+                            <div class="field"><label asp-for="Appointment.StartsAtLocal"></label><input asp-for="Appointment.StartsAtLocal" type="datetime-local" /><span asp-validation-for="Appointment.StartsAtLocal" class="field-error"></span></div>
+                            <div class="field"><label asp-for="Appointment.EndsAtLocal"></label><input asp-for="Appointment.EndsAtLocal" type="datetime-local" /><span asp-validation-for="Appointment.EndsAtLocal" class="field-error"></span></div>
+                            <div class="field form-span-2"><small>Times use @workflow.TimeZoneId.</small><label asp-for="Appointment.Notes"></label><textarea asp-for="Appointment.Notes" rows="3"></textarea><span asp-validation-for="Appointment.Notes" class="field-error"></span></div>
+                        </div>
+                        <button class="button button-primary" type="submit">Add appointment</button>
+                    </form>
+                </details>
             </article>
 
             <article class="detail-card">
                 <p class="mini-label">Notes</p>
                 <h2>Your context</h2>
-                @if (string.IsNullOrWhiteSpace(Model.Notes))
+                @if (string.IsNullOrWhiteSpace(application.Notes))
                 {
                     <p class="muted-copy">No notes added yet.</p>
                 }
                 else
                 {
-                    <p class="preserved-text">@Model.Notes</p>
+                    <p class="preserved-text">@application.Notes</p>
                 }
             </article>
 
@@ -74,31 +443,92 @@
                 </article>
             }
 
-            @if (!string.IsNullOrWhiteSpace(Model.SourceText))
+            @if (!string.IsNullOrWhiteSpace(application.SourceText))
             {
                 <details class="detail-card source-details">
                     <summary>View original job source text</summary>
                     <p class="retention-note">Stored with this application so you can check the source later.</p>
-                    <pre>@Model.SourceText</pre>
+                    <pre>@application.SourceText</pre>
                 </details>
             }
         </div>
 
-        <aside class="retention-card">
-            <p class="mini-label">Retention choice</p>
-            <h2>@(Model.IsSavedForever ? "This application is saved." : "This application is not saved.")</h2>
-            <p>
-                @(Model.IsSavedForever
-                    ? "It is exempt from automatic retention deletion."
-                    : "It may become eligible for the Chopping Block after three months. Automatic cleanup arrives in Milestone 8.")
-            </p>
-            <form method="post" asp-action="SetSavedForever" asp-route-id="@Model.Id">
-                <input type="hidden" name="isSavedForever" value="@(!Model.IsSavedForever ? "true" : "false")" />
-                <button class="button @(Model.IsSavedForever ? "button-secondary" : "button-primary")" type="submit">
-                    @(Model.IsSavedForever ? "Unsave" : "Save")
-                </button>
-            </form>
-            <p class="retention-note">Changing this setting never deletes the application immediately.</p>
+        <aside class="workflow-sidebar">
+            <article class="retention-card next-action-card">
+                <div class="sidebar-card-label">
+                    <span class="sidebar-card-icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" focusable="false">
+                            <path d="M9 11l2 2 4-4"></path>
+                            <path d="M9 5h6M7 3h10a2 2 0 0 1 2 2v16H5V5a2 2 0 0 1 2-2Z"></path>
+                        </svg>
+                    </span>
+                    <p class="mini-label">What is next?</p>
+                </div>
+                @if (nextTask is not null)
+                {
+                    <h2>@nextTask.Title</h2>
+                    <div class="schedule-highlight schedule-highlight-task">
+                        <span>Due</span>
+                        <strong>@(nextTask.DueAt is null ? "No due date set" : ApplicationTime.Display(nextTask.DueAt.Value, workflow.TimeZoneId))</strong>
+                    </div>
+                    <a class="button button-primary" href="#tasks">Open tasks</a>
+                }
+                else
+                {
+                    <h2>No next task recorded.</h2>
+                    <p>Add a follow-up task so this application has a clear next step.</p>
+                    <a class="button button-primary" href="#tasks">Add a task</a>
+                }
+            </article>
+
+            <article class="retention-card scheduled-time-card">
+                <div class="sidebar-card-label">
+                    <span class="sidebar-card-icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" focusable="false">
+                            <path d="M7 3v3M17 3v3M4 9h16"></path>
+                            <rect x="4" y="5" width="16" height="16" rx="2"></rect>
+                            <path d="M12 12v4l2 1"></path>
+                        </svg>
+                    </span>
+                    <p class="mini-label">Scheduled time</p>
+                </div>
+                @if (nextAppointment is not null)
+                {
+                    <h2>@ApplicationDisplay.Appointment(nextAppointment.Type)</h2>
+                    <div class="schedule-highlight schedule-highlight-appointment">
+                        <span>Starts</span>
+                        <strong>@ApplicationTime.Display(nextAppointment.StartsAt, nextAppointment.TimeZoneId)</strong>
+                    </div>
+                    @if (!string.IsNullOrWhiteSpace(nextAppointment.LocationOrLink))
+                    {
+                        <p class="scheduled-location">@nextAppointment.LocationOrLink</p>
+                    }
+                    <a class="button button-primary" href="#appointments">Open appointments</a>
+                }
+                else
+                {
+                    <h2>No appointment scheduled.</h2>
+                    <p>Add an interview, call, or other scheduled event when you have one.</p>
+                    <a class="button button-primary" href="#appointments">Add an appointment</a>
+                }
+            </article>
+
+            <article class="retention-card">
+                <p class="mini-label">Retention choice</p>
+                <h2>@(application.IsSavedForever ? "This application is saved." : "This application is not saved.")</h2>
+                <p>
+                    @(application.IsSavedForever
+                        ? "It is exempt from automatic retention deletion."
+                        : "It may become eligible for the Chopping Block after three months. Automatic cleanup arrives in Milestone 8.")
+                </p>
+                <form method="post" asp-action="SetSavedForever" asp-route-id="@application.Id">
+                    <input type="hidden" name="isSavedForever" value="@(!application.IsSavedForever ? "true" : "false")" />
+                    <button class="button @(application.IsSavedForever ? "button-secondary" : "button-primary")" type="submit">
+                        @(application.IsSavedForever ? "Unsave" : "Save")
+                    </button>
+                </form>
+                <p class="retention-note">Changing this setting never deletes the application immediately.</p>
+            </article>
         </aside>
     </div>
 </section>

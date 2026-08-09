@@ -10,6 +10,7 @@ namespace JobTracker.Web.Controllers;
 [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
 public sealed class ApplicationsController(
     ApplicationTrackerService applications,
+    ApplicationWorkflowService workflow,
     CompanyTrackerService companies,
     TimeProvider timeProvider) : Controller
 {
@@ -80,8 +81,343 @@ public sealed class ApplicationsController(
     public async Task<IActionResult> Details(Guid id, CancellationToken cancellationToken)
     {
         SetSection();
-        var application = await applications.FindAsync(id, cancellationToken);
-        return application is null ? NotFound() : View(application);
+        var page = await BuildWorkflowPageAsync(id, cancellationToken);
+        return page is null ? NotFound() : View(page);
+    }
+
+    [HttpPost("/applications/{id:guid}/status")]
+    public async Task<IActionResult> TransitionStatus(
+        Guid id,
+        [Bind(Prefix = nameof(ApplicationWorkflowPageViewModel.Status))]
+        StatusTransitionFormViewModel model,
+        CancellationToken cancellationToken)
+    {
+        SetSection();
+        if (!ModelState.IsValid)
+        {
+            return await WorkflowViewAsync(
+                id,
+                page => page.Status = model,
+                cancellationToken);
+        }
+
+        var result = await workflow.TransitionAsync(
+            id,
+            new StatusTransitionInput(model.Stage, model.Outcome, model.Note),
+            cancellationToken);
+        if (result == WorkflowWriteResult.NotFound)
+        {
+            return NotFound();
+        }
+
+        if (result == WorkflowWriteResult.InvalidTransition)
+        {
+            ModelState.AddModelError(
+                $"{nameof(ApplicationWorkflowPageViewModel.Status)}.{nameof(model.Stage)}",
+                "Choose a valid change. Ghosted can be confirmed only after 30 days, and the new state must differ from the current state.");
+            return await WorkflowViewAsync(
+                id,
+                page => page.Status = model,
+                cancellationToken);
+        }
+
+        TempData["Success"] = "Application status updated and added to the history.";
+        return RedirectToAction(nameof(Details), null, new { id }, "history");
+    }
+
+    [HttpPost("/applications/{id:guid}/contacts")]
+    public async Task<IActionResult> AddContact(
+        Guid id,
+        [Bind(Prefix = nameof(ApplicationWorkflowPageViewModel.Contact))]
+        ContactFormViewModel model,
+        CancellationToken cancellationToken)
+    {
+        SetSection();
+        if (!ModelState.IsValid)
+        {
+            return await WorkflowViewAsync(
+                id,
+                page => page.Contact = model,
+                cancellationToken);
+        }
+
+        var result = await workflow.AddContactAsync(
+            id,
+            new ContactInput(
+                model.Name,
+                model.JobTitle,
+                model.Email,
+                model.Phone,
+                model.Notes),
+            cancellationToken);
+        if (result.Result == WorkflowWriteResult.NotFound)
+        {
+            return NotFound();
+        }
+
+        TempData["Success"] = "Contact added.";
+        return RedirectToAction(nameof(Details), null, new { id }, "contacts");
+    }
+
+    [HttpPost("/applications/{id:guid}/contacts/{contactId:guid}/delete")]
+    public async Task<IActionResult> DeleteContact(
+        Guid id,
+        Guid contactId,
+        CancellationToken cancellationToken)
+    {
+        var result = await workflow.DeleteContactAsync(id, contactId, cancellationToken);
+        if (result == WorkflowWriteResult.NotFound)
+        {
+            return NotFound();
+        }
+
+        TempData[result == WorkflowWriteResult.ContactInUse ? "Error" : "Success"] =
+            result == WorkflowWriteResult.ContactInUse
+                ? "Delete or correct this contact's interactions before removing the contact."
+                : "Contact deleted.";
+        return RedirectToAction(nameof(Details), null, new { id }, "contacts");
+    }
+
+    [HttpPost("/applications/{id:guid}/interactions")]
+    public async Task<IActionResult> AddInteraction(
+        Guid id,
+        [Bind(Prefix = nameof(ApplicationWorkflowPageViewModel.Interaction))]
+        InteractionFormViewModel model,
+        CancellationToken cancellationToken)
+    {
+        SetSection();
+        if (!ModelState.IsValid)
+        {
+            return await WorkflowViewAsync(
+                id,
+                page => page.Interaction = model,
+                cancellationToken);
+        }
+
+        var result = await workflow.AddInteractionAsync(
+            id,
+            InteractionInputFrom(model),
+            cancellationToken);
+        if (result.Result == WorkflowWriteResult.NotFound)
+        {
+            return NotFound();
+        }
+
+        if (result.Result == WorkflowWriteResult.InvalidRelationship)
+        {
+            return BadRequest("Choose a contact linked to this application.");
+        }
+
+        if (result.Result == WorkflowWriteResult.InvalidLocalTime)
+        {
+            ModelState.AddModelError(
+                $"{nameof(ApplicationWorkflowPageViewModel.Interaction)}.{nameof(model.OccurredAtLocal)}",
+                "Choose a valid local date and time for your configured timezone.");
+            return await WorkflowViewAsync(
+                id,
+                page => page.Interaction = model,
+                cancellationToken);
+        }
+
+        TempData["Success"] = model.IsEmployerResponse
+            ? "Employer response recorded."
+            : "Interaction recorded.";
+        return RedirectToAction(nameof(Details), null, new { id }, "history");
+    }
+
+    [HttpPost("/applications/{id:guid}/interactions/{interactionId:guid}/edit")]
+    public async Task<IActionResult> UpdateInteraction(
+        Guid id,
+        Guid interactionId,
+        InteractionFormViewModel model,
+        CancellationToken cancellationToken)
+    {
+        if (!ModelState.IsValid)
+        {
+            TempData["Error"] = "The interaction could not be corrected. Check its date and fields.";
+            return RedirectToAction(nameof(Details), null, new { id }, "history");
+        }
+
+        var result = await workflow.UpdateInteractionAsync(
+            id,
+            interactionId,
+            InteractionInputFrom(model),
+            cancellationToken);
+        if (result == WorkflowWriteResult.NotFound)
+        {
+            return NotFound();
+        }
+
+        if (result == WorkflowWriteResult.InvalidRelationship)
+        {
+            return BadRequest("Choose a contact linked to this application.");
+        }
+
+        if (result == WorkflowWriteResult.InvalidLocalTime)
+        {
+            TempData["Error"] = "Choose a valid local date and time for your configured timezone.";
+            return RedirectToAction(nameof(Details), null, new { id }, "history");
+        }
+
+        TempData["Success"] = "Interaction corrected. Response timing has been recalculated.";
+        return RedirectToAction(nameof(Details), null, new { id }, "history");
+    }
+
+    [HttpPost("/applications/{id:guid}/interactions/{interactionId:guid}/delete")]
+    public async Task<IActionResult> DeleteInteraction(
+        Guid id,
+        Guid interactionId,
+        CancellationToken cancellationToken)
+    {
+        var result = await workflow.DeleteInteractionAsync(id, interactionId, cancellationToken);
+        if (result == WorkflowWriteResult.NotFound)
+        {
+            return NotFound();
+        }
+
+        TempData["Success"] = "Interaction deleted. Response timing has been recalculated.";
+        return RedirectToAction(nameof(Details), null, new { id }, "history");
+    }
+
+    [HttpPost("/applications/{id:guid}/tasks")]
+    public async Task<IActionResult> AddTask(
+        Guid id,
+        [Bind(Prefix = nameof(ApplicationWorkflowPageViewModel.Task))]
+        WorkflowTaskFormViewModel model,
+        CancellationToken cancellationToken)
+    {
+        SetSection();
+        if (!ModelState.IsValid)
+        {
+            return await WorkflowViewAsync(
+                id,
+                page => page.Task = model,
+                cancellationToken);
+        }
+
+        var result = await workflow.AddTaskAsync(
+            id,
+            new WorkflowTaskInput(model.Title, model.DueAtLocal, model.Notes),
+            cancellationToken);
+        if (result.Result == WorkflowWriteResult.NotFound)
+        {
+            return NotFound();
+        }
+
+        if (result.Result == WorkflowWriteResult.InvalidLocalTime)
+        {
+            ModelState.AddModelError(
+                $"{nameof(ApplicationWorkflowPageViewModel.Task)}.{nameof(model.DueAtLocal)}",
+                "Choose a valid local due date and time for your configured timezone.");
+            return await WorkflowViewAsync(
+                id,
+                page => page.Task = model,
+                cancellationToken);
+        }
+
+        TempData["Success"] = "Task added.";
+        return RedirectToAction(nameof(Details), null, new { id }, "tasks");
+    }
+
+    [HttpPost("/applications/{id:guid}/tasks/{taskId:guid}/completed")]
+    public async Task<IActionResult> SetTaskCompleted(
+        Guid id,
+        Guid taskId,
+        bool completed,
+        CancellationToken cancellationToken)
+    {
+        var result = await workflow.SetTaskCompletedAsync(
+            id,
+            taskId,
+            completed,
+            cancellationToken);
+        if (result == WorkflowWriteResult.NotFound)
+        {
+            return NotFound();
+        }
+
+        TempData["Success"] = completed ? "Task completed." : "Task reopened.";
+        return RedirectToAction(nameof(Details), null, new { id }, "tasks");
+    }
+
+    [HttpPost("/applications/{id:guid}/tasks/{taskId:guid}/delete")]
+    public async Task<IActionResult> DeleteTask(
+        Guid id,
+        Guid taskId,
+        CancellationToken cancellationToken)
+    {
+        var result = await workflow.DeleteTaskAsync(id, taskId, cancellationToken);
+        if (result == WorkflowWriteResult.NotFound)
+        {
+            return NotFound();
+        }
+
+        TempData["Success"] = "Task deleted.";
+        return RedirectToAction(nameof(Details), null, new { id }, "tasks");
+    }
+
+    [HttpPost("/applications/{id:guid}/appointments")]
+    public async Task<IActionResult> AddAppointment(
+        Guid id,
+        [Bind(Prefix = nameof(ApplicationWorkflowPageViewModel.Appointment))]
+        AppointmentFormViewModel model,
+        CancellationToken cancellationToken)
+    {
+        SetSection();
+        if (!ModelState.IsValid)
+        {
+            return await WorkflowViewAsync(
+                id,
+                page => page.Appointment = model,
+                cancellationToken);
+        }
+
+        var result = await workflow.AddAppointmentAsync(
+            id,
+            new WorkflowAppointmentInput(
+                model.Type,
+                model.StartsAtLocal!.Value,
+                model.EndsAtLocal!.Value,
+                model.LocationOrLink,
+                model.Notes),
+            cancellationToken);
+        if (result.Result == WorkflowWriteResult.NotFound)
+        {
+            return NotFound();
+        }
+
+        if (result.Result == WorkflowWriteResult.InvalidLocalTime)
+        {
+            ModelState.AddModelError(
+                $"{nameof(ApplicationWorkflowPageViewModel.Appointment)}.{nameof(model.EndsAtLocal)}",
+                "Choose a valid time range in your configured timezone.");
+            return await WorkflowViewAsync(
+                id,
+                page => page.Appointment = model,
+                cancellationToken);
+        }
+
+        TempData["Success"] = "Appointment added.";
+        return RedirectToAction(nameof(Details), null, new { id }, "appointments");
+    }
+
+    [HttpPost("/applications/{id:guid}/appointments/{appointmentId:guid}/delete")]
+    public async Task<IActionResult> DeleteAppointment(
+        Guid id,
+        Guid appointmentId,
+        CancellationToken cancellationToken)
+    {
+        var result = await workflow.DeleteAppointmentAsync(
+            id,
+            appointmentId,
+            cancellationToken);
+        if (result == WorkflowWriteResult.NotFound)
+        {
+            return NotFound();
+        }
+
+        TempData["Success"] = "Appointment deleted.";
+        return RedirectToAction(nameof(Details), null, new { id }, "appointments");
     }
 
     [HttpGet("/applications/{id:guid}/edit")]
@@ -186,6 +522,60 @@ public sealed class ApplicationsController(
         model.Companies = await companies.ListOptionsAsync(cancellationToken);
         return model;
     }
+
+    private async Task<ApplicationWorkflowPageViewModel?> BuildWorkflowPageAsync(
+        Guid id,
+        CancellationToken cancellationToken)
+    {
+        var details = await workflow.FindAsync(id, cancellationToken);
+        if (details is null)
+        {
+            return null;
+        }
+
+        var localNow = ApplicationTime.ToLocal(timeProvider.GetUtcNow(), details.TimeZoneId);
+        var appointmentStart = localNow.Date.AddDays(1).AddHours(9);
+        return new ApplicationWorkflowPageViewModel
+        {
+            Workflow = details,
+            Status = new StatusTransitionFormViewModel
+            {
+                Stage = details.Application.Stage,
+                Outcome = details.Application.Outcome,
+            },
+            Interaction = new InteractionFormViewModel
+            {
+                OccurredAtLocal = localNow,
+            },
+            Appointment = new AppointmentFormViewModel
+            {
+                StartsAtLocal = appointmentStart,
+                EndsAtLocal = appointmentStart.AddHours(1),
+            },
+        };
+    }
+
+    private async Task<IActionResult> WorkflowViewAsync(
+        Guid id,
+        Action<ApplicationWorkflowPageViewModel> configure,
+        CancellationToken cancellationToken)
+    {
+        var page = await BuildWorkflowPageAsync(id, cancellationToken);
+        if (page is null)
+        {
+            return NotFound();
+        }
+
+        configure(page);
+        return View(nameof(Details), page);
+    }
+
+    private static InteractionInput InteractionInputFrom(InteractionFormViewModel model) => new(
+        model.ContactId,
+        model.Type,
+        model.OccurredAtLocal!.Value,
+        model.IsEmployerResponse,
+        model.Notes);
 
     private static ApplicationInput InputFrom(ApplicationFormViewModel model) => new(
         model.CompanyId,

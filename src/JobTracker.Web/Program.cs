@@ -95,6 +95,7 @@ builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUserContext, HttpCurrentUserContext>();
 builder.Services.AddScoped<OwnedApplicationService>();
 builder.Services.AddScoped<ApplicationTrackerService>();
+builder.Services.AddScoped<ApplicationWorkflowService>();
 builder.Services.AddScoped<CompanyTrackerService>();
 builder.Services.AddSingleton<PastedJobTextExtractor>();
 builder.Services.AddSingleton<JobPostingHtmlExtractor>();

@@ -26,7 +26,8 @@ public sealed class FoundationApplicationTests : IClassFixture<JobTrackerWebAppl
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Contains(expectedText, content, StringComparison.Ordinal);
-        Assert.Contains("Milestone 5.1 · Browser capture extension", content, StringComparison.Ordinal);
+        Assert.Contains("Milestone 6", content, StringComparison.Ordinal);
+        Assert.Contains("Complete tracking workflow", content, StringComparison.Ordinal);
     }
 
     [Theory]
@@ -75,6 +76,27 @@ public sealed class FoundationApplicationTests : IClassFixture<JobTrackerWebAppl
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Equal("text/css", response.Content.Headers.ContentType?.MediaType);
         Assert.Contains("--blue: #3e63dd", content, StringComparison.Ordinal);
+        Assert.Contains("html[data-theme=\"dark\"]", content, StringComparison.Ordinal);
+        Assert.Contains(".detail-main > #history", content, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task ThemeScript_IsServedAndPublicLayoutOffersAccessibleToggle()
+    {
+        var client = CreateClient();
+
+        var pageResponse = await client.GetAsync("/");
+        var pageContent = await pageResponse.Content.ReadAsStringAsync();
+        var scriptResponse = await client.GetAsync("/js/theme.js");
+        var scriptContent = await scriptResponse.Content.ReadAsStringAsync();
+
+        Assert.Equal(HttpStatusCode.OK, pageResponse.StatusCode);
+        Assert.Contains("id=\"theme-toggle\"", pageContent, StringComparison.Ordinal);
+        Assert.Contains("aria-label=\"Switch to dark mode\"", pageContent, StringComparison.Ordinal);
+        Assert.Equal(HttpStatusCode.OK, scriptResponse.StatusCode);
+        Assert.Contains("javascript", scriptResponse.Content.Headers.ContentType?.MediaType, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("job-tracker-theme", scriptContent, StringComparison.Ordinal);
+        Assert.Contains("localStorage", scriptContent, StringComparison.Ordinal);
     }
 
     [Fact]

@@ -172,6 +172,125 @@ public sealed partial class ApplicationWorkflowTests
         Assert.Empty(database.JobApplications);
     }
 
+    [Fact]
+    public async Task AuthenticatedUser_CanTrackStatusContactsInteractionsTasksAndAppointments()
+    {
+        var client = await CreateAuthenticatedClientAsync();
+        var createPage = await client.GetAsync("/applications/new");
+        var createToken = ExtractAntiforgeryToken(await createPage.Content.ReadAsStringAsync());
+        var createResponse = await client.PostAsync(
+            "/applications/new",
+            Form(
+                ("RoleTitle", "Synthetic Workflow Analyst"),
+                ("AppliedOn", "2026-08-04"),
+                ("Notes", "Milestone 6 workflow acceptance"),
+                ("IsSavedForever", "false"),
+                ("__RequestVerificationToken", createToken)));
+        Assert.Equal(HttpStatusCode.Redirect, createResponse.StatusCode);
+        var applicationLocation = createResponse.Headers.Location?.OriginalString;
+        Assert.NotNull(applicationLocation);
+        var applicationId = IdFromLocation(applicationLocation);
+
+        var detailsPage = await client.GetAsync(applicationLocation);
+        var detailsContent = await detailsPage.Content.ReadAsStringAsync();
+        var token = ExtractAntiforgeryToken(detailsContent);
+        Assert.Contains("History and interactions", detailsContent, StringComparison.Ordinal);
+        Assert.Contains("No next task recorded", detailsContent, StringComparison.Ordinal);
+        Assert.Contains("Scheduled time", detailsContent, StringComparison.Ordinal);
+        Assert.Contains("No appointment scheduled", detailsContent, StringComparison.Ordinal);
+
+        var statusResponse = await client.PostAsync(
+            $"/applications/{applicationId}/status",
+            Form(
+                ("Status.Stage", PipelineStage.Screening.ToString()),
+                ("Status.Outcome", ApplicationOutcome.Active.ToString()),
+                ("Status.Note", "Recruiter booked an initial screen."),
+                ("__RequestVerificationToken", token)));
+        Assert.Equal(HttpStatusCode.Redirect, statusResponse.StatusCode);
+
+        var contactResponse = await client.PostAsync(
+            $"/applications/{applicationId}/contacts",
+            Form(
+                ("Contact.Name", "Morgan Example"),
+                ("Contact.JobTitle", "Recruiter"),
+                ("Contact.Email", "morgan@example.test"),
+                ("Contact.Phone", "+61 400 000 000"),
+                ("Contact.Notes", "Primary hiring contact"),
+                ("__RequestVerificationToken", token)));
+        Assert.Equal(HttpStatusCode.Redirect, contactResponse.StatusCode);
+
+        Guid contactId;
+        await using (var scope = factory.Services.CreateAsyncScope())
+        {
+            var database = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+            contactId = await database.Contacts
+                .Where(item => item.JobApplicationId == applicationId)
+                .Select(item => item.Id)
+                .SingleAsync();
+        }
+
+        var interactionResponse = await client.PostAsync(
+            $"/applications/{applicationId}/interactions",
+            Form(
+                ("Interaction.ContactId", contactId.ToString()),
+                ("Interaction.Type", InteractionType.Email.ToString()),
+                ("Interaction.OccurredAtLocal", "2026-08-09T10:30"),
+                ("Interaction.IsEmployerResponse", "true"),
+                ("Interaction.Notes", "Invited to the screening call."),
+                ("__RequestVerificationToken", token)));
+        Assert.Equal(HttpStatusCode.Redirect, interactionResponse.StatusCode);
+
+        var taskResponse = await client.PostAsync(
+            $"/applications/{applicationId}/tasks",
+            Form(
+                ("Task.Title", "Prepare screening examples"),
+                ("Task.DueAtLocal", "2026-08-10T17:00"),
+                ("Task.Notes", "Prepare two STAR examples."),
+                ("__RequestVerificationToken", token)));
+        Assert.Equal(HttpStatusCode.Redirect, taskResponse.StatusCode);
+
+        var appointmentResponse = await client.PostAsync(
+            $"/applications/{applicationId}/appointments",
+            Form(
+                ("Appointment.Type", AppointmentType.Interview.ToString()),
+                ("Appointment.StartsAtLocal", "2026-08-11T09:00"),
+                ("Appointment.EndsAtLocal", "2026-08-11T10:00"),
+                ("Appointment.LocationOrLink", "https://example.test/screening"),
+                ("Appointment.Notes", "Screening with Morgan."),
+                ("__RequestVerificationToken", token)));
+        Assert.Equal(HttpStatusCode.Redirect, appointmentResponse.StatusCode);
+
+        var completedDetails = await client.GetAsync(applicationLocation);
+        var completedContent = await completedDetails.Content.ReadAsStringAsync();
+        Assert.Equal(HttpStatusCode.OK, completedDetails.StatusCode);
+        Assert.Contains("Screening", completedContent, StringComparison.Ordinal);
+        Assert.Contains("Recruiter booked an initial screen", completedContent, StringComparison.Ordinal);
+        Assert.Contains("Morgan Example", completedContent, StringComparison.Ordinal);
+        Assert.Contains("Invited to the screening call", completedContent, StringComparison.Ordinal);
+        Assert.Contains("Employer responded", completedContent, StringComparison.Ordinal);
+        Assert.Contains("Prepare screening examples", completedContent, StringComparison.Ordinal);
+        Assert.Contains("schedule-highlight-task", completedContent, StringComparison.Ordinal);
+        Assert.Contains("Scheduled time", completedContent, StringComparison.Ordinal);
+        Assert.Contains("schedule-highlight-appointment", completedContent, StringComparison.Ordinal);
+        Assert.Contains("11 Aug 2026, 9:00", completedContent, StringComparison.Ordinal);
+
+        await using var verificationScope = factory.Services.CreateAsyncScope();
+        var verificationDatabase = verificationScope.ServiceProvider
+            .GetRequiredService<ApplicationDbContext>();
+        Assert.Equal(
+            2,
+            await verificationDatabase.StatusHistory.CountAsync(item =>
+                item.JobApplicationId == applicationId));
+        Assert.Single(verificationDatabase.Contacts.Where(item =>
+            item.JobApplicationId == applicationId));
+        Assert.Single(verificationDatabase.Interactions.Where(item =>
+            item.JobApplicationId == applicationId && item.IsEmployerResponse));
+        Assert.Single(verificationDatabase.Tasks.Where(item =>
+            item.JobApplicationId == applicationId));
+        Assert.Single(verificationDatabase.Appointments.Where(item =>
+            item.JobApplicationId == applicationId));
+    }
+
     private async Task<HttpClient> CreateAuthenticatedClientAsync()
     {
         var email = $"workflow-{Guid.NewGuid():N}@example.test";

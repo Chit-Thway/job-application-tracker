@@ -4,9 +4,9 @@ A private ASP.NET Core job-search organizer for tracking applications, follow-up
 
 ## Current status
 
-Milestone 5.1 adds an explicit-click Chrome/Edge capture extension to the existing review-before-save workflow. A verified user can capture the rendered job page already open in the active tab, review and correct every field, and explicitly confirm before an application is created. Public-link import and pasted-text import remain available as fallbacks.
+Milestone 6 turns each application into a complete working record. A verified user can update its stage and outcome without losing history, keep recruiter contacts and interactions, mark meaningful employer responses, manage follow-up tasks, schedule timezone-aware appointments, and see the complete story on one details page. Separate task and scheduled-time cards keep the next commitment visible, while a persistent light/dark theme switch carries the same professional blue palette across the light workspace and a Discord-inspired charcoal workspace.
 
-Dashboard, Action Centre, settings, contacts, tasks, appointments, retention automation, and the public demo remain scoped to their later milestones.
+Dashboard metrics, the Action Centre, settings, retention automation, and the public demo remain scoped to their later milestones. Manual entry, pasted-text extraction, safe public-URL import, and the explicit-click browser extension remain available ways to create applications.
 
 ## Technology
 
@@ -66,7 +66,7 @@ Then open [https://localhost:7239](https://localhost:7239).
 | `/applications/import/text` | Paste a job description for deterministic extraction |
 | `/applications/import/extension` | Receive an active-tab browser capture into a private review draft |
 | `/applications/import/{id}/review` | Review and correct an owner-scoped extraction draft |
-| `/applications/{id}` | Private application details and saved-state control |
+| `/applications/{id}` | Complete private workflow: status history, contacts, interactions, tasks, appointments, posting context, and saved state |
 | `/companies` | Searchable private company directory |
 | `/companies/new` | Manual company entry |
 | `/actions` | Authenticated Action Centre placeholder |
@@ -80,9 +80,15 @@ The registration page is public, but account creation requires an unexpired, unu
 
 For manual entry, create companies separately and select one while adding or editing an application. Pasted-text review accepts a company name and location on the same page: an exact owner-scoped match is reused, otherwise the company is created only when the reviewed application is confirmed. A company cannot be deleted while applications still reference it.
 
-New applications begin at the `Applied` pipeline stage with an `Active` outcome and receive an initial append-only history event. Stage and outcome transitions arrive in Milestone 6.
+New applications begin at the `Applied` pipeline stage with an `Active` outcome and receive an initial append-only history event. Every later stage or outcome change adds another timestamped event instead of replacing the historical trail.
 
 New applications default to not saved. **Saved** applications are exempt from future automatic retention deletion, and the setting can be changed from the application list, details page, or edit form. Milestone 8 will add the visible Chopping Block grace period and scheduled cleanup; changing the setting in Milestone 3 never immediately deletes anything.
+
+## Complete tracking workflow
+
+The application details page is the operational home for a job opportunity. Status and outcome changes are appended to its timeline with an optional note. Calls, emails, messages, meetings, and notes appear in the same chronological history. Marking an interaction as an employer response derives the first-response time; correcting or deleting that interaction recalculates the value.
+
+Contacts are owner-scoped and may be linked only to their own application. Follow-up tasks can have a local due time and can be completed, reopened, or deleted. Interviews, calls, assessments, and other appointments preserve the user's configured timezone while storing their instants in UTC. The sidebar promotes the next open task or upcoming appointment so the user does not have to reconstruct the next step from several pages.
 
 ## Pasted-text extraction
 
