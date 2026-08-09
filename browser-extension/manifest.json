@@ -1,0 +1,15 @@
+{
+  "manifest_version": 3,
+  "name": "Job Application Tracker Capture",
+  "version": "0.1.1",
+  "description": "Capture the active job advertisement and open a private review draft in Job Application Tracker.",
+  "permissions": [
+    "activeTab",
+    "scripting",
+    "storage"
+  ],
+  "action": {
+    "default_title": "Capture this job",
+    "default_popup": "popup.html"
+  }
+}

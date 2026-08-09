@@ -4,7 +4,7 @@ A private ASP.NET Core job-search organizer for tracking applications, follow-up
 
 ## Current status
 
-Milestone 5 adds bounded public-URL extraction to the existing review-before-save workflow. A verified user can import a public job link, prefer official JobPosting metadata, review and correct every field, and explicitly confirm before an application is created.
+Milestone 5.1 adds an explicit-click Chrome/Edge capture extension to the existing review-before-save workflow. A verified user can capture the rendered job page already open in the active tab, review and correct every field, and explicitly confirm before an application is created. Public-link import and pasted-text import remain available as fallbacks.
 
 Dashboard, Action Centre, settings, contacts, tasks, appointments, retention automation, and the public demo remain scoped to their later milestones.
 
@@ -64,6 +64,7 @@ Then open [https://localhost:7239](https://localhost:7239).
 | `/applications/new` | Manual application entry |
 | `/applications/import/url` | Safely import a public HTML job page into a review draft |
 | `/applications/import/text` | Paste a job description for deterministic extraction |
+| `/applications/import/extension` | Receive an active-tab browser capture into a private review draft |
 | `/applications/import/{id}/review` | Review and correct an owner-scoped extraction draft |
 | `/applications/{id}` | Private application details and saved-state control |
 | `/companies` | Searchable private company directory |
@@ -94,6 +95,20 @@ Review drafts are private, owner-scoped, and expire after 24 hours. Cancelling r
 URL import allows only public HTTP or HTTPS pages with default ports. It rejects credentials in URLs and blocks loopback, private, link-local, metadata, documentation, multicast, transition, and other non-public IPv4/IPv6 destinations. DNS answers are checked before every request and redirect and checked again when the production socket connects. Redirects are manual and limited; browser cookies, credentials, authorization, referrer, and proxy credentials are not forwarded. Responses must be HTML, complete within the configured timeout, and remain under the decompressed size limit.
 
 The HTML parser reads official Schema.org `JobPosting` JSON-LD first, including hiring organisation, title, location, employment type, base salary, identifier, application contact, work mode, and `validThrough`. Page metadata and visible text then feed the existing deterministic rules as fallbacks. If a page blocks automated access or cannot be imported safely, the form keeps the URL visible and offers pasted-text and manual-entry alternatives.
+
+## Browser extension capture
+
+The unpacked Manifest V3 extension in `browser-extension` is the easiest option for script-heavy or automation-blocking job boards. It reads Schema.org `JobPosting` data and rendered job fields from the active tab only after the user clicks **Capture and review**. It includes selected-job-panel support for SEEK and Indeed, including hourly pay such as `$35–$40 an hour`. It does not fetch the page again, execute page-owned scripts, contact an AI service, or save an application directly.
+
+Install it locally:
+
+1. Start the tracker, sign in, and leave it running.
+2. Open `chrome://extensions` in Chrome or `edge://extensions` in Edge.
+3. Enable **Developer mode**, choose **Load unpacked**, and select the repository's `browser-extension` directory.
+4. Pin **Job Application Tracker Capture** to the toolbar.
+5. Open a job advertisement, click the extension, and choose **Capture and review**.
+
+The extension defaults to `http://localhost:5261`; its popup can remember a different tracker address. Non-local tracker addresses must use HTTPS. The manifest requests only `activeTab`, `scripting`, and `storage`: there are no broad host permissions, content scripts, background workers, analytics, or remote APIs. The capture is handed to the authenticated tracker through a URL fragment, removed immediately from browser history, validated by the server, and stored only as an owner-scoped 24-hour review draft. See `browser-extension/README.md` for the focused install and privacy guide.
 
 ## Database setup
 
@@ -176,6 +191,7 @@ Build warnings are treated as errors. Package lock files make dependency restore
 JobTracker.sln
 src/
   JobTracker.Web/                 ASP.NET Core MVC application
+browser-extension/                Unpacked Chrome/Edge active-tab capture extension
 tests/
   JobTracker.UnitTests/           Fast foundation and domain tests
   JobTracker.IntegrationTests/    In-process HTTP and security checks

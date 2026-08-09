@@ -11,6 +11,7 @@ namespace JobTracker.Web.Controllers;
 public sealed class ApplicationImportsController(
     ExtractionDraftService drafts,
     JobPostingUrlImportService urlImports,
+    BrowserExtensionImportService browserExtensionImports,
     TimeProvider timeProvider) : Controller
 {
     [HttpGet("/applications/import/url")]
@@ -67,6 +68,40 @@ public sealed class ApplicationImportsController(
 
         var draftId = await drafts.CreatePastedTextDraftAsync(
             model.SourceText,
+            LocalToday(),
+            cancellationToken);
+        return RedirectToAction(nameof(Review), new { id = draftId });
+    }
+
+    [HttpGet("/applications/import/extension")]
+    public IActionResult ImportExtension()
+    {
+        SetSection();
+        return View(new BrowserExtensionCaptureInputViewModel());
+    }
+
+    [HttpPost("/applications/import/extension")]
+    [EnableRateLimiting("imports")]
+    [RequestSizeLimit(256_000)]
+    public async Task<IActionResult> ImportExtension(
+        BrowserExtensionCaptureInputViewModel model,
+        CancellationToken cancellationToken)
+    {
+        SetSection();
+        if (!ModelState.IsValid)
+        {
+            return View(model);
+        }
+
+        var result = browserExtensionImports.Import(model.PayloadJson);
+        if (!result.IsSuccess)
+        {
+            ModelState.AddModelError(nameof(model.PayloadJson), result.Error!);
+            return View(model);
+        }
+
+        var draftId = await drafts.CreateBrowserExtensionDraftAsync(
+            result.Extraction!,
             LocalToday(),
             cancellationToken);
         return RedirectToAction(nameof(Review), new { id = draftId });
@@ -169,7 +204,7 @@ public sealed class ApplicationImportsController(
     private static ExtractionReviewViewModel ModelFrom(ExtractionDraftReview draft) => new()
     {
         DraftId = draft.Id,
-        IsUrlImport = draft.SourceType == Data.ExtractionSourceType.JobPostingUrl,
+        SourceType = draft.SourceType,
         SourceText = draft.SourceText,
         ExpiresAt = draft.ExpiresAt,
         Evidence = draft.Evidence,
@@ -194,6 +229,7 @@ public sealed class ApplicationImportsController(
         ExtractionReviewViewModel model)
     {
         model.SourceText = draft.SourceText;
+        model.SourceType = draft.SourceType;
         model.ExpiresAt = draft.ExpiresAt;
         model.Evidence = draft.Evidence;
         model.Warnings = draft.Warnings;

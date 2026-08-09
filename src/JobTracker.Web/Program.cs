@@ -130,6 +130,7 @@ builder.Services
     });
 builder.Services.AddScoped<ExtractionDraftService>();
 builder.Services.AddScoped<JobPostingUrlImportService>();
+builder.Services.AddScoped<BrowserExtensionImportService>();
 
 var app = builder.Build();
 

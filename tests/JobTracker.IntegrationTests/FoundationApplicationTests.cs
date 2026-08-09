@@ -26,7 +26,7 @@ public sealed class FoundationApplicationTests : IClassFixture<JobTrackerWebAppl
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Contains(expectedText, content, StringComparison.Ordinal);
-        Assert.Contains("Milestone 5 · Safe URL extraction", content, StringComparison.Ordinal);
+        Assert.Contains("Milestone 5.1 · Browser capture extension", content, StringComparison.Ordinal);
     }
 
     [Theory]
@@ -35,6 +35,7 @@ public sealed class FoundationApplicationTests : IClassFixture<JobTrackerWebAppl
     [InlineData("/applications/new")]
     [InlineData("/applications/import/text")]
     [InlineData("/applications/import/url")]
+    [InlineData("/applications/import/extension")]
     [InlineData("/actions")]
     [InlineData("/settings")]
     public async Task PrivateRoutes_RedirectSignedOutVisitorsToLogin(string route)

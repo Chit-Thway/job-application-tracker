@@ -1941,6 +1941,56 @@ textarea:focus-visible {
   justify-content: flex-end;
 }
 
+.extension-handoff-card {
+  display: grid;
+  gap: 1.25rem;
+}
+
+.extension-capture-status {
+  margin: 0;
+  padding: 1rem 1.1rem;
+  color: #23335f;
+  background: var(--blue-soft);
+  border-radius: var(--radius-sm);
+}
+
+.extension-capture-error {
+  color: #8d1b13;
+  background: #fde8e6;
+}
+
+.extension-steps {
+  display: grid;
+  gap: 0.8rem;
+  margin: 0;
+  padding-left: 1.4rem;
+}
+
+.extension-steps li {
+  padding-left: 0.35rem;
+}
+
+.extension-steps span {
+  display: block;
+  margin-top: 0.2rem;
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+
+.privacy-note {
+  display: grid;
+  gap: 0.2rem;
+  padding: 1rem 1.1rem;
+  color: #0d594c;
+  background: #e7f7f2;
+  border: 1px solid #b9e3d8;
+  border-radius: var(--radius-sm);
+}
+
+.privacy-note span {
+  font-size: 0.88rem;
+}
+
 .paste-source-input {
   min-height: 28rem;
   line-height: 1.6;

@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using JobTracker.Web.Data;
 
 namespace JobTracker.Web.Models;
 
@@ -19,11 +20,39 @@ public sealed class JobPostingUrlInputViewModel
     public string SourceUrl { get; set; } = string.Empty;
 }
 
+public sealed class BrowserExtensionCaptureInputViewModel
+{
+    [Required]
+    [StringLength(120_000)]
+    public string PayloadJson { get; set; } = string.Empty;
+}
+
 public sealed class ExtractionReviewViewModel
 {
     public Guid DraftId { get; set; }
 
-    public bool IsUrlImport { get; set; }
+    public ExtractionSourceType SourceType { get; set; }
+
+    public string ImportAction => SourceType switch
+    {
+        ExtractionSourceType.JobPostingUrl => "ImportUrl",
+        ExtractionSourceType.BrowserExtension => "ImportExtension",
+        _ => "PasteText",
+    };
+
+    public string ImportAgainLabel => SourceType switch
+    {
+        ExtractionSourceType.JobPostingUrl => "Import a different link",
+        ExtractionSourceType.BrowserExtension => "Capture a different page",
+        _ => "Paste different text",
+    };
+
+    public string OriginalSourceLabel => SourceType switch
+    {
+        ExtractionSourceType.JobPostingUrl => "Fetched job-page text",
+        ExtractionSourceType.BrowserExtension => "Captured job-page text",
+        _ => "Pasted job text",
+    };
 
     public string SourceText { get; set; } = string.Empty;
 

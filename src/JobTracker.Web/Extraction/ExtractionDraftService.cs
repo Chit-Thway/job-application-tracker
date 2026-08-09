@@ -86,6 +86,16 @@ public sealed class ExtractionDraftService(
             defaultAppliedOn,
             cancellationToken);
 
+    public Task<Guid> CreateBrowserExtensionDraftAsync(
+        PastedJobExtraction extraction,
+        DateOnly defaultAppliedOn,
+        CancellationToken cancellationToken = default) =>
+        CreateDraftAsync(
+            ExtractionSourceType.BrowserExtension,
+            extraction,
+            defaultAppliedOn,
+            cancellationToken);
+
     private async Task<Guid> CreateDraftAsync(
         ExtractionSourceType sourceType,
         PastedJobExtraction extraction,
@@ -206,9 +216,14 @@ public sealed class ExtractionDraftService(
                 NewStage = PipelineStage.Applied,
                 NewOutcome = ApplicationOutcome.Active,
                 EffectiveAt = now,
-                Note = draft.SourceType == ExtractionSourceType.JobPostingUrl
-                    ? "Application created from a reviewed public job URL."
-                    : "Application created from reviewed pasted text.",
+                Note = draft.SourceType switch
+                {
+                    ExtractionSourceType.JobPostingUrl =>
+                        "Application created from a reviewed public job URL.",
+                    ExtractionSourceType.BrowserExtension =>
+                        "Application created from a reviewed browser capture.",
+                    _ => "Application created from reviewed pasted text.",
+                },
             };
 
             database.JobApplications.Add(application);

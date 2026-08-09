@@ -167,6 +167,7 @@ public sealed class PastedJobTextExtractorTests
     [InlineData("AUD 70,000 - 75,000 / Year")]
     [InlineData("70k - 80k")]
     [InlineData("$35 - $45 per hour")]
+    [InlineData("$33.50 - $90.00 an hour")]
     [InlineData("$950 per day")]
     [InlineData("$95,000")]
     public void PlausibleSalaryFormats_AreAccepted(string salary)

@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Capture this job</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <main>
+    <header>
+      <span class="mark" aria-hidden="true">JT</span>
+      <div>
+        <p class="eyebrow">Job Application Tracker</p>
+        <h1>Capture this job</h1>
+      </div>
+    </header>
+
+    <p class="intro">Read the active job tab and open an editable review draft. Nothing is saved automatically.</p>
+
+    <form id="capture-form">
+      <label for="tracker-url">Tracker address</label>
+      <input id="tracker-url" name="tracker-url" type="url" value="http://localhost:5261" required spellcheck="false">
+      <small>Use HTTPS outside localhost.</small>
+      <button type="submit">Capture and review</button>
+    </form>
+
+    <p id="status" class="status" role="status" aria-live="polite"></p>
+    <p class="privacy">Runs only when clicked · active tab only</p>
+  </main>
+  <script src="popup.js"></script>
+</body>
+</html>

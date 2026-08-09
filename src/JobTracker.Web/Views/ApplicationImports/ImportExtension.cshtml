@@ -1,0 +1,44 @@
+@model BrowserExtensionCaptureInputViewModel
+@{
+    ViewData["Title"] = "Browser extension capture";
+}
+
+<section class="form-page">
+    <div class="shell narrow-shell">
+        <a class="back-link" asp-controller="Applications" asp-action="Create">← Add application</a>
+        <div class="form-heading">
+            <p class="eyebrow">Milestone 5.1 · Browser capture</p>
+            <h1>Capture the job page you already have open.</h1>
+            <p>The extension reads the active tab only after you click it, then brings the detected details here for review.</p>
+        </div>
+
+        <div class="editor-card extension-handoff-card">
+            <div asp-validation-summary="All" class="validation-summary" role="alert"></div>
+            <p id="extension-capture-status" class="extension-capture-status" role="status" aria-live="polite">
+                Open a job advertisement, click the Job Application Tracker extension, and choose <strong>Capture and review</strong>.
+            </p>
+
+            <ol class="extension-steps">
+                <li><strong>Open the real job advertisement.</strong><span>The page must be visible in your current browser tab.</span></li>
+                <li><strong>Click the tracker extension.</strong><span>It reads rendered job details only after your click.</span></li>
+                <li><strong>Review before saving.</strong><span>The capture creates a private 24-hour draft, never an application by itself.</span></li>
+            </ol>
+
+            <aside class="privacy-note">
+                <strong>Private by design.</strong>
+                <span>No background browsing, no broad all-sites permission, no AI service, and no automatic save.</span>
+            </aside>
+
+            <div class="editor-actions">
+                <a class="button button-secondary" asp-action="PasteText">Paste job text instead</a>
+                <a class="button button-secondary" asp-controller="Applications" asp-action="Create">Use manual entry</a>
+            </div>
+        </div>
+
+        <form id="extension-capture-form" method="post" hidden>
+            <input asp-for="PayloadJson" type="hidden" />
+        </form>
+    </div>
+</section>
+
+<script src="~/js/extension-import.js" asp-append-version="true"></script>

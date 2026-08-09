@@ -42,4 +42,5 @@ public enum ExtractionSourceType
 {
     PastedText,
     JobPostingUrl,
+    BrowserExtension,
 }
