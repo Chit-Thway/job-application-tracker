@@ -15,6 +15,7 @@ public sealed record BrowserExtensionCapture(
     string? SalaryText,
     string? EmploymentType,
     string? ClosingDate,
+    string? DescriptionText,
     string? SourceText);
 
 public sealed record BrowserExtensionImportResult(
@@ -88,6 +89,10 @@ public sealed class BrowserExtensionImportService(PastedJobTextExtractor extract
             SalaryText = Prefer(capture.SalaryText, extraction.Fields.SalaryText, 500),
             EmploymentType = Prefer(capture.EmploymentType, extraction.Fields.EmploymentType, 200),
             ClosingDate = capturedClosingDate ?? extraction.Fields.ClosingDate,
+            DescriptionText = Prefer(
+                capture.DescriptionText,
+                extraction.Fields.DescriptionText,
+                MaxSourceTextLength),
         };
         var evidence = new Dictionary<string, string>(extraction.Evidence, StringComparer.Ordinal);
         AddCapturedEvidence(evidence, nameof(fields.RoleTitle), capture.RoleTitle, "job title");
@@ -98,6 +103,7 @@ public sealed class BrowserExtensionImportService(PastedJobTextExtractor extract
         AddCapturedEvidence(evidence, nameof(fields.JobReference), capture.JobReference, "job reference");
         AddCapturedEvidence(evidence, nameof(fields.SalaryText), capture.SalaryText, "salary");
         AddCapturedEvidence(evidence, nameof(fields.EmploymentType), capture.EmploymentType, "employment type");
+        AddCapturedEvidence(evidence, nameof(fields.DescriptionText), capture.DescriptionText, "job description");
         if (capturedClosingDate is not null)
         {
             AddCapturedEvidence(evidence, nameof(fields.ClosingDate), capture.ClosingDate, "closing date");

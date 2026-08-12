@@ -7,6 +7,7 @@
     var openTasks = workflow.Tasks.Where(item => item.CompletedAt is null).ToList();
     var nextTask = openTasks.FirstOrDefault();
     var nextAppointment = workflow.Appointments.FirstOrDefault(item => item.EndsAt >= workflow.CurrentTime);
+    var descriptionBlocks = JobDescriptionDisplay.Format(application.DescriptionText);
     var timeline = new List<(DateTimeOffset At, string Kind, string Title, string? Details, WorkflowInteractionItem? Interaction)>();
 
     foreach (var status in workflow.StatusHistory)
@@ -42,7 +43,7 @@
         <a class="back-link" asp-action="Index">&larr; Applications</a>
         <div class="detail-heading">
             <div>
-                <p class="eyebrow">@(application.CompanyName ?? "No company selected")</p>
+                <p class="detail-company-name">@(application.CompanyName ?? "No company selected")</p>
                 <h1>@application.RoleTitle</h1>
                 <p>Applied @application.AppliedOn.ToString("d MMMM yyyy")</p>
             </div>
@@ -253,11 +254,12 @@
                 }
             </article>
 
-            <article class="detail-card" id="contacts">
-                <div class="detail-card-heading">
+            <details class="detail-card detail-section-disclosure" id="contacts" @(workflow.Contacts.Count > 0 || ViewData.ModelState.Keys.Any(key => key.StartsWith("Contact", StringComparison.Ordinal)) ? "open" : null)>
+                <summary class="detail-card-heading">
                     <div><p class="mini-label">People</p><h2>Contacts</h2></div>
                     <span class="count-badge">@workflow.Contacts.Count</span>
-                </div>
+                </summary>
+                <div class="detail-disclosure-content">
                 @if (workflow.Contacts.Count == 0)
                 {
                     <p class="workflow-empty">No recruiter or hiring contact added yet.</p>
@@ -297,13 +299,15 @@
                         <button class="button button-primary" type="submit">Add contact</button>
                     </form>
                 </details>
-            </article>
-
-            <article class="detail-card" id="tasks">
-                <div class="detail-card-heading">
-                    <div><p class="mini-label">Next actions</p><h2>Tasks</h2></div>
-                    <span class="count-badge">@openTasks.Count open</span>
                 </div>
+            </details>
+
+            <details class="detail-card detail-section-disclosure" id="tasks" @(workflow.Tasks.Count > 0 || ViewData.ModelState.Keys.Any(key => key.StartsWith("Task", StringComparison.Ordinal)) ? "open" : null)>
+                <summary class="detail-card-heading">
+                    <div><p class="mini-label">Next actions</p><h2>Tasks</h2></div>
+                    <span class="count-badge">@openTasks.Count</span>
+                </summary>
+                <div class="detail-disclosure-content">
                 @if (workflow.Tasks.Count == 0)
                 {
                     <p class="workflow-empty">No follow-up task added yet.</p>
@@ -348,13 +352,15 @@
                         <button class="button button-primary" type="submit">Add task</button>
                     </form>
                 </details>
-            </article>
+                </div>
+            </details>
 
-            <article class="detail-card" id="appointments">
-                <div class="detail-card-heading">
+            <details class="detail-card detail-section-disclosure" id="appointments" @(workflow.Appointments.Count > 0 || ViewData.ModelState.Keys.Any(key => key.StartsWith("Appointment", StringComparison.Ordinal)) ? "open" : null)>
+                <summary class="detail-card-heading">
                     <div><p class="mini-label">Scheduled time</p><h2>Appointments</h2></div>
                     <span class="count-badge">@workflow.Appointments.Count</span>
-                </div>
+                </summary>
+                <div class="detail-disclosure-content">
                 @if (workflow.Appointments.Count == 0)
                 {
                     <p class="workflow-empty">No interview, call, or assessment scheduled yet.</p>
@@ -410,7 +416,8 @@
                         <button class="button button-primary" type="submit">Add appointment</button>
                     </form>
                 </details>
-            </article>
+                </div>
+            </details>
 
             <article class="detail-card">
                 <p class="mini-label">Notes</p>
@@ -441,6 +448,53 @@
                         @if (!string.IsNullOrWhiteSpace(extraction.ContactEmail)) { <div><dt>Contact email</dt><dd><a class="text-link" href="mailto:@extraction.ContactEmail">@extraction.ContactEmail</a></dd></div> }
                     </dl>
                 </article>
+            }
+
+            @if (!string.IsNullOrWhiteSpace(application.DescriptionText))
+            {
+                <article class="detail-card job-description-card">
+                    <div class="detail-card-heading">
+                        <div><p class="mini-label">Role context</p><h2>Job description</h2></div>
+                        <button class="description-popout-button" type="button" popovertarget="job-description-popover" aria-label="Open job description">
+                            <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+                                <path d="M14 4h6v6"></path>
+                                <path d="m20 4-9 9"></path>
+                                <path d="M18 13v5a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h5"></path>
+                            </svg>
+                        </button>
+                    </div>
+                    <p class="job-description-preview">@JobDescriptionDisplay.Preview(application.DescriptionText)</p>
+                    <button class="link-button description-open-link" type="button" popovertarget="job-description-popover">Read full description</button>
+                </article>
+
+                <div class="job-description-popover" id="job-description-popover" popover="auto" role="dialog" aria-labelledby="job-description-title">
+                    <header>
+                        <div><p class="mini-label">@(application.CompanyName ?? "No company selected")</p><h2 id="job-description-title">@application.RoleTitle</h2></div>
+                        <button class="description-close-button" type="button" popovertarget="job-description-popover" popovertargetaction="hide" aria-label="Close job description">&times;</button>
+                    </header>
+                    <div class="job-description-body">
+                        @foreach (var block in descriptionBlocks)
+                        {
+                            if (block.Kind == JobDescriptionBlockKind.Heading)
+                            {
+                                <h3>@block.Lines[0]</h3>
+                            }
+                            else if (block.Kind == JobDescriptionBlockKind.List)
+                            {
+                                <ul>
+                                    @foreach (var item in block.Lines)
+                                    {
+                                        <li>@item</li>
+                                    }
+                                </ul>
+                            }
+                            else
+                            {
+                                <p>@block.Lines[0]</p>
+                            }
+                        }
+                    </div>
+                </div>
             }
 
             @if (!string.IsNullOrWhiteSpace(application.SourceText))

@@ -22,6 +22,11 @@ public sealed class BrowserExtensionImportServiceTests
             salaryText = "$70,000 - $80,000 per year & Super",
             employmentType = "Full time",
             closingDate = "2026-08-16",
+            descriptionText = """
+                About the role
+
+                We are looking for a Level 1/2 Helpdesk Engineer.
+                """,
             sourceText = """
                 Sidekicker
                 Salary: 4.2
@@ -40,6 +45,9 @@ public sealed class BrowserExtensionImportServiceTests
         Assert.Equal("$70,000 - $80,000 per year & Super", fields.SalaryText);
         Assert.Equal("Full time", fields.EmploymentType);
         Assert.Equal(new DateOnly(2026, 8, 16), fields.ClosingDate);
+        Assert.Equal(
+            "About the role\n\nWe are looking for a Level 1/2 Helpdesk Engineer.",
+            fields.DescriptionText);
         Assert.Equal("https://au.seek.com/job/93675873?type=promoted", fields.SourceUrl);
         Assert.Contains("active page's rendered job metadata", result.Extraction.Evidence["RoleTitle"]);
         Assert.DoesNotContain(result.Extraction.Warnings, warning =>

@@ -239,13 +239,16 @@ public sealed class ApplicationWorkflowService(
                 application.Outcome,
                 application.SourceUrl,
                 application.SourceText,
+                application.DescriptionText,
                 application.ExtractionMetadataJson,
                 application.Notes,
                 application.IsSavedForever,
                 application.DeletionScheduledAt),
             timeZoneId,
             currentTime,
-            localToday >= application.AppliedOn.AddDays(30),
+            localToday >= application.AppliedOn.AddDays(30)
+                && firstResponse is null
+                && application.Outcome == ApplicationOutcome.Active,
             firstResponse,
             history,
             contacts,
@@ -286,6 +289,25 @@ public sealed class ApplicationWorkflowService(
             var localToday = DateOnly.FromDateTime(
                 ApplicationTime.ToLocal(timeProvider.GetUtcNow(), timeZoneId));
             if (localToday < application.AppliedOn.AddDays(30))
+            {
+                return WorkflowWriteResult.InvalidTransition;
+            }
+
+            var appliedStart = ApplicationTime.TryConvertToUtc(
+                application.AppliedOn.ToDateTime(TimeOnly.MinValue),
+                timeZoneId,
+                out var appliedStartUtc)
+                ? appliedStartUtc
+                : DateTimeOffset.MinValue;
+            var hasMeaningfulResponse = await database.Interactions
+                .AsNoTracking()
+                .AnyAsync(item =>
+                    item.OwnerId == ownerId
+                    && item.JobApplicationId == application.Id
+                    && item.IsEmployerResponse
+                    && item.OccurredAt >= appliedStart,
+                    cancellationToken);
+            if (hasMeaningfulResponse)
             {
                 return WorkflowWriteResult.InvalidTransition;
             }

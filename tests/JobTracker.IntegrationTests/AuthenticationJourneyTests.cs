@@ -216,7 +216,8 @@ public sealed partial class AuthenticationJourneyTests
         var privatePage = await client.GetAsync("/dashboard");
         var privateContent = await privatePage.Content.ReadAsStringAsync();
         Assert.Equal(HttpStatusCode.OK, privatePage.StatusCode);
-        Assert.Contains("The signal, without the noise.", privateContent, StringComparison.Ordinal);
+        Assert.Contains("Three-month dashboard", privateContent, StringComparison.Ordinal);
+        Assert.Contains("Your job search", privateContent, StringComparison.Ordinal);
 
         var logoutToken = ExtractAntiforgeryToken(privateContent);
         var logoutResponse = await client.PostAsync(

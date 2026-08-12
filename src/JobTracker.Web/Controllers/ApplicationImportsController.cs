@@ -159,6 +159,7 @@ public sealed class ApplicationImportsController(
                 model.ClosingDate,
                 model.ContactName,
                 model.ContactEmail,
+                model.DescriptionText,
                 model.Notes,
                 model.IsSavedForever),
             cancellationToken);
@@ -222,6 +223,7 @@ public sealed class ApplicationImportsController(
         ClosingDate = draft.Fields.ClosingDate,
         ContactName = draft.Fields.ContactName,
         ContactEmail = draft.Fields.ContactEmail,
+        DescriptionText = draft.Fields.DescriptionText,
     };
 
     private static void CopyReviewContext(

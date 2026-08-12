@@ -95,6 +95,7 @@ public sealed class OwnerIsolationTests
             new DateOnly(2026, 8, 4),
             null,
             null,
+            null,
             false);
 
         Assert.Null(await applicationService.FindAsync(applicationB.Id));

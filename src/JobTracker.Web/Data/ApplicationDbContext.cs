@@ -61,6 +61,7 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
         {
             entity.Property(application => application.RoleTitle).HasMaxLength(200).IsRequired();
             entity.Property(application => application.SourceUrl).HasMaxLength(2048);
+            entity.Property(application => application.DescriptionText).HasColumnType("text");
             entity.Property(application => application.Stage).HasConversion<string>().HasMaxLength(40);
             entity.Property(application => application.Outcome).HasConversion<string>().HasMaxLength(40);
             entity.HasOne<Company>()

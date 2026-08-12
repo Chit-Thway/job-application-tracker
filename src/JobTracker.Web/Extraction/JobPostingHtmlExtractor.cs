@@ -90,6 +90,9 @@ public sealed class JobPostingHtmlExtractor(PastedJobTextExtractor textExtractor
             ClosingDate = structured.ClosingDate ?? textExtraction.Fields.ClosingDate,
             ContactName = structured.ContactName ?? textExtraction.Fields.ContactName,
             ContactEmail = structured.ContactEmail ?? textExtraction.Fields.ContactEmail,
+            DescriptionText = structured.Description
+                ?? semantic.Description
+                ?? textExtraction.Fields.DescriptionText,
         };
 
         var evidence = new Dictionary<string, string>(textExtraction.Evidence, StringComparer.Ordinal);
@@ -98,6 +101,7 @@ public sealed class JobPostingHtmlExtractor(PastedJobTextExtractor textExtractor
         AddSemanticEvidence(evidence, "CompanyLocation", semantic.CompanyLocation, "location");
         AddSemanticEvidence(evidence, "SalaryText", semantic.SalaryText, "salary");
         AddSemanticEvidence(evidence, "EmploymentType", semantic.EmploymentType, "work type");
+        AddSemanticEvidence(evidence, "DescriptionText", semantic.Description, "job description");
         AddStructuredEvidence(evidence, "RoleTitle", structured.RoleTitle, "job title");
         AddStructuredEvidence(evidence, "CompanyName", structured.CompanyName, "hiring organisation");
         AddStructuredEvidence(evidence, "CompanyLocation", structured.CompanyLocation, "job location");
@@ -108,6 +112,7 @@ public sealed class JobPostingHtmlExtractor(PastedJobTextExtractor textExtractor
         AddStructuredEvidence(evidence, "ClosingDate", structured.ClosingDate, "closing date");
         AddStructuredEvidence(evidence, "ContactName", structured.ContactName, "application contact");
         AddStructuredEvidence(evidence, "ContactEmail", structured.ContactEmail, "application contact email");
+        AddStructuredEvidence(evidence, "DescriptionText", structured.Description, "description");
         evidence["SourceUrl"] = "High confidence — this is the public URL you asked the importer to fetch.";
         evidence["SourceSite"] = MetaContent(document, "og:site_name") is not null
             ? "High confidence — read from the page’s site-name metadata."

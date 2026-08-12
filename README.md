@@ -4,9 +4,9 @@ A private ASP.NET Core job-search organizer for tracking applications, follow-up
 
 ## Current status
 
-Milestone 6 turns each application into a complete working record. A verified user can update its stage and outcome without losing history, keep recruiter contacts and interactions, mark meaningful employer responses, manage follow-up tasks, schedule timezone-aware appointments, and see the complete story on one details page. Separate task and scheduled-time cards keep the next commitment visible, while a persistent light/dark theme switch carries the same professional blue palette across the light workspace and a Discord-inspired charcoal workspace.
+Milestone 7 adds the working three-calendar-month dashboard and Action Centre. A verified user can see application, response, interview, stage, and outcome summaries for the current month and prior two months in their own timezone, while an accessible proportional donut makes the live pipeline distribution clear by color, legend, hover, and keyboard focus. Overdue tasks, upcoming appointments, recent activity, and ghosting checks stay visible as direct actions. Application details now keep empty workflow sections compact, emphasize the company and role together, and present a stored job description in a readable popout.
 
-Dashboard metrics, the Action Centre, settings, retention automation, and the public demo remain scoped to their later milestones. Manual entry, pasted-text extraction, safe public-URL import, and the explicit-click browser extension remain available ways to create applications.
+Ghosting remains a deliberate user decision: the tracker suggests a follow-up after 14 days without a meaningful employer response and offers confirmation after 30 days, but never changes the outcome automatically. Status history, contacts and interactions, tasks, appointments, manual entry, deterministic extraction, safe public-URL import, and the explicit-click browser extension remain available throughout the workflow. Retention automation and the public demo remain scoped to later milestones.
 
 ## Technology
 
@@ -59,17 +59,17 @@ Then open [https://localhost:7239](https://localhost:7239).
 | `/account/forgot-password` | Password-reset request |
 | `/account/resend-verification` | Email-verification resend |
 | `/dev/mail` | Local-only verification/reset message sink |
-| `/dashboard` | Authenticated three-month dashboard placeholder |
+| `/dashboard` | Authenticated current-and-prior-two-calendar-month dashboard |
 | `/applications` | Searchable, filterable private application library |
 | `/applications/new` | Manual application entry |
 | `/applications/import/url` | Safely import a public HTML job page into a review draft |
 | `/applications/import/text` | Paste a job description for deterministic extraction |
 | `/applications/import/extension` | Receive an active-tab browser capture into a private review draft |
 | `/applications/import/{id}/review` | Review and correct an owner-scoped extraction draft |
-| `/applications/{id}` | Complete private workflow: status history, contacts, interactions, tasks, appointments, posting context, and saved state |
+| `/applications/{id}` | Complete private workflow: status history, collapsible contacts/tasks/appointments, readable job description, posting context, and saved state |
 | `/companies` | Searchable private company directory |
 | `/companies/new` | Manual company entry |
-| `/actions` | Authenticated Action Centre placeholder |
+| `/actions` | Overdue tasks, follow-up warnings, Ghosted decisions, and upcoming appointments |
 | `/settings` | Authenticated settings placeholder |
 | `/demo` | Public synthetic demo placeholder |
 | `/health` | Minimal plain-text health response |
@@ -86,25 +86,25 @@ New applications default to not saved. **Saved** applications are exempt from fu
 
 ## Complete tracking workflow
 
-The application details page is the operational home for a job opportunity. Status and outcome changes are appended to its timeline with an optional note. Calls, emails, messages, meetings, and notes appear in the same chronological history. Marking an interaction as an employer response derives the first-response time; correcting or deleting that interaction recalculates the value.
+The application details page is the operational home for a job opportunity. Status and outcome changes are appended to its timeline with an optional note. Calls, emails, messages, meetings, and notes appear in the same chronological history. Marking an interaction as an employer response derives the first-response time; correcting or deleting that interaction recalculates the value. Empty contact, task, and appointment sections start collapsed; sections with saved records start expanded but remain collapsible.
 
-Contacts are owner-scoped and may be linked only to their own application. Follow-up tasks can have a local due time and can be completed, reopened, or deleted. Interviews, calls, assessments, and other appointments preserve the user's configured timezone while storing their instants in UTC. The sidebar promotes the next open task or upcoming appointment so the user does not have to reconstruct the next step from several pages.
+Contacts are owner-scoped and may be linked only to their own application. Follow-up tasks can have a local due time and can be completed, reopened, or deleted. Interviews, calls, assessments, and other appointments preserve the user's configured timezone while storing their instants in UTC. The sidebar promotes the next open task or upcoming appointment so the user does not have to reconstruct the next step from several pages. A stored description appears between reviewed posting details and the original source; its popout separates recognised section headings, paragraphs, and lists without executing source HTML.
 
 ## Pasted-text extraction
 
 The extractor normalizes pasted text and reads explicit labels such as `Job Title`, `Company`, `Location`, `Employment Type`, `Salary`, `Job Reference`, and `Closing Date`. It also recognises corroborated stacked job-board headers, Australian location formats, standalone pay lines, multi-line metadata headings, common platform title phrases, posting bylines, and explicit applications-close or apply-by sentences. Salary suggestions pass field-specific plausibility checks, so ratings and review counts are ignored while annual ranges, `70k–80k`, hourly rates, and daily rates remain supported. Every detected field includes a high- or medium-confidence evidence note. Uncertain values remain blank rather than being guessed.
 
-Review drafts are private, owner-scoped, and expire after 24 hours. Cancelling removes the draft and creates no application. Confirming stores the original pasted text, the reviewed values, the initial Applied/Active history event, and any new company in one database operation. Extraction is deterministic and makes no external AI or network call.
+Review drafts are private, owner-scoped, and expire after 24 hours. Cancelling removes the draft and creates no application. Confirming stores the original pasted text, the editable job description, the reviewed values, the initial Applied/Active history event, and any new company in one database operation. Description extraction is intentionally broad while structured fields retain their conservative rules. Extraction is deterministic and makes no external AI or network call.
 
 ## Public-URL extraction
 
 URL import allows only public HTTP or HTTPS pages with default ports. It rejects credentials in URLs and blocks loopback, private, link-local, metadata, documentation, multicast, transition, and other non-public IPv4/IPv6 destinations. DNS answers are checked before every request and redirect and checked again when the production socket connects. Redirects are manual and limited; browser cookies, credentials, authorization, referrer, and proxy credentials are not forwarded. Responses must be HTML, complete within the configured timeout, and remain under the decompressed size limit.
 
-The HTML parser reads official Schema.org `JobPosting` JSON-LD first, including hiring organisation, title, location, employment type, base salary, identifier, application contact, work mode, and `validThrough`. Page metadata and visible text then feed the existing deterministic rules as fallbacks. If a page blocks automated access or cannot be imported safely, the form keeps the URL visible and offers pasted-text and manual-entry alternatives.
+The HTML parser reads official Schema.org `JobPosting` JSON-LD first, including hiring organisation, title, location, employment type, base salary, identifier, application contact, work mode, `validThrough`, and the job description. Page metadata and visible text then feed the existing deterministic rules as fallbacks. If a page blocks automated access or cannot be imported safely, the form keeps the URL visible and offers pasted-text and manual-entry alternatives.
 
 ## Browser extension capture
 
-The unpacked Manifest V3 extension in `browser-extension` is the easiest option for script-heavy or automation-blocking job boards. It reads Schema.org `JobPosting` data and rendered job fields from the active tab only after the user clicks **Capture and review**. It includes selected-job-panel support for SEEK and Indeed, including hourly pay such as `$35–$40 an hour`. It does not fetch the page again, execute page-owned scripts, contact an AI service, or save an application directly.
+The unpacked Manifest V3 extension in `browser-extension` is the easiest option for script-heavy or automation-blocking job boards. It reads Schema.org `JobPosting` data, the readable description, and rendered job fields from the active tab only after the user clicks **Capture and review**. It includes selected-job-panel support for SEEK and Indeed, including hourly pay such as `$35–$40 an hour`. It does not fetch the page again, execute page-owned scripts, contact an AI service, or save an application directly.
 
 Install it locally:
 

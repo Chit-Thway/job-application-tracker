@@ -35,6 +35,7 @@ public sealed record ApplicationDetails(
     ApplicationOutcome Outcome,
     string? SourceUrl,
     string? SourceText,
+    string? DescriptionText,
     string? ExtractionMetadataJson,
     string? Notes,
     bool IsSavedForever,
@@ -45,6 +46,7 @@ public sealed record ApplicationInput(
     string RoleTitle,
     DateOnly AppliedOn,
     string? SourceUrl,
+    string? DescriptionText,
     string? Notes,
     bool IsSavedForever);
 
@@ -161,6 +163,7 @@ public sealed class ApplicationTrackerService(
                 application.Outcome,
                 application.SourceUrl,
                 application.SourceText,
+                application.DescriptionText,
                 application.ExtractionMetadataJson,
                 application.Notes,
                 application.IsSavedForever,
@@ -195,6 +198,7 @@ public sealed class ApplicationTrackerService(
                 RoleTitle = input.RoleTitle.Trim(),
                 AppliedOn = input.AppliedOn,
                 SourceUrl = NullIfWhiteSpace(input.SourceUrl),
+                DescriptionText = NullIfWhiteSpace(input.DescriptionText),
                 Notes = NullIfWhiteSpace(input.Notes),
                 IsSavedForever = input.IsSavedForever,
             };
@@ -251,6 +255,7 @@ public sealed class ApplicationTrackerService(
         application.RoleTitle = input.RoleTitle.Trim();
         application.AppliedOn = input.AppliedOn;
         application.SourceUrl = NullIfWhiteSpace(input.SourceUrl);
+        application.DescriptionText = NullIfWhiteSpace(input.DescriptionText);
         application.Notes = NullIfWhiteSpace(input.Notes);
         application.IsSavedForever = input.IsSavedForever;
         if (application.IsSavedForever)

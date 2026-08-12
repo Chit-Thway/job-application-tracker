@@ -30,6 +30,7 @@ public sealed record ExtractionReviewInput(
     DateOnly? ClosingDate,
     string? ContactName,
     string? ContactEmail,
+    string? DescriptionText,
     string? Notes,
     bool IsSavedForever);
 
@@ -205,6 +206,7 @@ public sealed class ExtractionDraftService(
                 AppliedOn = input.AppliedOn,
                 SourceUrl = NullIfWhiteSpace(input.SourceUrl),
                 SourceText = draft.SourceText,
+                DescriptionText = NullIfWhiteSpace(input.DescriptionText),
                 ExtractionMetadataJson = JsonSerializer.Serialize(metadata, JsonOptions),
                 Notes = NullIfWhiteSpace(input.Notes),
                 IsSavedForever = input.IsSavedForever,

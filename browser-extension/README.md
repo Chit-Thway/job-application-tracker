@@ -1,6 +1,6 @@
 # Job Application Tracker browser extension
 
-This unpacked Chrome/Edge Manifest V3 extension captures the active job advertisement and opens an editable review draft in the local tracker.
+This unpacked Chrome/Edge Manifest V3 extension captures the active job advertisement, including its readable job description, and opens an editable review draft in the local tracker.
 
 ## Install for local development
 
@@ -33,4 +33,4 @@ If the tracker asks you to sign in, sign in, return to the job advertisement, an
 - The captured payload travels in a URL fragment, which is not sent in the initial HTTP request. The tracker removes the fragment before posting the payload through its authenticated, anti-forgery-protected form.
 - A capture creates only a review draft. It never saves an application automatically.
 
-The page reader supports official Schema.org `JobPosting` metadata, SEEK's rendered job fields, Indeed's selected job-detail panel, and conservative generic fallbacks. Pay remains reviewable text, so annual, hourly, daily, and weekly rates can be preserved as advertised.
+The page reader supports official Schema.org `JobPosting` metadata, SEEK's rendered job fields, Indeed's selected job-detail panel, and conservative generic fallbacks. Description headings, paragraphs, and list items are preserved as plain text for safe formatting by the tracker. Pay remains reviewable text, so annual, hourly, daily, and weekly rates can be preserved as advertised.

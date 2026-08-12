@@ -35,6 +35,12 @@
     </div>
 
     <div class="field form-span-2">
+        <label asp-for="DescriptionText"></label>
+        <textarea asp-for="DescriptionText" rows="12" placeholder="Paste the job description here. Section headings and paragraphs will be formatted when you view it."></textarea>
+        <span asp-validation-for="DescriptionText" class="field-error"></span>
+    </div>
+
+    <div class="field form-span-2">
         <label asp-for="Notes"></label>
         <textarea asp-for="Notes" rows="7" placeholder="Anything useful about the role, application, or next step."></textarea>
         <span asp-validation-for="Notes" class="field-error"></span>

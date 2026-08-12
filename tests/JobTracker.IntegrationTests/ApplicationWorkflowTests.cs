@@ -1,5 +1,6 @@
 using System.Net;
 using System.Text.RegularExpressions;
+using JobTracker.Web.Applications;
 using JobTracker.Web.Data;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -51,6 +52,7 @@ public sealed partial class ApplicationWorkflowTests
                 ("CompanyId", companyId.ToString()),
                 ("AppliedOn", "2026-08-04"),
                 ("SourceUrl", "https://example.test/jobs/platform"),
+                ("DescriptionText", "About the role\n\nBuild reliable synthetic platforms.\n\nWhat you will do\n\n- Write tests\n- Review changes"),
                 ("Notes", "Follow up next week"),
                 ("IsSavedForever", "false"),
                 ("__RequestVerificationToken", createToken)));
@@ -65,6 +67,10 @@ public sealed partial class ApplicationWorkflowTests
         Assert.Contains("Synthetic Platform Engineer", detailsContent, StringComparison.Ordinal);
         Assert.Contains("Synthetic Meridian Works", detailsContent, StringComparison.Ordinal);
         Assert.Contains("This application is not saved.", detailsContent, StringComparison.Ordinal);
+        Assert.Contains("Job description", detailsContent, StringComparison.Ordinal);
+        Assert.Contains("job-description-popover", detailsContent, StringComparison.Ordinal);
+        Assert.Contains("About the role", detailsContent, StringComparison.Ordinal);
+        Assert.Contains("<li>Write tests</li>", detailsContent, StringComparison.Ordinal);
 
         await using (var scope = factory.Services.CreateAsyncScope())
         {
@@ -176,6 +182,11 @@ public sealed partial class ApplicationWorkflowTests
     public async Task AuthenticatedUser_CanTrackStatusContactsInteractionsTasksAndAppointments()
     {
         var client = await CreateAuthenticatedClientAsync();
+        var localToday = DashboardCalendar.Create(
+            TimeProvider.System.GetUtcNow(),
+            "Australia/Perth").Today;
+        var appointmentStartsAt = localToday.AddDays(1).ToDateTime(new TimeOnly(9, 0));
+        var appointmentEndsAt = appointmentStartsAt.AddHours(1);
         var createPage = await client.GetAsync("/applications/new");
         var createToken = ExtractAntiforgeryToken(await createPage.Content.ReadAsStringAsync());
         var createResponse = await client.PostAsync(
@@ -198,6 +209,9 @@ public sealed partial class ApplicationWorkflowTests
         Assert.Contains("No next task recorded", detailsContent, StringComparison.Ordinal);
         Assert.Contains("Scheduled time", detailsContent, StringComparison.Ordinal);
         Assert.Contains("No appointment scheduled", detailsContent, StringComparison.Ordinal);
+        Assert.DoesNotContain("id=\"contacts\" open", detailsContent, StringComparison.Ordinal);
+        Assert.DoesNotContain("id=\"tasks\" open", detailsContent, StringComparison.Ordinal);
+        Assert.DoesNotContain("id=\"appointments\" open", detailsContent, StringComparison.Ordinal);
 
         var statusResponse = await client.PostAsync(
             $"/applications/{applicationId}/status",
@@ -253,8 +267,8 @@ public sealed partial class ApplicationWorkflowTests
             $"/applications/{applicationId}/appointments",
             Form(
                 ("Appointment.Type", AppointmentType.Interview.ToString()),
-                ("Appointment.StartsAtLocal", "2026-08-11T09:00"),
-                ("Appointment.EndsAtLocal", "2026-08-11T10:00"),
+                ("Appointment.StartsAtLocal", appointmentStartsAt.ToString("yyyy-MM-ddTHH:mm")),
+                ("Appointment.EndsAtLocal", appointmentEndsAt.ToString("yyyy-MM-ddTHH:mm")),
                 ("Appointment.LocationOrLink", "https://example.test/screening"),
                 ("Appointment.Notes", "Screening with Morgan."),
                 ("__RequestVerificationToken", token)));
@@ -272,7 +286,10 @@ public sealed partial class ApplicationWorkflowTests
         Assert.Contains("schedule-highlight-task", completedContent, StringComparison.Ordinal);
         Assert.Contains("Scheduled time", completedContent, StringComparison.Ordinal);
         Assert.Contains("schedule-highlight-appointment", completedContent, StringComparison.Ordinal);
-        Assert.Contains("11 Aug 2026, 9:00", completedContent, StringComparison.Ordinal);
+        Assert.Contains(appointmentStartsAt.ToString("d MMM yyyy, h:mm"), completedContent, StringComparison.Ordinal);
+        Assert.Contains("id=\"contacts\" open", completedContent, StringComparison.Ordinal);
+        Assert.Contains("id=\"tasks\" open", completedContent, StringComparison.Ordinal);
+        Assert.Contains("id=\"appointments\" open", completedContent, StringComparison.Ordinal);
 
         await using var verificationScope = factory.Services.CreateAsyncScope();
         var verificationDatabase = verificationScope.ServiceProvider

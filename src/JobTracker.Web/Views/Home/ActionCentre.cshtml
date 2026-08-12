@@ -1,0 +1,143 @@
+@model DashboardSnapshot
+@{
+    ViewData["Title"] = "Action Centre";
+    var overdueTasks = Model.OpenTasks.Where(item => item.IsOverdue).ToList();
+    var confirmGhosted = Model.GhostingAttention.Where(item => item.Kind == GhostingAttentionKind.ConfirmGhosted).ToList();
+    var followUpWarnings = Model.GhostingAttention.Where(item => item.Kind == GhostingAttentionKind.FollowUp).ToList();
+}
+
+<section class="workspace-hero action-centre-hero">
+    <div class="shell dashboard-heading">
+        <div>
+            <p class="eyebrow">Action Centre</p>
+            <h1>Know your<br />next move.</h1>
+            <p>Tasks, appointments, and ghosting checks in @Model.Window.TimeZoneId.</p>
+        </div>
+        <a class="button button-primary" asp-controller="Applications" asp-action="Create">+ Add application</a>
+    </div>
+</section>
+
+<section class="workspace-content action-centre-workspace">
+    <div class="shell">
+        <div class="action-centre-summary">
+            <article><span>Overdue tasks</span><strong>@overdueTasks.Count</strong></article>
+            <article><span>Follow-up warnings</span><strong>@followUpWarnings.Count</strong></article>
+            <article><span>Ghosted decisions</span><strong>@confirmGhosted.Count</strong></article>
+            <article><span>Upcoming appointments</span><strong>@Model.UpcomingAppointments.Count</strong></article>
+        </div>
+
+        <div class="action-centre-grid">
+            <div class="action-centre-main">
+                <article class="dashboard-panel action-centre-panel" id="urgent">
+                    <div class="dashboard-panel-heading">
+                        <div><p class="mini-label">Now</p><h2>Needs attention</h2></div>
+                        <span class="count-badge">@(overdueTasks.Count + confirmGhosted.Count)</span>
+                    </div>
+                    @if (overdueTasks.Count == 0 && confirmGhosted.Count == 0)
+                    {
+                        <div class="dashboard-empty"><strong>Nothing urgent right now.</strong><span>Overdue work and 30-day Ghosted decisions will appear here.</span></div>
+                    }
+                    else
+                    {
+                        <div class="action-item-list">
+                            @foreach (var item in confirmGhosted)
+                            {
+                                <article class="action-item action-item-warning">
+                                    <div class="action-item-copy">
+                                        <span class="action-tag">30-day decision</span>
+                                        <h3>@item.RoleTitle</h3>
+                                        <p>@(item.CompanyName ?? "No company") · Applied @item.AppliedOn.ToString("d MMM yyyy")</p>
+                                        <p>No meaningful employer response has been recorded after @item.DaysSinceApplied days. This will never be changed automatically.</p>
+                                    </div>
+                                    <div class="action-item-buttons">
+                                        <a class="button button-secondary button-small" asp-controller="Applications" asp-action="Details" asp-route-id="@item.ApplicationId">Review</a>
+                                        <form method="post" asp-action="ConfirmGhosted" asp-route-applicationId="@item.ApplicationId">
+                                            <button class="button button-primary button-small" type="submit">Confirm Ghosted</button>
+                                        </form>
+                                    </div>
+                                </article>
+                            }
+                            @foreach (var task in overdueTasks)
+                            {
+                                <article class="action-item">
+                                    <div class="action-item-copy">
+                                        <span class="action-tag is-overdue">Overdue</span>
+                                        <h3>@task.Title</h3>
+                                        <p>@task.RoleTitle@(task.CompanyName is null ? null : $" · {task.CompanyName}")</p>
+                                        <p>Due @ApplicationTime.Display(task.DueAt!.Value, Model.Window.TimeZoneId)</p>
+                                    </div>
+                                    <div class="action-item-buttons">
+                                        <a class="button button-secondary button-small" asp-controller="Applications" asp-action="Details" asp-route-id="@task.ApplicationId" asp-fragment="tasks">Open</a>
+                                        <form method="post" asp-action="CompleteTask" asp-route-applicationId="@task.ApplicationId" asp-route-taskId="@task.Id">
+                                            <button class="button button-primary button-small" type="submit">Complete</button>
+                                        </form>
+                                    </div>
+                                </article>
+                            }
+                        </div>
+                    }
+                </article>
+
+                <article class="dashboard-panel action-centre-panel" id="tasks">
+                    <div class="dashboard-panel-heading"><div><p class="mini-label">Follow-through</p><h2>Open tasks</h2></div><span class="count-badge">@Model.OpenTasks.Count</span></div>
+                    @if (Model.OpenTasks.Count == 0)
+                    {
+                        <div class="dashboard-empty"><strong>No open tasks.</strong><span>Add a follow-up from an application when one is needed.</span></div>
+                    }
+                    else
+                    {
+                        <div class="compact-action-list">
+                            @foreach (var task in Model.OpenTasks)
+                            {
+                                <article>
+                                    <span class="task-check" aria-hidden="true">✓</span>
+                                    <div><h3>@task.Title</h3><p>@task.RoleTitle@(task.CompanyName is null ? null : $" · {task.CompanyName}")</p><span class="@(task.IsOverdue ? "overdue-copy" : null)">@(task.DueAt is null ? "No due date" : $"{(task.IsOverdue ? "Overdue" : "Due")} {ApplicationTime.ToLocal(task.DueAt.Value, Model.Window.TimeZoneId):d MMM yyyy, h:mm tt}")</span></div>
+                                    <div class="compact-action-buttons"><a class="text-link" asp-controller="Applications" asp-action="Details" asp-route-id="@task.ApplicationId" asp-fragment="tasks">Open</a><form method="post" asp-action="CompleteTask" asp-route-applicationId="@task.ApplicationId" asp-route-taskId="@task.Id"><button class="link-button" type="submit">Complete</button></form></div>
+                                </article>
+                            }
+                        </div>
+                    }
+                </article>
+            </div>
+
+            <aside class="action-centre-side">
+                <article class="dashboard-panel action-centre-panel" id="follow-ups">
+                    <div class="dashboard-panel-heading"><div><p class="mini-label">14-day check</p><h2>Follow-up warnings</h2></div><span class="count-badge">@followUpWarnings.Count</span></div>
+                    @if (followUpWarnings.Count == 0)
+                    {
+                        <div class="dashboard-empty"><strong>No follow-up warnings.</strong><span>Applications appear after 14 days without a response.</span></div>
+                    }
+                    else
+                    {
+                        <ul class="follow-up-list">
+                            @foreach (var item in followUpWarnings)
+                            {
+                                <li><span class="attention-icon" aria-hidden="true">!</span><div><a asp-controller="Applications" asp-action="Details" asp-route-id="@item.ApplicationId">@item.RoleTitle</a><span>@(item.CompanyName ?? "No company")</span><small>@item.DaysSinceApplied days without a response</small></div></li>
+                            }
+                        </ul>
+                    }
+                </article>
+
+                <article class="dashboard-panel action-centre-panel" id="appointments">
+                    <div class="dashboard-panel-heading"><div><p class="mini-label">Scheduled</p><h2>Upcoming appointments</h2></div><span class="count-badge">@Model.UpcomingAppointments.Count</span></div>
+                    @if (Model.UpcomingAppointments.Count == 0)
+                    {
+                        <div class="dashboard-empty"><strong>Nothing scheduled.</strong><span>Future interviews, calls, and assessments appear here.</span></div>
+                    }
+                    else
+                    {
+                        <ul class="action-appointment-list">
+                            @foreach (var appointment in Model.UpcomingAppointments)
+                            {
+                                <li>
+                                    <div class="appointment-date"><strong>@ApplicationTime.ToLocal(appointment.StartsAt, appointment.TimeZoneId).ToString("dd")</strong><span>@ApplicationTime.ToLocal(appointment.StartsAt, appointment.TimeZoneId).ToString("MMM")</span></div>
+                                    <div><h3>@ApplicationDisplay.Appointment(appointment.Type)</h3><a asp-controller="Applications" asp-action="Details" asp-route-id="@appointment.ApplicationId" asp-fragment="appointments">@appointment.RoleTitle</a><span>@ApplicationTime.ToLocal(appointment.StartsAt, appointment.TimeZoneId).ToString("h:mm tt") – @ApplicationTime.ToLocal(appointment.EndsAt, appointment.TimeZoneId).ToString("h:mm tt")</span>@if (!string.IsNullOrWhiteSpace(appointment.LocationOrLink)) { <small>@appointment.LocationOrLink</small> }</div>
+                                </li>
+                            }
+                        </ul>
+                    }
+                </article>
+            </aside>
+        </div>
+    </div>
+</section>

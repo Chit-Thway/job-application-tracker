@@ -57,6 +57,10 @@ public sealed class ApplicationFormViewModel
     [Display(Name = "Job posting URL")]
     public string? SourceUrl { get; set; }
 
+    [StringLength(100_000)]
+    [Display(Name = "Job description")]
+    public string? DescriptionText { get; set; }
+
     [StringLength(10_000)]
     public string? Notes { get; set; }
 

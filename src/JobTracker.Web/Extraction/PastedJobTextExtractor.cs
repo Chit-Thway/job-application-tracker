@@ -16,6 +16,7 @@ public sealed record ExtractedJobFields(
     DateOnly? ClosingDate,
     string? ContactName,
     string? ContactEmail,
+    string? DescriptionText,
     DateOnly? AppliedOn);
 
 public sealed record PastedJobExtraction(
@@ -150,6 +151,7 @@ public sealed partial class PastedJobTextExtractor
                 closingDate,
                 Value(values, "ContactName"),
                 Value(values, "ContactEmail"),
+                JobDescriptionText.Extract(normalized),
                 appliedOn),
             evidence,
             warnings);

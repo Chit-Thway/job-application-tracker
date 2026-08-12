@@ -119,6 +119,10 @@ public sealed class ExtractionReviewViewModel
     [Display(Name = "Contact email")]
     public string? ContactEmail { get; set; }
 
+    [StringLength(100_000)]
+    [Display(Name = "Job description")]
+    public string? DescriptionText { get; set; }
+
     [StringLength(10_000)]
     public string? Notes { get; set; }
 

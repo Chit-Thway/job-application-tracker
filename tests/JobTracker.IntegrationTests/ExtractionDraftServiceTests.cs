@@ -114,6 +114,7 @@ public sealed class ExtractionDraftServiceTests
         new DateOnly(2026, 8, 30),
         "Morgan Example",
         "morgan@example.test",
+        "About the role\n\nTest a deterministic application workflow.",
         "Reviewed notes",
         false);
 

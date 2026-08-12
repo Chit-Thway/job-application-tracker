@@ -1,4 +1,3 @@
-using System.Text.Json;
 using JobTracker.Web.Extraction;
 
 namespace JobTracker.UnitTests;
@@ -57,7 +56,7 @@ public sealed class PastedJobTextExtractorTests
         Assert.Null(result.Fields.WorkplaceMode);
         Assert.Contains(result.Warnings, warning => warning.Contains("job-title", StringComparison.Ordinal));
         Assert.Contains(result.Warnings, warning => warning.Contains("company", StringComparison.Ordinal));
-        Assert.DoesNotContain("thoughtful team", JsonSerializer.Serialize(result.Fields), StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("thoughtful team", result.Fields.DescriptionText, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]

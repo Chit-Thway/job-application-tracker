@@ -108,13 +108,31 @@
 
       return null;
     };
+    const cleanMultiline = (value, maximum = 50000) => {
+      if (value === null || value === undefined) {
+        return null;
+      }
+
+      const text = String(value)
+        .replace(/\r\n?/g, "\n")
+        .replace(/[\t ]+/g, " ")
+        .replace(/ *\n */g, "\n")
+        .replace(/\n{3,}/g, "\n\n")
+        .trim();
+      return text ? text.slice(0, maximum) : null;
+    };
     const stripHtml = value => {
       if (!value) {
         return null;
       }
 
       const parsed = new DOMParser().parseFromString(String(value), "text/html");
-      return clean(parsed.body?.textContent, 50000);
+      const blocks = [...parsed.body.querySelectorAll("h1, h2, h3, h4, h5, h6, p, li")]
+        .map(element => clean(element.textContent, 5000))
+        .filter(Boolean);
+      return cleanMultiline(
+        blocks.length > 0 ? blocks.join("\n\n") : parsed.body?.textContent,
+        50000);
     };
     const findJobPosting = value => {
       if (!value || typeof value !== "object") {
@@ -269,7 +287,7 @@
     const renderedDescriptionElement = document.querySelector(
       '#jobDescriptionText, [data-automation="jobAdDetails"], [itemprop="description"], main article');
     const description = stripHtml(schemaPosting?.description)
-      ?? clean(
+      ?? cleanMultiline(
         renderedDescriptionElement?.innerText ?? renderedDescriptionElement?.textContent,
         50000);
 
@@ -304,6 +322,7 @@
       salaryText: salary,
       employmentType,
       closingDate,
+      descriptionText: description,
       sourceText: sourceParts.join("\n").slice(0, 60000),
     };
   }

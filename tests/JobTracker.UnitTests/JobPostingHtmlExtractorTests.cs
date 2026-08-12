@@ -58,6 +58,7 @@ public sealed class JobPostingHtmlExtractorTests
         Assert.Equal(new DateOnly(2026, 8, 16), result.Fields.ClosingDate);
         Assert.Equal("Graduate Recruitment", result.Fields.ContactName);
         Assert.Equal("graduates@example.test", result.Fields.ContactEmail);
+        Assert.Equal("Build a consulting career with a fictional team.", result.Fields.DescriptionText);
         Assert.Equal(requested.AbsoluteUri, result.Fields.SourceUrl);
         Assert.Equal("Synthetic Graduate Board", result.Fields.SourceSite);
         Assert.Contains("official JobPosting hiring organisation", result.Evidence["CompanyName"], StringComparison.Ordinal);
@@ -126,6 +127,7 @@ public sealed class JobPostingHtmlExtractorTests
         Assert.Equal("Technicalities Group Consulting", result.Fields.CompanyName);
         Assert.Equal("Heatherton, Melbourne VIC", result.Fields.CompanyLocation);
         Assert.Equal("Full time", result.Fields.EmploymentType);
+        Assert.Contains("successful IT Services company", result.Fields.DescriptionText, StringComparison.Ordinal);
         Assert.Equal("$70,000 – $80,000 per year & Super", result.Fields.SalaryText);
         Assert.Equal(requested.AbsoluteUri, result.Fields.SourceUrl);
         Assert.StartsWith("IT Helpdesk Support Technician Level 1/2", result.OriginalText);

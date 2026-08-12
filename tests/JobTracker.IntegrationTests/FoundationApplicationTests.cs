@@ -26,8 +26,8 @@ public sealed class FoundationApplicationTests : IClassFixture<JobTrackerWebAppl
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Contains(expectedText, content, StringComparison.Ordinal);
-        Assert.Contains("Milestone 6", content, StringComparison.Ordinal);
-        Assert.Contains("Complete tracking workflow", content, StringComparison.Ordinal);
+        Assert.Contains("Milestone 7", content, StringComparison.Ordinal);
+        Assert.Contains("Three-month dashboard and Action Centre", content, StringComparison.Ordinal);
     }
 
     [Theory]
@@ -97,6 +97,21 @@ public sealed class FoundationApplicationTests : IClassFixture<JobTrackerWebAppl
         Assert.Contains("javascript", scriptResponse.Content.Headers.ContentType?.MediaType, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("job-tracker-theme", scriptContent, StringComparison.Ordinal);
         Assert.Contains("localStorage", scriptContent, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task DashboardPipelineScript_ProvidesPointerAndKeyboardDetails()
+    {
+        var client = CreateClient();
+
+        var response = await client.GetAsync("/js/dashboard-pipeline.js");
+        var content = await response.Content.ReadAsStringAsync();
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Contains("javascript", response.Content.Headers.ContentType?.MediaType, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("pointerenter", content, StringComparison.Ordinal);
+        Assert.Contains("focus", content, StringComparison.Ordinal);
+        Assert.Contains("data-pipeline-tooltip", content, StringComparison.Ordinal);
     }
 
     [Fact]

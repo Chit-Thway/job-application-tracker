@@ -24,6 +24,7 @@ public sealed class JobApplication : OwnedEntity
     public ApplicationOutcome Outcome { get; set; } = ApplicationOutcome.Active;
     public string? SourceUrl { get; set; }
     public string? SourceText { get; set; }
+    public string? DescriptionText { get; set; }
     public string? ExtractionMetadataJson { get; set; }
     public string? Notes { get; set; }
     public bool IsSavedForever { get; set; }
