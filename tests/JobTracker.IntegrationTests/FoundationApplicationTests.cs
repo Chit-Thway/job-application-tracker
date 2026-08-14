@@ -115,6 +115,21 @@ public sealed class FoundationApplicationTests : IClassFixture<JobTrackerWebAppl
     }
 
     [Fact]
+    public async Task ApplicationIndexScript_AllowsCardSurfaceSelection()
+    {
+        var client = CreateClient();
+
+        var response = await client.GetAsync("/js/application-index.js");
+        var content = await response.Content.ReadAsStringAsync();
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Contains("javascript", response.Content.Headers.ContentType?.MediaType, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("card.addEventListener(\"click\"", content, StringComparison.Ordinal);
+        Assert.Contains("event.preventDefault()", content, StringComparison.Ordinal);
+        Assert.Contains("checkbox.checked = !checkbox.checked", content, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task Responses_IncludeBaselineSecurityHeaders()
     {
         var client = CreateClient();

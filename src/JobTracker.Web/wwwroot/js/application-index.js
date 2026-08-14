@@ -75,6 +75,27 @@
     };
 
     checkboxes.forEach(checkbox => checkbox.addEventListener("change", updateSelection));
+    cards.forEach(card => {
+        card.addEventListener("click", event => {
+            if (!results.classList.contains("is-selection-mode")) {
+                return;
+            }
+
+            const target = event.target instanceof Element ? event.target : null;
+            if (target?.closest(".application-select")) {
+                return;
+            }
+
+            const checkbox = card.querySelector('input[name="SelectedApplicationIds"]');
+            if (!checkbox) {
+                return;
+            }
+
+            event.preventDefault();
+            checkbox.checked = !checkbox.checked;
+            checkbox.dispatchEvent(new Event("change", { bubbles: true }));
+        });
+    });
     selectionToggle?.addEventListener("click", () => {
         setSelectionMode(!results.classList.contains("is-selection-mode"));
     });
