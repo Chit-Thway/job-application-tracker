@@ -10,7 +10,8 @@ namespace JobTracker.Web.Controllers;
 
 public class HomeController(
     DashboardService dashboard,
-    ApplicationWorkflowService workflow) : Controller
+    ApplicationWorkflowService workflow,
+    RetentionOperationsService retention) : Controller
 {
     [HttpGet("/")]
     public IActionResult Index()
@@ -98,7 +99,11 @@ public class HomeController(
 
     [HttpGet("/settings")]
     [Authorize]
-    public IActionResult Settings() => FoundationPage(nameof(Settings));
+    public async Task<IActionResult> Settings(CancellationToken cancellationToken)
+    {
+        SetPage("settings");
+        return View(await retention.GetSettingsAsync(cancellationToken));
+    }
 
     [HttpGet("/demo")]
     public IActionResult Demo() => FoundationPage(nameof(Demo));

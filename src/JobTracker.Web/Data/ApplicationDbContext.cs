@@ -14,6 +14,7 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
     public DbSet<Interaction> Interactions => Set<Interaction>();
     public DbSet<TaskItem> Tasks => Set<TaskItem>();
     public DbSet<Appointment> Appointments => Set<Appointment>();
+    public DbSet<RetentionRun> RetentionRuns => Set<RetentionRun>();
     public DbSet<Invitation> Invitations => Set<Invitation>();
 
     protected override void OnModelCreating(ModelBuilder builder)
@@ -70,6 +71,8 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
                 .HasPrincipalKey(company => new { company.Id, company.OwnerId })
                 .OnDelete(DeleteBehavior.Restrict);
             entity.HasIndex(application => new { application.OwnerId, application.AppliedOn });
+            entity.HasIndex(application => application.DeletionScheduledAt)
+                .HasFilter("\"IsSavedForever\" = FALSE");
         });
 
         builder.Entity<ExtractionDraft>(entity =>
@@ -131,6 +134,14 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
             entity.Property(appointment => appointment.TimeZoneId).HasMaxLength(100).IsRequired();
             entity.Property(appointment => appointment.LocationOrLink).HasMaxLength(2048);
             ConfigureApplicationRelationship(entity, appointment => new { appointment.JobApplicationId, appointment.OwnerId });
+        });
+
+        builder.Entity<RetentionRun>(entity =>
+        {
+            entity.HasKey(run => run.Id);
+            entity.Property(run => run.Id).ValueGeneratedOnAdd();
+            entity.Property(run => run.ErrorCode).HasMaxLength(10);
+            entity.HasIndex(run => run.CompletedAt);
         });
     }
 

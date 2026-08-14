@@ -97,6 +97,7 @@ builder.Services.AddScoped<OwnedApplicationService>();
 builder.Services.AddScoped<ApplicationTrackerService>();
 builder.Services.AddScoped<ApplicationWorkflowService>();
 builder.Services.AddScoped<DashboardService>();
+builder.Services.AddScoped<RetentionOperationsService>();
 builder.Services.AddScoped<CompanyTrackerService>();
 builder.Services.AddSingleton<PastedJobTextExtractor>();
 builder.Services.AddSingleton<JobPostingHtmlExtractor>();

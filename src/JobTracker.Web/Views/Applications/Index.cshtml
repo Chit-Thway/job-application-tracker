@@ -14,6 +14,8 @@
     </div>
 </section>
 
+<script src="~/js/application-index.js" asp-append-version="true" defer></script>
+
 <section class="workspace-content">
     <div class="shell">
         <form method="get" class="filter-panel" aria-label="Application filters">
@@ -61,6 +63,14 @@
                     </select>
                 </div>
                 <div class="field">
+                    <label for="retention-filter">Retention state</label>
+                    <select id="retention-filter" name="IsDeletionScheduled">
+                        <option value="">All retention states</option>
+                        <option value="true" selected="@(Model.Filters.IsDeletionScheduled == true)">Deletion scheduled</option>
+                        <option value="false" selected="@(Model.Filters.IsDeletionScheduled == false)">No deletion scheduled</option>
+                    </select>
+                </div>
+                <div class="field">
                     <label for="applied-from">Applied from</label>
                     <input id="applied-from" type="date" name="AppliedFrom" value="@Model.Filters.AppliedFrom?.ToString("yyyy-MM-dd")" />
                 </div>
@@ -85,9 +95,67 @@
             </div>
         </form>
 
-        <div class="result-heading">
+        <div class="result-heading application-result-toolbar">
             <p><strong>@Model.Applications.Count</strong> application@(Model.Applications.Count == 1 ? string.Empty : "s")</p>
+            @if (Model.Applications.Count > 0)
+            {
+                <div class="application-toolbar-actions">
+                    <div class="view-switch" role="group" aria-label="Application view">
+                        <button class="view-switch-button is-active" type="button" data-application-view="cards" aria-pressed="true" title="Card view">
+                            <span aria-hidden="true">&#9638;</span><span>Default</span>
+                        </button>
+                        <button class="view-switch-button" type="button" data-application-view="list" aria-pressed="false" title="List view">
+                            <span aria-hidden="true">&#9776;</span><span>List</span>
+                        </button>
+                    </div>
+                    <button class="button button-secondary button-small" type="button" data-selection-toggle aria-expanded="false">Select</button>
+                </div>
+            }
         </div>
+
+        @if (Model.Applications.Count > 0)
+        {
+            <form id="bulk-application-form" class="bulk-action-panel" method="post" hidden>
+                @Html.AntiForgeryToken()
+                <div class="bulk-selection-heading">
+                    <div><strong><span data-selected-count>0</span> selected</strong><span>Choose applications individually or use a preset.</span></div>
+                    <button class="link-button" type="button" data-selection-close>Cancel selection</button>
+                </div>
+                <div class="bulk-selection-presets" aria-label="Selection presets">
+                    <button type="button" data-select-preset="all">All shown</button>
+                    <button type="button" data-select-preset="saved">All saved</button>
+                    <button type="button" data-select-preset="unsaved">All unsaved</button>
+                    <button type="button" data-select-preset="scheduled">All deletion scheduled</button>
+                    <button type="button" data-select-preset="none">Clear</button>
+                </div>
+                <div class="bulk-action-grid">
+                    <div class="bulk-action-control">
+                        <label for="bulk-stage">Change status</label>
+                        <div>
+                            <select id="bulk-stage" name="Stage">
+                                <option value="">Choose a new stage</option>
+                                @foreach (var stage in Enum.GetValues<PipelineStage>())
+                                {
+                                    <option value="@stage">@ApplicationDisplay.Stage(stage)</option>
+                                }
+                            </select>
+                            <button class="button button-secondary button-small" type="submit" formaction="/applications/bulk/stage">Apply stage</button>
+                        </div>
+                    </div>
+                    <div class="bulk-action-control bulk-note-control">
+                        <label for="bulk-note">Add note to history</label>
+                        <div>
+                            <textarea id="bulk-note" name="Note" maxlength="2000" rows="2" placeholder="This note is appended to every selected application."></textarea>
+                            <button class="button button-secondary button-small" type="submit" formaction="/applications/bulk/note">Add note</button>
+                        </div>
+                    </div>
+                    <div class="bulk-delete-control">
+                        <span>Permanent action</span>
+                        <button class="button button-danger button-small" type="submit" formaction="/applications/bulk/delete">Review deletion</button>
+                    </div>
+                </div>
+            </form>
+        }
 
         @if (Model.Applications.Count == 0)
         {
@@ -100,23 +168,32 @@
         }
         else
         {
-            <div class="record-grid">
+            <div class="record-grid application-results" data-application-results>
                 @foreach (var application in Model.Applications)
                 {
-                    <article class="record-card">
+                    <article class="record-card application-record" data-saved="@application.IsSavedForever.ToString().ToLowerInvariant()" data-deletion-scheduled="@((application.DeletionScheduledAt is not null).ToString().ToLowerInvariant())">
+                        <label class="application-select" title="Select @application.RoleTitle">
+                            <input type="checkbox" name="SelectedApplicationIds" value="@application.Id" form="bulk-application-form" />
+                            <span aria-hidden="true"></span>
+                            <span class="visually-hidden">Select @application.RoleTitle</span>
+                        </label>
                         <div class="record-card-top">
                             <div>
                                 <p class="record-company">@(application.CompanyName ?? "No company selected")</p>
                                 <h2><a asp-action="Details" asp-route-id="@application.Id">@application.RoleTitle</a></h2>
                             </div>
-                            <span class="state-badge @(application.IsSavedForever ? "state-saved" : "state-recent")">
-                                @(application.IsSavedForever ? "Saved" : "Not saved")
+                            <span class="state-badge @(application.IsSavedForever ? "state-saved" : application.DeletionScheduledAt is not null ? "state-deletion-scheduled" : "state-recent")">
+                                @(application.IsSavedForever ? "Saved" : application.DeletionScheduledAt is not null ? "Deletion scheduled" : "Not saved")
                             </span>
                         </div>
                         <dl class="record-meta">
                             <div><dt>Applied</dt><dd>@application.AppliedOn.ToString("d MMM yyyy")</dd></div>
                             <div><dt>Stage</dt><dd>@ApplicationDisplay.Stage(application.Stage)</dd></div>
                             <div><dt>Outcome</dt><dd>@ApplicationDisplay.Outcome(application.Outcome)</dd></div>
+                            @if (application.DeletionScheduledAt is not null)
+                            {
+                                <div class="record-retention"><dt>Automatic deletion</dt><dd>@ApplicationTime.Display(application.DeletionScheduledAt.Value, Model.TimeZoneId)</dd></div>
+                            }
                         </dl>
                         <div class="record-actions">
                             <a class="text-link" asp-action="Details" asp-route-id="@application.Id">View details</a>

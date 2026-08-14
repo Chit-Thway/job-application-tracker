@@ -4,9 +4,9 @@ A private ASP.NET Core job-search organizer for tracking applications, follow-up
 
 ## Current status
 
-Milestone 7 adds the working three-calendar-month dashboard and Action Centre. A verified user can see application, response, interview, stage, and outcome summaries for the current month and prior two months in their own timezone, while an accessible proportional donut makes the live pipeline distribution clear by color, legend, hover, and keyboard focus. Overdue tasks, upcoming appointments, recent activity, and ghosting checks stay visible as direct actions. Application details now keep empty workflow sections compact, emphasize the company and role together, and present a stored job description in a readable popout.
+Milestone 8 adds transparent retention review and traffic-independent database cleanup. Eligible unsaved records receive a professional **Deletion scheduled** state with an exact 14-day deadline and a direct Save escape route across the library, details, dashboard, Action Centre, and Settings. The application library also supports remembered card/list views plus an explicit, owner-scoped selection mode for confirmed bulk deletion, pipeline-stage changes, and append-only notes.
 
-Ghosting remains a deliberate user decision: the tracker suggests a follow-up after 14 days without a meaningful employer response and offers confirmation after 30 days, but never changes the outcome automatically. Status history, contacts and interactions, tasks, appointments, manual entry, deterministic extraction, safe public-URL import, and the explicit-click browser extension remain available throughout the workflow. Retention automation and the public demo remain scoped to later milestones.
+Ghosting remains a deliberate user decision: the tracker suggests a follow-up after 14 days without a meaningful employer response and offers confirmation after 30 days, but never changes the outcome automatically. Status history, contacts and interactions, tasks, appointments, manual entry, deterministic extraction, safe public-URL import, and the explicit-click browser extension remain available throughout the workflow. The public synthetic demo remains scoped to a later milestone.
 
 ## Technology
 
@@ -60,7 +60,7 @@ Then open [https://localhost:7239](https://localhost:7239).
 | `/account/resend-verification` | Email-verification resend |
 | `/dev/mail` | Local-only verification/reset message sink |
 | `/dashboard` | Authenticated current-and-prior-two-calendar-month dashboard |
-| `/applications` | Searchable, filterable private application library |
+| `/applications` | Searchable, filterable card/list library with explicit bulk-selection actions |
 | `/applications/new` | Manual application entry |
 | `/applications/import/url` | Safely import a public HTML job page into a review draft |
 | `/applications/import/text` | Paste a job description for deterministic extraction |
@@ -69,8 +69,8 @@ Then open [https://localhost:7239](https://localhost:7239).
 | `/applications/{id}` | Complete private workflow: status history, collapsible contacts/tasks/appointments, readable job description, posting context, and saved state |
 | `/companies` | Searchable private company directory |
 | `/companies/new` | Manual company entry |
-| `/actions` | Overdue tasks, follow-up warnings, Ghosted decisions, and upcoming appointments |
-| `/settings` | Authenticated settings placeholder |
+| `/actions` | Overdue tasks, follow-up warnings, Ghosted decisions, scheduled-deletion warnings, and upcoming appointments |
+| `/settings` | Authenticated retention policy, owner-scoped counts, and scheduler health |
 | `/demo` | Public synthetic demo placeholder |
 | `/health` | Minimal plain-text health response |
 
@@ -82,7 +82,9 @@ For manual entry, create companies separately and select one while adding or edi
 
 New applications begin at the `Applied` pipeline stage with an `Active` outcome and receive an initial append-only history event. Every later stage or outcome change adds another timestamped event instead of replacing the historical trail.
 
-New applications default to not saved. **Saved** applications are exempt from future automatic retention deletion, and the setting can be changed from the application list, details page, or edit form. Milestone 8 will add the visible Chopping Block grace period and scheduled cleanup; changing the setting in Milestone 3 never immediately deletes anything.
+New applications default to not saved. **Saved** applications are exempt from future automatic retention deletion, and the setting can be changed from the application list, details page, or edit form. Milestone 8 adds a visible **Deletion scheduled** grace period and automated cleanup; changing the setting never immediately deletes anything.
+
+The application library defaults to the familiar two-column card view and remembers an optional compact list view in local browser storage. Selection mode supports manual selection or all-shown, saved, unsaved, and deletion-scheduled presets. Bulk stage changes append status history, bulk notes append a dated history entry without overwriting existing notes, and bulk deletion always opens a separate permanent-action review page.
 
 ## Complete tracking workflow
 
@@ -128,6 +130,14 @@ dotnet ef database update --project src/JobTracker.Web
 ```
 
 The migrations create ASP.NET Core Identity tables, owner-aware private data tables, and one-time invitations. Composite foreign keys include the owner identifier to reject cross-owner relationships at the database boundary.
+
+## Automatic retention cleanup
+
+Unsaved applications become eligible on the three-calendar-month anniversary of their application date in the owner's configured timezone. The first retention run after eligibility assigns an exact deletion time 14 full days later. Saving at any point cancels that time immediately; unsaving an already-old application starts a fresh 14-day grace period.
+
+Milestone 8 places cleanup in the database so it does not depend on website traffic. After applying the migration, open the Supabase SQL editor and run `database/supabase/configure-retention-cron.sql` once. It enables Supabase Cron and schedules the atomic cleanup function hourly at minute 17. Use `database/supabase/verify-retention-cron.sql` to inspect the job and its privacy-safe operational history. Retention runs store timestamps, counts, success state, and a short database error code only; they never retain deleted role titles, company names, notes, or source text.
+
+The application list, application details, dashboard, and Action Centre show every application with **Deletion scheduled**, its exact deletion time, and a Save action. The database function re-checks both the saved state and due time inside the deletion transaction before cascading dependent records.
 
 ## Controlled local account setup
 

@@ -94,7 +94,8 @@ public sealed class CompanyTrackerService(
                 application.AppliedOn,
                 application.Stage,
                 application.Outcome,
-                application.IsSavedForever))
+                application.IsSavedForever,
+                application.DeletionScheduledAt))
             .ToListAsync(cancellationToken);
 
         return new CompanyDetails(

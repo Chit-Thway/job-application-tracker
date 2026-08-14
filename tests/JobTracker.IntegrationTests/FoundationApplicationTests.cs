@@ -26,8 +26,8 @@ public sealed class FoundationApplicationTests : IClassFixture<JobTrackerWebAppl
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Contains(expectedText, content, StringComparison.Ordinal);
-        Assert.Contains("Milestone 7", content, StringComparison.Ordinal);
-        Assert.Contains("Three-month dashboard and Action Centre", content, StringComparison.Ordinal);
+        Assert.Contains("Milestone 8", content, StringComparison.Ordinal);
+        Assert.Contains("Retention review and scheduled cleanup", content, StringComparison.Ordinal);
     }
 
     [Theory]
@@ -112,6 +112,21 @@ public sealed class FoundationApplicationTests : IClassFixture<JobTrackerWebAppl
         Assert.Contains("pointerenter", content, StringComparison.Ordinal);
         Assert.Contains("focus", content, StringComparison.Ordinal);
         Assert.Contains("data-pipeline-tooltip", content, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task ApplicationIndexScript_AllowsCardSurfaceSelection()
+    {
+        var client = CreateClient();
+
+        var response = await client.GetAsync("/js/application-index.js");
+        var content = await response.Content.ReadAsStringAsync();
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Contains("javascript", response.Content.Headers.ContentType?.MediaType, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("card.addEventListener(\"click\"", content, StringComparison.Ordinal);
+        Assert.Contains("event.preventDefault()", content, StringComparison.Ordinal);
+        Assert.Contains("checkbox.checked = !checkbox.checked", content, StringComparison.Ordinal);
     }
 
     [Fact]

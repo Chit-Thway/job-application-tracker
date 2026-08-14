@@ -64,8 +64,8 @@
             </article>
             <article class="dashboard-metric-card attention-metric">
                 <span>Needs attention</span>
-                <strong>@(overdueCount + Model.GhostingAttention.Count)</strong>
-                <small>Overdue tasks and ghosting checks</small>
+                <strong>@(overdueCount + Model.GhostingAttention.Count + Model.DeletionScheduled.Count)</strong>
+                <small>Tasks, ghosting checks, and deletion warnings</small>
             </article>
         </div>
 
@@ -225,13 +225,23 @@
                         <div><p class="mini-label">Attention</p><h2>What needs you next</h2></div>
                         <a class="text-link" asp-action="ActionCentre">Open Action Centre</a>
                     </div>
-                    @if (Model.GhostingAttention.Count == 0 && Model.OpenTasks.Count == 0)
+                    @if (Model.GhostingAttention.Count == 0 && Model.OpenTasks.Count == 0 && Model.DeletionScheduled.Count == 0)
                     {
                         <div class="dashboard-empty"><strong>Nothing urgent.</strong><span>Your next follow-ups will appear here.</span></div>
                     }
                     else
                     {
                         <ul class="dashboard-action-list">
+                            @foreach (var item in Model.DeletionScheduled.Take(3))
+                            {
+                                <li class="attention-row deletion-attention-row">
+                                    <span class="attention-icon" aria-hidden="true">!</span>
+                                    <div>
+                                        <strong>@item.RoleTitle</strong>
+                                        <span>Deletion scheduled after @ApplicationTime.Display(item.DeletionScheduledAt, Model.Window.TimeZoneId)</span>
+                                    </div>
+                                </li>
+                            }
                             @foreach (var item in Model.GhostingAttention.Take(3))
                             {
                                 <li class="attention-row">

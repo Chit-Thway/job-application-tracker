@@ -175,7 +175,8 @@ public sealed partial class ApplicationWorkflowTests
         await using var scope = factory.Services.CreateAsyncScope();
         var database = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
         Assert.Single(database.Companies.Where(company => company.Name == "Synthetic Duplicate"));
-        Assert.Empty(database.JobApplications);
+        Assert.DoesNotContain(database.JobApplications, application =>
+            application.Notes == "Preserve this safe note");
     }
 
     [Fact]

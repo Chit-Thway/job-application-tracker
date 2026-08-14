@@ -30,6 +30,7 @@ public sealed class ApplicationsController(
                 filters.Stage,
                 filters.Outcome,
                 filters.IsSavedForever,
+                filters.IsDeletionScheduled,
                 filters.AppliedFrom,
                 filters.AppliedTo,
                 filters.Sort),
@@ -37,7 +38,8 @@ public sealed class ApplicationsController(
         return View(new ApplicationIndexViewModel(
             filters,
             items,
-            await companies.ListOptionsAsync(cancellationToken)));
+            await companies.ListOptionsAsync(cancellationToken),
+            await applications.GetCurrentTimeZoneIdAsync(cancellationToken)));
     }
 
     [HttpGet("/applications/new")]
@@ -486,11 +488,115 @@ public sealed class ApplicationsController(
         }
 
         TempData["Success"] = isSavedForever
-            ? "Application saved."
-            : "Application is no longer saved.";
-        return string.Equals(returnTo, "index", StringComparison.Ordinal)
-            ? RedirectToAction(nameof(Index))
-            : RedirectToAction(nameof(Details), new { id });
+            ? "Application saved. Any pending automatic deletion was cancelled."
+            : "Application is no longer saved. If it is already old enough, a fresh 14-day grace period has started.";
+        return returnTo switch
+        {
+            "index" => RedirectToAction(nameof(Index)),
+            "dashboard" => RedirectToAction("Dashboard", "Home"),
+            "actions" => RedirectToAction("ActionCentre", "Home"),
+            _ => RedirectToAction(nameof(Details), new { id }),
+        };
+    }
+
+    [HttpPost("/applications/bulk/delete")]
+    public async Task<IActionResult> ReviewBulkDelete(
+        BulkApplicationActionViewModel model,
+        CancellationToken cancellationToken)
+    {
+        SetSection();
+        if (!NormalizeSelection(model))
+        {
+            return RedirectToAction(nameof(Index));
+        }
+
+        var selected = await applications.FindSelectedAsync(
+            model.SelectedApplicationIds,
+            cancellationToken);
+        if (selected.Count == 0)
+        {
+            TempData["Error"] = "None of the selected applications could be found.";
+            return RedirectToAction(nameof(Index));
+        }
+
+        return View("BulkDelete", new BulkApplicationDeleteViewModel(selected));
+    }
+
+    [HttpPost("/applications/bulk/delete/confirm")]
+    public async Task<IActionResult> ConfirmBulkDelete(
+        BulkApplicationActionViewModel model,
+        CancellationToken cancellationToken)
+    {
+        SetSection();
+        if (!NormalizeSelection(model))
+        {
+            return RedirectToAction(nameof(Index));
+        }
+
+        var result = await applications.BulkDeleteAsync(
+            model.SelectedApplicationIds,
+            cancellationToken);
+        TempData[result.ChangedCount == 0 ? "Error" : "Success"] = result.ChangedCount == 0
+            ? "None of the selected applications could be deleted."
+            : $"Deleted {result.ChangedCount} selected application{(result.ChangedCount == 1 ? string.Empty : "s")} and their linked records.";
+        return RedirectToAction(nameof(Index));
+    }
+
+    [HttpPost("/applications/bulk/stage")]
+    public async Task<IActionResult> BulkChangeStage(
+        BulkApplicationActionViewModel model,
+        CancellationToken cancellationToken)
+    {
+        SetSection();
+        if (!NormalizeSelection(model))
+        {
+            return RedirectToAction(nameof(Index));
+        }
+
+        if (model.Stage is null || !Enum.IsDefined(model.Stage.Value))
+        {
+            TempData["Error"] = "Choose a valid pipeline stage for the selected applications.";
+            return RedirectToAction(nameof(Index));
+        }
+
+        var result = await applications.BulkChangeStageAsync(
+            model.SelectedApplicationIds,
+            model.Stage.Value,
+            cancellationToken);
+        TempData[result.MatchedCount == 0 ? "Error" : "Success"] = result.MatchedCount == 0
+            ? "None of the selected applications could be found."
+            : result.ChangedCount == 0
+                ? "The selected applications were already at that pipeline stage."
+                : $"Changed the pipeline stage for {result.ChangedCount} application{(result.ChangedCount == 1 ? string.Empty : "s")}.";
+        return RedirectToAction(nameof(Index));
+    }
+
+    [HttpPost("/applications/bulk/note")]
+    public async Task<IActionResult> BulkAddNote(
+        BulkApplicationActionViewModel model,
+        CancellationToken cancellationToken)
+    {
+        SetSection();
+        if (!NormalizeSelection(model))
+        {
+            return RedirectToAction(nameof(Index));
+        }
+
+        var note = model.Note?.Trim();
+        if (string.IsNullOrWhiteSpace(note) || note.Length > 2_000)
+        {
+            TempData["Error"] = "Enter a note between 1 and 2,000 characters.";
+            return RedirectToAction(nameof(Index));
+        }
+
+        var result = await applications.BulkAddNoteAsync(
+            model.SelectedApplicationIds,
+            note,
+            cancellationToken);
+        TempData[result.ChangedCount == 0 ? "Error" : "Success"] = result.ChangedCount == 0
+            ? "None of the selected applications could be found."
+            : $"Added the note to {result.ChangedCount} application histor{(result.ChangedCount == 1 ? "y" : "ies")}.";
+        return RedirectToAction(nameof(Index));
     }
 
     [HttpGet("/applications/{id:guid}/delete")]
@@ -586,6 +692,27 @@ public sealed class ApplicationsController(
         model.DescriptionText,
         model.Notes,
         model.IsSavedForever);
+
+    private bool NormalizeSelection(BulkApplicationActionViewModel model)
+    {
+        model.SelectedApplicationIds = model.SelectedApplicationIds
+            .Where(id => id != Guid.Empty)
+            .Distinct()
+            .ToList();
+        if (model.SelectedApplicationIds.Count == 0)
+        {
+            TempData["Error"] = "Select at least one application first.";
+            return false;
+        }
+
+        if (model.SelectedApplicationIds.Count > 200)
+        {
+            TempData["Error"] = "Select no more than 200 applications at a time.";
+            return false;
+        }
+
+        return true;
+    }
 
     private void SetSection(string section = "applications") => ViewData["Section"] = section;
 }
