@@ -24,6 +24,7 @@
             <article><span>Follow-up warnings</span><strong>@followUpWarnings.Count</strong></article>
             <article><span>Ghosted decisions</span><strong>@confirmGhosted.Count</strong></article>
             <article><span>Upcoming appointments</span><strong>@Model.UpcomingAppointments.Count</strong></article>
+            <article><span>Deletion scheduled</span><strong>@Model.DeletionScheduled.Count</strong></article>
         </div>
 
         <div class="action-centre-grid">
@@ -31,15 +32,34 @@
                 <article class="dashboard-panel action-centre-panel" id="urgent">
                     <div class="dashboard-panel-heading">
                         <div><p class="mini-label">Now</p><h2>Needs attention</h2></div>
-                        <span class="count-badge">@(overdueTasks.Count + confirmGhosted.Count)</span>
+                        <span class="count-badge">@(overdueTasks.Count + confirmGhosted.Count + Model.DeletionScheduled.Count)</span>
                     </div>
-                    @if (overdueTasks.Count == 0 && confirmGhosted.Count == 0)
+                    @if (overdueTasks.Count == 0 && confirmGhosted.Count == 0 && Model.DeletionScheduled.Count == 0)
                     {
-                        <div class="dashboard-empty"><strong>Nothing urgent right now.</strong><span>Overdue work and 30-day Ghosted decisions will appear here.</span></div>
+                        <div class="dashboard-empty"><strong>Nothing urgent right now.</strong><span>Overdue work, deletion warnings, and 30-day Ghosted decisions will appear here.</span></div>
                     }
                     else
                     {
                         <div class="action-item-list">
+                            @foreach (var item in Model.DeletionScheduled)
+                            {
+                                <article class="action-item action-item-deletion-scheduled">
+                                    <div class="action-item-copy">
+                                        <span class="action-tag is-deletion-scheduled">Deletion scheduled</span>
+                                        <h3>@item.RoleTitle</h3>
+                                        <p>@(item.CompanyName ?? "No company") &middot; Applied @item.AppliedOn.ToString("d MMM yyyy")</p>
+                                        <p>Automatic deletion is scheduled after <strong>@ApplicationTime.Display(item.DeletionScheduledAt, Model.Window.TimeZoneId)</strong>.</p>
+                                    </div>
+                                    <div class="action-item-buttons">
+                                        <a class="button button-secondary button-small" asp-controller="Applications" asp-action="Details" asp-route-id="@item.ApplicationId">Review</a>
+                                        <form method="post" asp-controller="Applications" asp-action="SetSavedForever" asp-route-id="@item.ApplicationId">
+                                            <input type="hidden" name="isSavedForever" value="true" />
+                                            <input type="hidden" name="returnTo" value="actions" />
+                                            <button class="button button-primary button-small" type="submit">Save and keep</button>
+                                        </form>
+                                    </div>
+                                </article>
+                            }
                             @foreach (var item in confirmGhosted)
                             {
                                 <article class="action-item action-item-warning">

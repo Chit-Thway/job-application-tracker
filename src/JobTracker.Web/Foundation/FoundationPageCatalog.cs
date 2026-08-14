@@ -17,7 +17,7 @@ public static class FoundationPageCatalog
             [
                 "Current and previous two calendar months",
                 "Recent activity and pipeline overview",
-                "Follow-ups, appointments, and Chopping Block warnings",
+                "Follow-ups, appointments, and scheduled-deletion warnings",
             ]),
         new(
             Action: "ActionCentre",

@@ -8,6 +8,12 @@
     var nextTask = openTasks.FirstOrDefault();
     var nextAppointment = workflow.Appointments.FirstOrDefault(item => item.EndsAt >= workflow.CurrentTime);
     var descriptionBlocks = JobDescriptionDisplay.Format(application.DescriptionText);
+    var retention = RetentionPolicy.Assess(
+        application.AppliedOn,
+        application.IsSavedForever,
+        application.DeletionScheduledAt,
+        workflow.CurrentTime,
+        workflow.TimeZoneId);
     var timeline = new List<(DateTimeOffset At, string Kind, string Title, string? Details, WorkflowInteractionItem? Interaction)>();
 
     foreach (var status in workflow.StatusHistory)
@@ -26,7 +32,12 @@
                 : $"Outcome changed from {ApplicationDisplay.Outcome(status.PreviousOutcome.Value)} to {ApplicationDisplay.Outcome(status.NewOutcome.Value)}");
         }
 
-        timeline.Add((status.EffectiveAt, "Status", string.Join(". ", changes), status.Note, null));
+        timeline.Add((
+            status.EffectiveAt,
+            changes.Count == 0 ? "Note" : "Status",
+            changes.Count == 0 ? "Note added" : string.Join(". ", changes),
+            status.Note,
+            null));
     }
 
     foreach (var interaction in workflow.Interactions)
@@ -64,8 +75,8 @@
                         <p class="mini-label">Current state</p>
                         <h2>@ApplicationDisplay.Stage(application.Stage) &middot; @ApplicationDisplay.Outcome(application.Outcome)</h2>
                     </div>
-                    <span class="state-badge @(application.IsSavedForever ? "state-saved" : "state-recent")">
-                        @(application.IsSavedForever ? "Saved" : "Not saved")
+                    <span class="state-badge @(retention.State == ApplicationRetentionState.Saved ? "state-saved" : retention.State == ApplicationRetentionState.DeletionScheduled ? "state-deletion-scheduled" : "state-recent")">
+                        @(retention.State == ApplicationRetentionState.Saved ? "Saved" : retention.State == ApplicationRetentionState.DeletionScheduled ? "Deletion scheduled" : "Not saved")
                     </span>
                 </div>
                 <dl class="detail-list compact-detail-list">
@@ -567,21 +578,40 @@
                 }
             </article>
 
-            <article class="retention-card">
-                <p class="mini-label">Retention choice</p>
-                <h2>@(application.IsSavedForever ? "This application is saved." : "This application is not saved.")</h2>
-                <p>
-                    @(application.IsSavedForever
-                        ? "It is exempt from automatic retention deletion."
-                        : "It may become eligible for the Chopping Block after three months. Automatic cleanup arrives in Milestone 8.")
-                </p>
+            <article class="retention-card @(retention.IsDeletionScheduled ? "deletion-scheduled-card" : null)">
+                <p class="mini-label">@(retention.IsDeletionScheduled ? "Retention notice" : "Retention choice")</p>
+                @if (retention.State == ApplicationRetentionState.Saved)
+                {
+                    <h2>This application is saved.</h2>
+                    <p>It is exempt from automatic retention deletion.</p>
+                    <p class="retention-note">If you unsave it after @retention.EligibleOn.ToString("d MMMM yyyy"), a new 14-day grace period starts.</p>
+                }
+                else if (retention.State == ApplicationRetentionState.DeletionScheduled)
+                {
+                    <h2>Scheduled for automatic deletion.</h2>
+                    <div class="retention-deadline">
+                        <span>Deletes after</span>
+                        <strong>@ApplicationTime.Display(retention.DeletionScheduledAt!.Value, workflow.TimeZoneId)</strong>
+                    </div>
+                    <p>Save this application before that time to cancel its scheduled deletion.</p>
+                }
+                else if (retention.State == ApplicationRetentionState.Eligible)
+                {
+                    <h2>Eligible for retention processing.</h2>
+                    <p>The database retention job will assign the full 14-day grace period on its next run. It will not be deleted immediately.</p>
+                }
+                else
+                {
+                    <h2>This application is not saved.</h2>
+                    <p>It becomes eligible for a 14-day scheduled-deletion grace period on @retention.EligibleOn.ToString("d MMMM yyyy").</p>
+                }
                 <form method="post" asp-action="SetSavedForever" asp-route-id="@application.Id">
                     <input type="hidden" name="isSavedForever" value="@(!application.IsSavedForever ? "true" : "false")" />
                     <button class="button @(application.IsSavedForever ? "button-secondary" : "button-primary")" type="submit">
                         @(application.IsSavedForever ? "Unsave" : "Save")
                     </button>
                 </form>
-                <p class="retention-note">Changing this setting never deletes the application immediately.</p>
+                <p class="retention-note">Saving cancels a pending deletion immediately. Unsaving never deletes the application immediately.</p>
             </article>
         </aside>
     </div>

@@ -12,6 +12,7 @@ public sealed record ApplicationSearch(
     PipelineStage? Stage,
     ApplicationOutcome? Outcome,
     bool? IsSavedForever,
+    bool? IsDeletionScheduled,
     DateOnly? AppliedFrom,
     DateOnly? AppliedTo,
     string Sort);
@@ -23,7 +24,8 @@ public sealed record ApplicationListItem(
     DateOnly AppliedOn,
     PipelineStage Stage,
     ApplicationOutcome Outcome,
-    bool IsSavedForever);
+    bool IsSavedForever,
+    DateTimeOffset? DeletionScheduledAt);
 
 public sealed record ApplicationDetails(
     Guid Id,
@@ -56,6 +58,14 @@ public enum ApplicationWriteResult
     NotFound,
     InvalidCompany,
 }
+
+public sealed record BulkApplicationResult(int MatchedCount, int ChangedCount);
+
+public sealed record BulkApplicationDeleteItem(
+    Guid Id,
+    string RoleTitle,
+    string? CompanyName,
+    DateOnly AppliedOn);
 
 public sealed class ApplicationTrackerService(
     ApplicationDbContext database,
@@ -103,6 +113,17 @@ public sealed class ApplicationTrackerService(
                 application.IsSavedForever == search.IsSavedForever);
         }
 
+        if (search.IsDeletionScheduled is not null)
+        {
+            query = search.IsDeletionScheduled.Value
+                ? query.Where(application =>
+                    !application.IsSavedForever
+                    && application.DeletionScheduledAt != null)
+                : query.Where(application =>
+                    application.IsSavedForever
+                    || application.DeletionScheduledAt == null);
+        }
+
         if (search.AppliedFrom is not null)
         {
             query = query.Where(application => application.AppliedOn >= search.AppliedFrom);
@@ -138,9 +159,14 @@ public sealed class ApplicationTrackerService(
                 application.AppliedOn,
                 application.Stage,
                 application.Outcome,
-                application.IsSavedForever))
+                application.IsSavedForever,
+                application.DeletionScheduledAt))
             .ToListAsync(cancellationToken);
     }
+
+    public async Task<string> GetCurrentTimeZoneIdAsync(
+        CancellationToken cancellationToken = default) =>
+        await GetTimeZoneIdAsync(RequireOwnerId(), cancellationToken);
 
     public async Task<ApplicationDetails?> FindAsync(
         Guid id,
@@ -181,6 +207,9 @@ public sealed class ApplicationTrackerService(
             return (ApplicationWriteResult.InvalidCompany, null);
         }
 
+        var now = timeProvider.GetUtcNow();
+        var timeZoneId = await GetTimeZoneIdAsync(ownerId, cancellationToken);
+
         IDbContextTransaction? transaction = null;
         try
         {
@@ -201,6 +230,12 @@ public sealed class ApplicationTrackerService(
                 DescriptionText = NullIfWhiteSpace(input.DescriptionText),
                 Notes = NullIfWhiteSpace(input.Notes),
                 IsSavedForever = input.IsSavedForever,
+                DeletionScheduledAt = RetentionPolicy.ReconcileSchedule(
+                    input.AppliedOn,
+                    input.IsSavedForever,
+                    null,
+                    now,
+                    timeZoneId),
             };
             var history = new StatusHistory
             {
@@ -208,7 +243,7 @@ public sealed class ApplicationTrackerService(
                 JobApplicationId = application.Id,
                 NewStage = PipelineStage.Applied,
                 NewOutcome = ApplicationOutcome.Active,
-                EffectiveAt = timeProvider.GetUtcNow(),
+                EffectiveAt = now,
                 Note = "Application created.",
             };
 
@@ -251,6 +286,10 @@ public sealed class ApplicationTrackerService(
             return ApplicationWriteResult.InvalidCompany;
         }
 
+        var wasSavedForever = application.IsSavedForever;
+        var now = timeProvider.GetUtcNow();
+        var timeZoneId = await GetTimeZoneIdAsync(ownerId, cancellationToken);
+
         application.CompanyId = input.CompanyId;
         application.RoleTitle = input.RoleTitle.Trim();
         application.AppliedOn = input.AppliedOn;
@@ -258,10 +297,13 @@ public sealed class ApplicationTrackerService(
         application.DescriptionText = NullIfWhiteSpace(input.DescriptionText);
         application.Notes = NullIfWhiteSpace(input.Notes);
         application.IsSavedForever = input.IsSavedForever;
-        if (application.IsSavedForever)
-        {
-            application.DeletionScheduledAt = null;
-        }
+        application.DeletionScheduledAt = RetentionPolicy.ReconcileSchedule(
+            application.AppliedOn,
+            application.IsSavedForever,
+            application.DeletionScheduledAt,
+            now,
+            timeZoneId,
+            startFreshGracePeriod: wasSavedForever && !application.IsSavedForever);
 
         await database.SaveChangesAsync(cancellationToken);
         return ApplicationWriteResult.Success;
@@ -281,11 +323,17 @@ public sealed class ApplicationTrackerService(
             return ApplicationWriteResult.NotFound;
         }
 
+        var wasSavedForever = application.IsSavedForever;
+        var now = timeProvider.GetUtcNow();
+        var timeZoneId = await GetTimeZoneIdAsync(ownerId, cancellationToken);
         application.IsSavedForever = isSavedForever;
-        if (isSavedForever)
-        {
-            application.DeletionScheduledAt = null;
-        }
+        application.DeletionScheduledAt = RetentionPolicy.ReconcileSchedule(
+            application.AppliedOn,
+            application.IsSavedForever,
+            application.DeletionScheduledAt,
+            now,
+            timeZoneId,
+            startFreshGracePeriod: wasSavedForever && !application.IsSavedForever);
 
         await database.SaveChangesAsync(cancellationToken);
         return ApplicationWriteResult.Success;
@@ -309,6 +357,111 @@ public sealed class ApplicationTrackerService(
         return ApplicationWriteResult.Success;
     }
 
+    public async Task<IReadOnlyList<BulkApplicationDeleteItem>> FindSelectedAsync(
+        IReadOnlyCollection<Guid> applicationIds,
+        CancellationToken cancellationToken = default)
+    {
+        var ownerId = RequireOwnerId();
+        var ids = NormalizeIds(applicationIds);
+        return await database.JobApplications
+            .AsNoTracking()
+            .Where(application =>
+                application.OwnerId == ownerId
+                && ids.Contains(application.Id))
+            .OrderBy(application => application.RoleTitle)
+            .Select(application => new BulkApplicationDeleteItem(
+                application.Id,
+                application.RoleTitle,
+                database.Companies
+                    .Where(company =>
+                        company.Id == application.CompanyId
+                        && company.OwnerId == ownerId)
+                    .Select(company => company.Name)
+                    .SingleOrDefault(),
+                application.AppliedOn))
+            .ToListAsync(cancellationToken);
+    }
+
+    public async Task<BulkApplicationResult> BulkDeleteAsync(
+        IReadOnlyCollection<Guid> applicationIds,
+        CancellationToken cancellationToken = default)
+    {
+        var applications = await FindTrackedSelectedAsync(applicationIds, cancellationToken);
+        database.JobApplications.RemoveRange(applications);
+        await database.SaveChangesAsync(cancellationToken);
+        return new BulkApplicationResult(applications.Count, applications.Count);
+    }
+
+    public async Task<BulkApplicationResult> BulkChangeStageAsync(
+        IReadOnlyCollection<Guid> applicationIds,
+        PipelineStage stage,
+        CancellationToken cancellationToken = default)
+    {
+        var ownerId = RequireOwnerId();
+        var applications = await FindTrackedSelectedAsync(applicationIds, cancellationToken);
+        var now = timeProvider.GetUtcNow();
+        var changed = applications.Where(application => application.Stage != stage).ToList();
+        foreach (var application in changed)
+        {
+            database.StatusHistory.Add(new StatusHistory
+            {
+                OwnerId = ownerId,
+                JobApplicationId = application.Id,
+                PreviousStage = application.Stage,
+                NewStage = stage,
+                EffectiveAt = now,
+                Note = "Stage changed through a bulk application action.",
+            });
+            application.Stage = stage;
+        }
+
+        await database.SaveChangesAsync(cancellationToken);
+        return new BulkApplicationResult(applications.Count, changed.Count);
+    }
+
+    public async Task<BulkApplicationResult> BulkAddNoteAsync(
+        IReadOnlyCollection<Guid> applicationIds,
+        string note,
+        CancellationToken cancellationToken = default)
+    {
+        var ownerId = RequireOwnerId();
+        var applications = await FindTrackedSelectedAsync(applicationIds, cancellationToken);
+        var now = timeProvider.GetUtcNow();
+        foreach (var application in applications)
+        {
+            database.StatusHistory.Add(new StatusHistory
+            {
+                OwnerId = ownerId,
+                JobApplicationId = application.Id,
+                EffectiveAt = now,
+                Note = note.Trim(),
+            });
+        }
+
+        await database.SaveChangesAsync(cancellationToken);
+        return new BulkApplicationResult(applications.Count, applications.Count);
+    }
+
+    private async Task<List<JobApplication>> FindTrackedSelectedAsync(
+        IReadOnlyCollection<Guid> applicationIds,
+        CancellationToken cancellationToken)
+    {
+        var ownerId = RequireOwnerId();
+        var ids = NormalizeIds(applicationIds);
+        return await database.JobApplications
+            .Where(application =>
+                application.OwnerId == ownerId
+                && ids.Contains(application.Id))
+            .ToListAsync(cancellationToken);
+    }
+
+    private static Guid[] NormalizeIds(IReadOnlyCollection<Guid> applicationIds) =>
+        applicationIds
+            .Where(id => id != Guid.Empty)
+            .Distinct()
+            .Take(200)
+            .ToArray();
+
     private async Task<bool> IsValidCompanyAsync(
         Guid? companyId,
         string ownerId,
@@ -318,6 +471,15 @@ public sealed class ApplicationTrackerService(
             company => company.Id == companyId && company.OwnerId == ownerId,
             cancellationToken);
     }
+
+    private async Task<string> GetTimeZoneIdAsync(
+        string ownerId,
+        CancellationToken cancellationToken) =>
+        await database.Users
+            .AsNoTracking()
+            .Where(user => user.Id == ownerId)
+            .Select(user => user.TimeZoneId)
+            .SingleAsync(cancellationToken);
 
     private string RequireOwnerId() =>
         currentUser.UserId

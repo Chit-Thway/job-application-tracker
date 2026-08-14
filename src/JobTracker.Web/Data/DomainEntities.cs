@@ -94,3 +94,14 @@ public sealed class Appointment : OwnedEntity
     public string? LocationOrLink { get; set; }
     public string? Notes { get; set; }
 }
+
+public sealed class RetentionRun
+{
+    public long Id { get; set; }
+    public DateTimeOffset StartedAt { get; set; }
+    public DateTimeOffset CompletedAt { get; set; }
+    public bool Succeeded { get; set; }
+    public int ScheduledCount { get; set; }
+    public int DeletedCount { get; set; }
+    public string? ErrorCode { get; set; }
+}

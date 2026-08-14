@@ -1,5 +1,6 @@
 using System.Data;
 using System.Text.Json;
+using JobTracker.Web.Applications;
 using JobTracker.Web.Data;
 using JobTracker.Web.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -189,6 +190,11 @@ public sealed class ExtractionDraftService(
                 input.CompanyName,
                 input.CompanyLocation,
                 cancellationToken);
+            var timeZoneId = await database.Users
+                .AsNoTracking()
+                .Where(user => user.Id == ownerId)
+                .Select(user => user.TimeZoneId)
+                .SingleAsync(cancellationToken);
             var metadata = new ReviewedExtractionMetadata(
                 NullIfWhiteSpace(input.WorkplaceMode),
                 NullIfWhiteSpace(input.SourceSite),
@@ -210,6 +216,12 @@ public sealed class ExtractionDraftService(
                 ExtractionMetadataJson = JsonSerializer.Serialize(metadata, JsonOptions),
                 Notes = NullIfWhiteSpace(input.Notes),
                 IsSavedForever = input.IsSavedForever,
+                DeletionScheduledAt = RetentionPolicy.ReconcileSchedule(
+                    input.AppliedOn,
+                    input.IsSavedForever,
+                    null,
+                    now,
+                    timeZoneId),
             };
             var history = new StatusHistory
             {

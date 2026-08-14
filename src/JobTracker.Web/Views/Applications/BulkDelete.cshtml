@@ -1,0 +1,33 @@
+@model BulkApplicationDeleteViewModel
+@{
+    ViewData["Title"] = "Delete selected applications";
+}
+
+<section class="form-page danger-page">
+    <div class="shell confirmation-shell">
+        <a class="back-link" asp-action="Index">&larr; Applications</a>
+        <div class="confirmation-card bulk-delete-card">
+            <span class="danger-symbol" aria-hidden="true">!</span>
+            <p class="eyebrow">Permanent bulk action</p>
+            <h1>Delete @Model.Applications.Count selected application@(Model.Applications.Count == 1 ? string.Empty : "s")?</h1>
+            <p>This permanently removes every application below and its linked status history, contacts, interactions, tasks, and appointments. This cannot be undone.</p>
+            <ul class="bulk-delete-list">
+                @foreach (var application in Model.Applications)
+                {
+                    <li>
+                        <strong>@application.RoleTitle</strong>
+                        <span>@(application.CompanyName ?? "No company") &middot; Applied @application.AppliedOn.ToString("d MMM yyyy")</span>
+                    </li>
+                }
+            </ul>
+            <form method="post" asp-action="ConfirmBulkDelete" class="editor-actions">
+                @foreach (var application in Model.Applications)
+                {
+                    <input type="hidden" name="SelectedApplicationIds" value="@application.Id" />
+                }
+                <button class="button button-danger" type="submit">Delete all selected permanently</button>
+                <a class="button button-secondary" asp-action="Index">Cancel</a>
+            </form>
+        </div>
+    </div>
+</section>

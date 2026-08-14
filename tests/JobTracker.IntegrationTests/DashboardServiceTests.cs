@@ -20,8 +20,12 @@ public sealed class DashboardServiceTests
         var august = Application(owner.Id, "August role", new DateOnly(2026, 8, 12));
         var savedMay = Application(owner.Id, "Saved May role", new DateOnly(2026, 5, 31));
         savedMay.IsSavedForever = true;
+        var deletionScheduled = Application(owner.Id, "Deletion scheduled role", new DateOnly(2026, 4, 1));
+        deletionScheduled.DeletionScheduledAt = new DateTimeOffset(2026, 8, 20, 4, 0, 0, TimeSpan.Zero);
         var otherApplication = Application(other.Id, "Other owner role", new DateOnly(2026, 8, 1));
-        database.JobApplications.AddRange(june, july, august, savedMay, otherApplication);
+        var otherDeletionScheduled = Application(other.Id, "Other private scheduled role", new DateOnly(2026, 4, 1));
+        otherDeletionScheduled.DeletionScheduledAt = new DateTimeOffset(2026, 8, 19, 4, 0, 0, TimeSpan.Zero);
+        database.JobApplications.AddRange(june, july, august, savedMay, deletionScheduled, otherApplication, otherDeletionScheduled);
         database.Interactions.AddRange(
             new Interaction
             {
@@ -81,6 +85,8 @@ public sealed class DashboardServiceTests
         Assert.DoesNotContain(snapshot.RecentApplications, item => item.RoleTitle == savedMay.RoleTitle);
         Assert.DoesNotContain(snapshot.RecentApplications, item => item.RoleTitle == otherApplication.RoleTitle);
         Assert.Contains(snapshot.OpenTasks, item => item.RoleTitle == savedMay.RoleTitle && item.IsOverdue);
+        Assert.Equal(deletionScheduled.Id, Assert.Single(snapshot.DeletionScheduled).ApplicationId);
+        Assert.DoesNotContain(snapshot.DeletionScheduled, item => item.RoleTitle == otherDeletionScheduled.RoleTitle);
         Assert.Equal([1, 1, 1], snapshot.Months.Select(item => item.ApplicationCount));
     }
 

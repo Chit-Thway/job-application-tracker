@@ -1,3 +1,4 @@
+using JobTracker.Web.Applications;
 using JobTracker.Web.Data;
 using JobTracker.Web.Extraction;
 using JobTracker.Web.Identity;
@@ -92,6 +93,33 @@ public sealed class ExtractionDraftServiceTests
         Assert.Equal(ExtractionDraftResult.Success, completion.Result);
         Assert.Single(database.Companies);
         Assert.Equal(company.Id, (await database.JobApplications.SingleAsync()).CompanyId);
+    }
+
+    [Fact]
+    public async Task ConfirmedOldUnsavedDraft_ReceivesFullGracePeriod()
+    {
+        var options = new DbContextOptionsBuilder<ApplicationDbContext>()
+            .UseInMemoryDatabase($"old-extraction-{Guid.NewGuid()}")
+            .Options;
+        await using var database = new ApplicationDbContext(options);
+        var user = User("old-extraction-owner");
+        database.Users.Add(user);
+        await database.SaveChangesAsync();
+        var now = new DateTimeOffset(2026, 8, 14, 5, 0, 0, TimeSpan.Zero);
+        var time = new MutableTimeProvider(now);
+        var service = Service(database, user.Id, time);
+        var draftId = await service.CreatePastedTextDraftAsync(
+            "Job Title: Old Test Engineer\nCompany: Synthetic Retention Labs",
+            new DateOnly(2026, 5, 14));
+
+        var completion = await service.CompleteAsync(
+            draftId,
+            ValidInput() with { AppliedOn = new DateOnly(2026, 5, 14) });
+
+        Assert.Equal(ExtractionDraftResult.Success, completion.Result);
+        Assert.Equal(
+            now.AddDays(RetentionPolicy.GracePeriodDays),
+            (await database.JobApplications.SingleAsync()).DeletionScheduledAt);
     }
 
     private static ExtractionDraftService Service(

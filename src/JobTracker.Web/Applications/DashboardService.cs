@@ -50,6 +50,13 @@ public sealed record DashboardGhostingSummary(
     GhostingAttentionKind Kind,
     int DaysSinceApplied);
 
+public sealed record DashboardRetentionSummary(
+    Guid ApplicationId,
+    string RoleTitle,
+    string? CompanyName,
+    DateOnly AppliedOn,
+    DateTimeOffset DeletionScheduledAt);
+
 public sealed record DashboardActivitySummary(
     Guid ApplicationId,
     string RoleTitle,
@@ -71,7 +78,8 @@ public sealed record DashboardSnapshot(
     IReadOnlyList<DashboardActivitySummary> RecentActivity,
     IReadOnlyList<DashboardTaskSummary> OpenTasks,
     IReadOnlyList<DashboardAppointmentSummary> UpcomingAppointments,
-    IReadOnlyList<DashboardGhostingSummary> GhostingAttention);
+    IReadOnlyList<DashboardGhostingSummary> GhostingAttention,
+    IReadOnlyList<DashboardRetentionSummary> DeletionScheduled);
 
 public sealed class DashboardService(
     ApplicationDbContext database,
@@ -165,6 +173,19 @@ public sealed class DashboardService(
                 item.Assessment.Kind,
                 item.Assessment.DaysSinceApplied))
             .ToList();
+        var deletionScheduled = applications
+            .Where(item =>
+                !item.IsSavedForever
+                && item.DeletionScheduledAt is not null)
+            .OrderBy(item => item.DeletionScheduledAt)
+            .ThenBy(item => item.RoleTitle)
+            .Select(item => new DashboardRetentionSummary(
+                item.Id,
+                item.RoleTitle,
+                CompanyName(item, companies),
+                item.AppliedOn,
+                item.DeletionScheduledAt!.Value))
+            .ToList();
 
         var recentActivity = BuildActivity(
             window,
@@ -212,7 +233,8 @@ public sealed class DashboardService(
             recentActivity,
             openTasks,
             upcomingAppointments,
-            ghostingAttention);
+            ghostingAttention,
+            deletionScheduled);
     }
 
     public async Task<bool> CanConfirmGhostedAsync(

@@ -19,6 +19,9 @@ public sealed class ApplicationFilterViewModel
     [Display(Name = "Saved state")]
     public bool? IsSavedForever { get; set; }
 
+    [Display(Name = "Retention state")]
+    public bool? IsDeletionScheduled { get; set; }
+
     [DataType(DataType.Date)]
     [Display(Name = "Applied from")]
     public DateOnly? AppliedFrom { get; set; }
@@ -33,7 +36,21 @@ public sealed class ApplicationFilterViewModel
 public sealed record ApplicationIndexViewModel(
     ApplicationFilterViewModel Filters,
     IReadOnlyList<ApplicationListItem> Applications,
-    IReadOnlyList<CompanyListItem> Companies);
+    IReadOnlyList<CompanyListItem> Companies,
+    string TimeZoneId);
+
+public sealed class BulkApplicationActionViewModel
+{
+    public List<Guid> SelectedApplicationIds { get; set; } = [];
+
+    public PipelineStage? Stage { get; set; }
+
+    [StringLength(2_000)]
+    public string? Note { get; set; }
+}
+
+public sealed record BulkApplicationDeleteViewModel(
+    IReadOnlyList<BulkApplicationDeleteItem> Applications);
 
 public sealed class ApplicationFormViewModel
 {
