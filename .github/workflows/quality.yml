@@ -34,11 +34,17 @@ jobs:
       - name: Restore locked dependencies
         run: dotnet restore --locked-mode
 
+      - name: Audit dependency vulnerabilities
+        run: dotnet list JobTracker.sln package --vulnerable --include-transitive
+
       - name: Verify formatting
         run: dotnet format --verify-no-changes --no-restore
 
       - name: Build release
         run: dotnet build --configuration Release --no-restore
+
+      - name: Install Playwright Chromium
+        run: pwsh tests/JobTracker.BrowserTests/bin/Release/net10.0/playwright.ps1 install --with-deps chromium
 
       - name: Run tests
         run: dotnet test --configuration Release --no-build

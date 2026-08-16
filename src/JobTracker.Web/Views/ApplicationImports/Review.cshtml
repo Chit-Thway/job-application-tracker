@@ -39,7 +39,9 @@
 
             <form method="post" class="editor-card review-editor">
                 <input asp-for="DraftId" type="hidden" />
-                <div asp-validation-summary="All" class="validation-summary" role="alert" tabindex="-1" autofocus></div>
+                <div asp-validation-summary="All" class="validation-summary" role="alert"
+                     tabindex="@(!ViewData.ModelState.IsValid ? "-1" : null)"
+                     autofocus="@(!ViewData.ModelState.IsValid)"></div>
 
                 <section class="review-section" aria-labelledby="core-details-title">
                     <p class="mini-label">Application essentials</p>

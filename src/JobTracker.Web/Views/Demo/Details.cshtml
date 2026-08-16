@@ -1,0 +1,96 @@
+@model DemoApplication
+@{
+    Layout = "_DemoLayout";
+    ViewData["Title"] = Model.RoleTitle;
+    var nextTask = Model.Tasks.Where(item => !item.IsCompleted).OrderBy(item => item.DueAt).FirstOrDefault();
+    var nextAppointment = Model.Appointments.OrderBy(item => item.StartsAt).FirstOrDefault();
+}
+
+<section class="detail-hero demo-detail-hero">
+    <div class="shell">
+        <a class="back-link" asp-action="Applications">← Demo applications</a>
+        <div class="detail-hero-grid">
+            <div><p class="detail-company-name">@Model.CompanyName</p><h1>@Model.RoleTitle</h1><p>Applied @Model.AppliedOn.ToString("d MMMM yyyy") · @Model.Location</p></div>
+            <div class="detail-hero-actions"><span class="demo-readonly-pill demo-readonly-pill-hero">Read-only synthetic record</span></div>
+        </div>
+    </div>
+</section>
+
+<section class="workspace-content detail-workspace">
+    <div class="shell application-detail-layout">
+        <div class="detail-main">
+            <article class="detail-card">
+                <div class="detail-card-heading"><div><p class="mini-label">Current state</p><h2>@ApplicationDisplay.Stage(Model.Stage) · @ApplicationDisplay.Outcome(Model.Outcome)</h2></div><span class="state-badge @(Model.RetentionState == DemoRetentionState.Saved ? "state-saved" : Model.RetentionState == DemoRetentionState.DeletionScheduled ? "state-deletion-scheduled" : "state-recent")">@(Model.RetentionState == DemoRetentionState.Saved ? "Saved" : Model.RetentionState == DemoRetentionState.DeletionScheduled ? "Deletion scheduled" : "Not saved")</span></div>
+                <dl class="record-meta demo-detail-meta">
+                    <div><dt>Company</dt><dd>@Model.CompanyName</dd></div>
+                    <div><dt>Work arrangement</dt><dd>@Model.WorkArrangement</dd></div>
+                    <div><dt>Location</dt><dd>@Model.Location</dd></div>
+                </dl>
+            </article>
+
+            <article class="detail-card">
+                <p class="mini-label">Role context</p><h2>Job description</h2><p class="demo-role-summary">@Model.Summary</p>
+                <div class="demo-description-body">
+                    @foreach (var descriptionSection in Model.Description)
+                    {
+                        <section><h3>@descriptionSection.Heading</h3>@foreach (var paragraph in descriptionSection.Paragraphs) { <p>@paragraph</p> }@if (descriptionSection.Bullets.Count > 0) { <ul>@foreach (var bullet in descriptionSection.Bullets) { <li>@bullet</li> }</ul> }</section>
+                    }
+                </div>
+            </article>
+
+            <article class="detail-card">
+                <p class="mini-label">Reviewed posting</p><h2>Posting details</h2>
+                <dl class="detail-list">
+                    <div><dt>Employment type</dt><dd>@Model.EmploymentType</dd></div>
+                    <div><dt>Salary</dt><dd>@Model.Salary</dd></div>
+                    <div><dt>Source site</dt><dd>@Model.SourceSite</dd></div>
+                    <div><dt>Job reference</dt><dd>@Model.JobReference</dd></div>
+                </dl>
+            </article>
+
+            <details class="detail-card detail-section-disclosure" open>
+                <summary class="detail-card-heading"><div><p class="mini-label">People</p><h2>Contacts</h2></div><span class="count-badge">@Model.Contacts.Count</span></summary>
+                <div class="detail-disclosure-content">
+                    @if (Model.Contacts.Count == 0) { <p class="workflow-empty">No synthetic recruiter contact is recorded.</p> }
+                    else { <ul class="workflow-record-list">@foreach (var contact in Model.Contacts) { <li><div><h3>@contact.Name</h3><p>@contact.Title · @contact.Email</p><p>@contact.Notes</p></div><span class="demo-card-lock">Read only</span></li> }</ul> }
+                </div>
+            </details>
+
+            <details class="detail-card detail-section-disclosure" open>
+                <summary class="detail-card-heading"><div><p class="mini-label">History</p><h2>Activity timeline</h2></div><span class="count-badge">@Model.Activity.Count</span></summary>
+                <div class="detail-disclosure-content"><ol class="timeline-list">@foreach (var item in Model.Activity.OrderByDescending(activity => activity.OccurredAt)) { <li><span class="timeline-marker" aria-hidden="true"></span><div><p class="timeline-kind">@item.Kind</p><h3>@item.Summary</h3>@if (item.IsEmployerResponse) { <span class="response-badge">Employer response</span> }</div><time datetime="@item.OccurredAt.ToString("O")">@item.OccurredAt.ToString("d MMM yyyy, h:mm tt")</time></li> }</ol></div>
+            </details>
+
+            <details class="detail-card detail-section-disclosure" @(Model.Tasks.Count > 0 ? "open" : null)>
+                <summary class="detail-card-heading"><div><p class="mini-label">Next actions</p><h2>Tasks</h2></div><span class="count-badge">@Model.Tasks.Count(item => !item.IsCompleted)</span></summary>
+                <div class="detail-disclosure-content">@if (Model.Tasks.Count == 0) { <p class="workflow-empty">No synthetic follow-up task is recorded.</p> } else { <ul class="workflow-record-list task-list">@foreach (var task in Model.Tasks) { <li class="@(task.IsCompleted ? "is-complete" : null)"><div><h3>@task.Title</h3><p>@(task.IsCompleted ? "Completed" : task.DueAt is null ? "No due date" : $"Due {task.DueAt.Value:d MMM yyyy, h:mm tt}")</p><p>@task.Notes</p></div><span class="demo-card-lock">Read only</span></li> }</ul> }</div>
+            </details>
+
+            <details class="detail-card detail-section-disclosure" @(Model.Appointments.Count > 0 ? "open" : null)>
+                <summary class="detail-card-heading"><div><p class="mini-label">Scheduled time</p><h2>Appointments</h2></div><span class="count-badge">@Model.Appointments.Count</span></summary>
+                <div class="detail-disclosure-content">@if (Model.Appointments.Count == 0) { <p class="workflow-empty">No synthetic appointment is scheduled.</p> } else { <ul class="workflow-record-list appointment-list">@foreach (var appointment in Model.Appointments) { <li><div><p class="timeline-kind">@appointment.Type</p><h3>@appointment.StartsAt.ToString("d MMM yyyy, h:mm tt")</h3><p>@appointment.Location · Ends @appointment.EndsAt.ToString("h:mm tt")</p><p>@appointment.Notes</p></div><span class="demo-card-lock">Read only</span></li> }</ul> }</div>
+            </details>
+        </div>
+
+        <aside class="workflow-sidebar">
+            <article class="retention-card next-action-card">
+                <p class="mini-label">What is next?</p>
+                @if (nextTask is null) { <h2>No open task.</h2><p>This synthetic application is clear for now.</p> }
+                else { <h2>@nextTask.Title</h2><div class="schedule-highlight"><span>Due</span><strong>@(nextTask.DueAt is null ? "No due date" : nextTask.DueAt.Value.ToString("d MMM yyyy, h:mm tt"))</strong></div> }
+            </article>
+            <article class="retention-card scheduled-time-card">
+                <p class="mini-label">Scheduled time</p>
+                @if (nextAppointment is null) { <h2>No appointment.</h2><p>Nothing is currently scheduled in this sample.</p> }
+                else { <h2>@nextAppointment.Type</h2><div class="schedule-highlight"><span>Starts</span><strong>@nextAppointment.StartsAt.ToString("d MMM yyyy, h:mm tt")</strong></div><p>@nextAppointment.Location</p> }
+            </article>
+            <article class="retention-card @(Model.RetentionState == DemoRetentionState.DeletionScheduled ? "deletion-scheduled-card" : null)">
+                <p class="mini-label">Retention example</p>
+                @if (Model.RetentionState == DemoRetentionState.Saved) { <h2>This sample is saved.</h2><p>Saved applications are exempt from automatic retention deletion.</p> }
+                else if (Model.RetentionState == DemoRetentionState.DeletionScheduled) { <h2>Deletion is scheduled.</h2><div class="retention-deadline"><span>Deletes after</span><strong>@Model.DeletionScheduledAt!.Value.ToString("d MMM yyyy, h:mm tt")</strong></div><p>In the private tracker, saving before this time cancels deletion.</p> }
+                else { <h2>This sample is not saved.</h2><p>It remains recent until it reaches the retention threshold.</p> }
+                <p class="retention-note">This demonstration cannot change the saved state.</p>
+            </article>
+            <a class="button button-primary demo-signin-cta" asp-controller="Account" asp-action="Login">Open private sign in</a>
+        </aside>
+    </div>
+</section>

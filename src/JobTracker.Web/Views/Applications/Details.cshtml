@@ -88,7 +88,7 @@
                 <details class="inline-editor" @(ViewData.ModelState.Keys.Any(key => key.StartsWith("Status", StringComparison.Ordinal)) ? "open" : null)>
                     <summary>Record a status change</summary>
                     <form method="post" asp-action="TransitionStatus" asp-route-id="@application.Id" class="workflow-form">
-                        <div asp-validation-summary="ModelOnly" class="validation-summary"></div>
+                        <div asp-validation-summary="ModelOnly" class="validation-summary" role="alert"></div>
                         <div class="workflow-form-grid">
                             <div class="field">
                                 <label asp-for="Status.Stage"></label>

@@ -2,24 +2,54 @@ using JobTracker.Web.Data;
 using JobTracker.Web.Identity;
 using JobTracker.Web.Applications;
 using JobTracker.Web.Extraction;
+using JobTracker.Web.Demo;
+using JobTracker.Web.Diagnostics;
 using System.Net;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Microsoft.AspNetCore.CookiePolicy;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.EntityFrameworkCore;
 using System.Threading.RateLimiting;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Logging.ClearProviders();
-builder.Logging.AddSimpleConsole(options =>
+if (builder.Environment.IsProduction())
 {
-    options.SingleLine = true;
-    options.TimestampFormat = "HH:mm:ss ";
-});
+    builder.Logging.AddJsonConsole(options =>
+    {
+        options.IncludeScopes = true;
+        options.TimestampFormat = "yyyy-MM-ddTHH:mm:ss.fffZ";
+        options.UseUtcTimestamp = true;
+    });
+}
+else
+{
+    builder.Logging.AddSimpleConsole(options =>
+    {
+        options.IncludeScopes = true;
+        options.SingleLine = true;
+        options.TimestampFormat = "HH:mm:ss ";
+    });
+}
+
+builder.WebHost.ConfigureKestrel(options => options.AddServerHeader = false);
 
 builder.Services.AddControllersWithViews(options =>
     options.Filters.Add(new AutoValidateAntiforgeryTokenAttribute()));
+builder.Services.AddAntiforgery(options =>
+{
+    options.Cookie.Name = "JobTracker.Antiforgery";
+    options.Cookie.HttpOnly = true;
+    options.Cookie.SameSite = SameSiteMode.Strict;
+    options.Cookie.SecurePolicy = builder.Environment.IsDevelopment()
+        || builder.Environment.IsEnvironment("Testing")
+            ? CookieSecurePolicy.SameAsRequest
+            : CookieSecurePolicy.Always;
+});
 
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
     ?? (builder.Environment.IsEnvironment("Testing")
@@ -52,7 +82,10 @@ builder.Services.ConfigureApplicationCookie(options =>
     options.Cookie.Name = "JobTracker.Auth";
     options.Cookie.HttpOnly = true;
     options.Cookie.SameSite = SameSiteMode.Lax;
-    options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
+    options.Cookie.SecurePolicy = builder.Environment.IsDevelopment()
+        || builder.Environment.IsEnvironment("Testing")
+            ? CookieSecurePolicy.SameAsRequest
+            : CookieSecurePolicy.Always;
     options.LoginPath = "/account/login";
     options.AccessDeniedPath = "/account/access-denied";
     options.ExpireTimeSpan = TimeSpan.FromHours(8);
@@ -87,6 +120,7 @@ builder.Services.AddRateLimiter(options =>
 builder.Services.AddSingleton<DevelopmentMailStore>();
 builder.Services.AddSingleton<IAccountEmailSender, DevelopmentAccountEmailSender>();
 builder.Services.AddSingleton(TimeProvider.System);
+builder.Services.AddSingleton<DemoCatalog>();
 builder.Services.AddScoped<DevelopmentAccountBootstrapper>();
 builder.Services.AddScoped<InvitationService>();
 builder.Services.AddScoped<InvitationRegistrationService>();
@@ -134,6 +168,15 @@ builder.Services
 builder.Services.AddScoped<ExtractionDraftService>();
 builder.Services.AddScoped<JobPostingUrlImportService>();
 builder.Services.AddScoped<BrowserExtensionImportService>();
+builder.Services.AddHealthChecks()
+    .AddCheck(
+        "self",
+        () => HealthCheckResult.Healthy(),
+        tags: ["live"])
+    .AddCheck<DatabaseReadinessHealthCheck>(
+        "database",
+        failureStatus: HealthStatus.Unhealthy,
+        tags: ["ready"]);
 
 var app = builder.Build();
 
@@ -162,6 +205,8 @@ else
 
 app.UseStatusCodePagesWithReExecute("/Home/HandleStatusCode", "?code={0}");
 
+app.UseMiddleware<PrivacySafeRequestLoggingMiddleware>();
+
 app.Use(async (context, next) =>
 {
     context.Response.OnStarting(() =>
@@ -174,6 +219,15 @@ app.Use(async (context, next) =>
             "font-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'";
         context.Response.Headers["Permissions-Policy"] =
             "camera=(), microphone=(), geolocation=(), payment=(), usb=()";
+        context.Response.Headers["Cross-Origin-Opener-Policy"] = "same-origin";
+        context.Response.Headers["Cross-Origin-Resource-Policy"] = "same-origin";
+        context.Response.Headers["X-Permitted-Cross-Domain-Policies"] = "none";
+
+        if (context.User.Identity?.IsAuthenticated == true)
+        {
+            context.Response.Headers.CacheControl = "no-store, max-age=0";
+            context.Response.Headers.Pragma = "no-cache";
+        }
 
         return Task.CompletedTask;
     });
@@ -189,8 +243,21 @@ app.UseAuthorization();
 
 app.MapStaticAssets();
 
-app.MapGet("/health", () => Results.Text("Healthy", "text/plain"))
-    .ExcludeFromDescription();
+app.MapHealthChecks("/health/live", new HealthCheckOptions
+{
+    Predicate = check => check.Tags.Contains("live"),
+    ResponseWriter = HealthResponseWriter.WriteAsync,
+});
+app.MapHealthChecks("/health/ready", new HealthCheckOptions
+{
+    Predicate = check => check.Tags.Contains("ready"),
+    ResponseWriter = HealthResponseWriter.WriteAsync,
+});
+app.MapHealthChecks("/health", new HealthCheckOptions
+{
+    Predicate = check => check.Tags.Contains("ready"),
+    ResponseWriter = HealthResponseWriter.WriteAsync,
+});
 
 app.MapControllerRoute(
     name: "default",

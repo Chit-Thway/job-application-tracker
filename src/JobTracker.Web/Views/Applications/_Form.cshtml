@@ -1,6 +1,8 @@
 @model ApplicationFormViewModel
 
-<div asp-validation-summary="All" class="validation-summary" role="alert" tabindex="-1" autofocus></div>
+<div asp-validation-summary="All" class="validation-summary" role="alert"
+     tabindex="@(!ViewData.ModelState.IsValid ? "-1" : null)"
+     autofocus="@(!ViewData.ModelState.IsValid)"></div>
 
 <div class="form-grid">
     <div class="field form-span-2">

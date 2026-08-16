@@ -13,7 +13,9 @@
         </div>
 
         <form method="post" class="editor-card">
-            <div asp-validation-summary="All" class="validation-summary" role="alert" tabindex="-1" autofocus></div>
+            <div asp-validation-summary="All" class="validation-summary" role="alert"
+                 tabindex="@(!ViewData.ModelState.IsValid ? "-1" : null)"
+                 autofocus="@(!ViewData.ModelState.IsValid)"></div>
             <div class="field">
                 <label asp-for="SourceUrl"></label>
                 <input asp-for="SourceUrl" type="url" inputmode="url" autocomplete="url" placeholder="https://example.com/jobs/…" />

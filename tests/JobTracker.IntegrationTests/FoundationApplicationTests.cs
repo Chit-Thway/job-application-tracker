@@ -13,11 +13,13 @@ public sealed class FoundationApplicationTests : IClassFixture<JobTrackerWebAppl
     }
 
     [Theory]
-    [InlineData("/", "Job Application Tracker")]
-    [InlineData("/demo", "A realistic demo. Never real data.")]
+    [InlineData("/", "Job Application Tracker", "Milestone 10", "Launch hardening and diagnostics")]
+    [InlineData("/demo", "A realistic tracker", "Milestone 10", "Hardened public synthetic demo")]
     public async Task FoundationRoutes_ReturnSuccessfulBrandedPages(
         string route,
-        string expectedText)
+        string expectedText,
+        string milestone,
+        string footerText)
     {
         var client = CreateClient();
 
@@ -26,8 +28,8 @@ public sealed class FoundationApplicationTests : IClassFixture<JobTrackerWebAppl
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Contains(expectedText, content, StringComparison.Ordinal);
-        Assert.Contains("Milestone 8", content, StringComparison.Ordinal);
-        Assert.Contains("Retention review and scheduled cleanup", content, StringComparison.Ordinal);
+        Assert.Contains(milestone, content, StringComparison.Ordinal);
+        Assert.Contains(footerText, content, StringComparison.Ordinal);
     }
 
     [Theory]
@@ -53,7 +55,7 @@ public sealed class FoundationApplicationTests : IClassFixture<JobTrackerWebAppl
     }
 
     [Fact]
-    public async Task HealthEndpoint_ReturnsOnlyItsStatus()
+    public async Task HealthEndpoint_ReturnsOnlyMachineReadableReadinessStatus()
     {
         var client = CreateClient();
 
@@ -61,8 +63,10 @@ public sealed class FoundationApplicationTests : IClassFixture<JobTrackerWebAppl
         var content = await response.Content.ReadAsStringAsync();
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        Assert.Equal("text/plain", response.Content.Headers.ContentType?.MediaType);
-        Assert.Equal("Healthy", content);
+        Assert.Equal("application/json", response.Content.Headers.ContentType?.MediaType);
+        Assert.Contains("\"status\":\"Healthy\"", content, StringComparison.Ordinal);
+        Assert.Contains("\"name\":\"database\"", content, StringComparison.Ordinal);
+        Assert.DoesNotContain("exception", content, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]

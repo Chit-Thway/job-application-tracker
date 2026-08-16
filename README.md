@@ -4,9 +4,11 @@ A private ASP.NET Core job-search organizer for tracking applications, follow-up
 
 ## Current status
 
-Milestone 8 adds transparent retention review and traffic-independent database cleanup. Eligible unsaved records receive a professional **Deletion scheduled** state with an exact 14-day deadline and a direct Save escape route across the library, details, dashboard, Action Centre, and Settings. The application library also supports remembered card/list views plus an explicit, owner-scoped selection mode for confirmed bulk deletion, pipeline-stage changes, and append-only notes.
+Milestone 10 raises the complete tracker to a launch-candidate baseline: production-secure cookies, OWASP-oriented response headers, privacy-safe structured request diagnostics, liveness and database-readiness probes, current dependency auditing, WCAG-focused checks, real Chromium journeys, a 1,000-application performance smoke test, and operational runbooks. Production deployment remains Milestone 11.
 
-Ghosting remains a deliberate user decision: the tracker suggests a follow-up after 14 days without a meaningful employer response and offers confirmation after 30 days, but never changes the outcome automatically. Status history, contacts and interactions, tasks, appointments, manual entry, deterministic extraction, safe public-URL import, and the explicit-click browser extension remain available throughout the workflow. The public synthetic demo remains scoped to a later milestone.
+Milestone 9's portfolio-friendly public demonstration remains available with a synthetic dashboard, application library, Action Centre, and application details. It uses a deterministic in-memory catalog, fictional slugs, a non-personalized public layout, and read-only routes that never query private application tables.
+
+The private tracker retains transparent three-calendar-month retention, exact 14-day deletion deadlines, card/list application views, owner-scoped bulk actions, deliberate ghosting confirmation, workflow history, contacts and interactions, tasks, appointments, deterministic extraction, safe public-URL import, and the explicit-click browser extension.
 
 ## Technology
 
@@ -18,6 +20,7 @@ Ghosting remains a deliberate user decision: the tracker suggests a follow-up af
 - ASP.NET Core Identity
 - Custom responsive CSS
 - xUnit unit and integration tests
+- Playwright for .NET browser tests
 - GitHub Actions
 
 Supabase provides PostgreSQL only; ASP.NET Core Identity owns authentication and application sessions.
@@ -71,10 +74,21 @@ Then open [https://localhost:7239](https://localhost:7239).
 | `/companies/new` | Manual company entry |
 | `/actions` | Overdue tasks, follow-up warnings, Ghosted decisions, scheduled-deletion warnings, and upcoming appointments |
 | `/settings` | Authenticated retention policy, owner-scoped counts, and scheduler health |
-| `/demo` | Public synthetic demo placeholder |
-| `/health` | Minimal plain-text health response |
+| `/demo` | Public, read-only synthetic three-month dashboard |
+| `/demo/applications` | Searchable synthetic application library |
+| `/demo/applications/{slug}` | Read-only synthetic application details and workflow history |
+| `/demo/actions` | Synthetic tasks, appointments, ghosting checks, and retention warnings |
+| `/health/live` | Process liveness probe without dependency details |
+| `/health/ready` | Database-readiness probe with minimal JSON status |
+| `/health` | Compatibility alias for database readiness |
 
 The registration page is public, but account creation requires an unexpired, unused, unrevoked invitation code.
+
+## Public synthetic demo
+
+The public demo is available without an account and is deliberately separated from authenticated data access. `DemoCatalog` constructs six deterministic fictional applications in memory, including fictional companies, `example.test` contacts, activity, tasks, appointments, pipeline stages, an accepted offer, hourly pay, and a scheduled-deletion example. Public routes use readable slugs rather than private application GUIDs.
+
+The demo has its own layout so publicly cacheable responses never include signed-in navigation or account-specific state. Only `GET` exploration is supported; `POST`, `PUT`, `PATCH`, and `DELETE` requests under `/demo` receive `405 Method Not Allowed`. Automated tests seed a private canary record and prove it cannot appear in demo HTML, query results, unknown-record errors, scripts, or cacheable responses.
 
 ## Manual tracking
 
@@ -193,13 +207,22 @@ Run the same checks used by continuous integration:
 
 ```powershell
 dotnet restore --locked-mode
+dotnet list JobTracker.sln package --vulnerable --include-transitive
 dotnet format --verify-no-changes --no-restore
 dotnet build --configuration Release --no-restore
+pwsh tests/JobTracker.BrowserTests/bin/Release/net10.0/playwright.ps1 install chromium
 dotnet test --configuration Release --no-build
 dotnet publish src/JobTracker.Web --configuration Release --no-build --output artifacts/publish
 ```
 
-Build warnings are treated as errors. Package lock files make dependency restores repeatable.
+Build warnings are treated as errors. Package lock files make dependency restores repeatable. The browser project starts the application on an ephemeral local Kestrel port with an isolated in-memory database and drives the critical login, manual-create, Saved, status-update, dashboard, and public-demo journeys in Chromium.
+
+See the launch-quality evidence and repeatable procedures in:
+
+- [`docs/security-review.md`](docs/security-review.md)
+- [`docs/accessibility.md`](docs/accessibility.md)
+- [`docs/operations.md`](docs/operations.md)
+- [`docs/backup-restore.md`](docs/backup-restore.md)
 
 ## Repository structure
 
@@ -211,9 +234,9 @@ browser-extension/                Unpacked Chrome/Edge active-tab capture extens
 tests/
   JobTracker.UnitTests/           Fast foundation and domain tests
   JobTracker.IntegrationTests/    In-process HTTP and security checks
+  JobTracker.BrowserTests/        Real Chromium critical-journey checks
+docs/                             Security, accessibility, and operations runbooks
 ```
-
-Browser tests will be added when the product has critical interactive journeys.
 
 ## Configuration and secrets
 
@@ -224,6 +247,6 @@ Browser tests will be added when the product has critical interactive journeys.
 
 ## Product direction
 
-The MVP will provide a private authenticated tracker and a separate public read-only synthetic demo. It will cover applications, companies, status history, contacts and interactions, tasks, appointments, three-calendar-month dashboard reporting, ghosting warnings, and transparent automatic retention for old unsaved applications.
+The MVP provides a private authenticated tracker and a separate public read-only synthetic demo. Together they cover applications, companies, status history, contacts and interactions, tasks, appointments, three-calendar-month dashboard reporting, ghosting warnings, and transparent automatic retention for old unsaved applications.
 
 Built for Chit-Thway.

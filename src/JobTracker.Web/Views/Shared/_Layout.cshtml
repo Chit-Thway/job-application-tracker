@@ -50,7 +50,7 @@
                         <a class="@NavClass("actions")" aria-current="@AriaCurrent("actions")" asp-controller="Home" asp-action="ActionCentre">Action Centre</a>
                         <a class="@NavClass("settings")" aria-current="@AriaCurrent("settings")" asp-controller="Home" asp-action="Settings">Settings</a>
                     }
-                    <a class="@NavClass("demo")" aria-current="@AriaCurrent("demo")" asp-controller="Home" asp-action="Demo">Demo</a>
+                    <a class="@NavClass("demo")" aria-current="@AriaCurrent("demo")" asp-controller="Demo" asp-action="Index">Demo</a>
                     @if (HostEnvironment.IsDevelopment())
                     {
                         <a class="nav-link" asp-controller="DevelopmentMail" asp-action="Index">Local messages</a>
@@ -117,7 +117,7 @@
             </div>
             <div class="footer-status">
                 <span class="status-dot" aria-hidden="true"></span>
-                Milestone 8 &middot; Retention review and scheduled cleanup
+                Milestone 10 &middot; Launch hardening and diagnostics
             </div>
         </div>
     </footer>

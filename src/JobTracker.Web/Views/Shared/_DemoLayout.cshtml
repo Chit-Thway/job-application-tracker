@@ -1,0 +1,92 @@
+@{
+    var section = ViewData["DemoSection"] as string ?? string.Empty;
+    var pageTitle = ViewData["Title"] as string;
+
+    string NavClass(string key) => section == key ? "nav-link is-current" : "nav-link";
+    string? AriaCurrent(string key) => section == key ? "page" : null;
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Explore a read-only Job Application Tracker demonstration containing synthetic data only." />
+    <title>@(string.IsNullOrWhiteSpace(pageTitle) ? "Synthetic demo · Job Application Tracker" : $"{pageTitle} · Synthetic demo")</title>
+    <link rel="icon" href="~/favicon.svg" type="image/svg+xml" />
+    <script src="~/js/theme.js" asp-append-version="true"></script>
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+</head>
+<body>
+    <a class="skip-link" href="#main-content">Skip to main content</a>
+
+    <header class="site-header demo-site-header">
+        <div class="shell header-inner">
+            <a class="brand" asp-controller="Demo" asp-action="Index" aria-label="Synthetic demo dashboard">
+                <span class="brand-mark" aria-hidden="true">JT</span>
+                <span class="brand-name">
+                    <strong>Job Application</strong>
+                    <span>Synthetic demo</span>
+                </span>
+            </a>
+
+            <div class="header-actions">
+                <details class="site-nav" open>
+                    <summary>
+                        <span>Menu</span>
+                        <span class="menu-lines" aria-hidden="true"></span>
+                    </summary>
+                    <nav class="nav-panel" aria-label="Demo navigation">
+                        <a class="@NavClass("dashboard")" aria-current="@AriaCurrent("dashboard")" asp-controller="Demo" asp-action="Index">Dashboard</a>
+                        <a class="@NavClass("applications")" aria-current="@AriaCurrent("applications")" asp-controller="Demo" asp-action="Applications">Applications</a>
+                        <a class="@NavClass("actions")" aria-current="@AriaCurrent("actions")" asp-controller="Demo" asp-action="ActionCentre">Action Centre</a>
+                        <a class="nav-action" asp-controller="Account" asp-action="Login">Private sign in</a>
+                    </nav>
+                </details>
+
+                <button class="theme-toggle" id="theme-toggle" type="button" aria-label="Switch to dark mode" aria-pressed="false" title="Switch to dark mode">
+                    <span class="theme-toggle-track" aria-hidden="true">
+                        <span class="theme-toggle-icon theme-toggle-sun">
+                            <svg viewBox="0 0 24 24" focusable="false">
+                                <circle cx="12" cy="12" r="3.5"></circle>
+                                <path d="M12 2v2M12 20v2M4.93 4.93l1.42 1.42M17.65 17.65l1.42 1.42M2 12h2M20 12h2M4.93 19.07l1.42-1.42M17.65 6.35l1.42-1.42"></path>
+                            </svg>
+                        </span>
+                        <span class="theme-toggle-icon theme-toggle-moon">
+                            <svg viewBox="0 0 24 24" focusable="false">
+                                <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"></path>
+                            </svg>
+                        </span>
+                        <span class="theme-toggle-thumb"></span>
+                    </span>
+                    <span class="visually-hidden" data-theme-label>Light theme active</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <div class="demo-notice" role="note">
+        <div class="shell">
+            <span class="demo-notice-icon" aria-hidden="true">i</span>
+            <p><strong>Synthetic, read-only demonstration.</strong> Every company, person, role, and activity shown here is fictional. This demo never reads private account data.</p>
+            <span class="demo-readonly-pill">No editing</span>
+        </div>
+    </div>
+
+    <main id="main-content" tabindex="-1">
+        @RenderBody()
+    </main>
+
+    <footer class="site-footer">
+        <div class="shell footer-inner">
+            <div>
+                <strong>Job Application Tracker</strong>
+                <p>Portfolio demo built entirely from deterministic synthetic records.</p>
+            </div>
+            <div class="footer-status">
+                <span class="status-dot" aria-hidden="true"></span>
+                Milestone 10 · Hardened public synthetic demo
+            </div>
+        </div>
+    </footer>
+</body>
+</html>

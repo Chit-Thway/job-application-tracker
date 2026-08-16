@@ -1,0 +1,52 @@
+@model DemoApplicationIndexViewModel
+@{
+    Layout = "_DemoLayout";
+    ViewData["Title"] = "Demo applications";
+}
+
+<section class="workspace-hero compact-workspace-hero">
+    <div class="shell page-heading-grid">
+        <div><p class="eyebrow">Synthetic application library</p><h1>Every opportunity,<br />safe to explore.</h1><p>Search and open fictional records. Editing and account data are intentionally unavailable.</p></div>
+        <div class="foundation-pill"><span class="status-dot" aria-hidden="true"></span>Read-only data</div>
+    </div>
+</section>
+
+<section class="workspace-content">
+    <div class="shell">
+        <form class="filter-panel demo-filter-panel" method="get" aria-label="Demo application filters">
+            <div class="filter-grid compact-filter">
+                <div class="field filter-search"><label for="query">Search</label><input id="query" name="query" value="@Model.Query" placeholder="Role or fictional company" /></div>
+                <div class="field"><label for="stage">Stage</label><select id="stage" name="stage"><option value="">All stages</option>@foreach (var stage in Enum.GetValues<PipelineStage>()) { <option value="@stage" selected="@(Model.Stage == stage)">@ApplicationDisplay.Stage(stage)</option> }</select></div>
+                <div class="filter-actions"><button class="button button-primary" type="submit">Apply filters</button><a class="button button-secondary" asp-action="Applications">Clear</a></div>
+            </div>
+        </form>
+
+        <div class="result-heading"><p><strong>@Model.Applications.Count</strong> synthetic application@(Model.Applications.Count == 1 ? string.Empty : "s")</p><span class="demo-readonly-pill">Browse only</span></div>
+
+        @if (Model.Applications.Count == 0)
+        {
+            <div class="empty-state"><span class="empty-symbol" aria-hidden="true">?</span><h2>No synthetic records match.</h2><p>Clear the filters to return to the full demo library.</p><a class="button button-primary" asp-action="Applications">Show all applications</a></div>
+        }
+        else
+        {
+            <div class="record-grid demo-application-grid">
+                @foreach (var application in Model.Applications)
+                {
+                    <article class="record-card">
+                        <div class="record-card-top">
+                            <div><p class="record-company">@application.CompanyName</p><h2><a asp-action="Details" asp-route-slug="@application.Slug">@application.RoleTitle</a></h2></div>
+                            <span class="state-badge @(application.RetentionState == DemoRetentionState.Saved ? "state-saved" : application.RetentionState == DemoRetentionState.DeletionScheduled ? "state-deletion-scheduled" : "state-recent")">@(application.RetentionState == DemoRetentionState.Saved ? "Saved" : application.RetentionState == DemoRetentionState.DeletionScheduled ? "Deletion scheduled" : "Not saved")</span>
+                        </div>
+                        <dl class="record-meta">
+                            <div><dt>Applied</dt><dd>@application.AppliedOn.ToString("d MMM yyyy")</dd></div>
+                            <div><dt>Stage</dt><dd>@ApplicationDisplay.Stage(application.Stage)</dd></div>
+                            <div><dt>Outcome</dt><dd>@ApplicationDisplay.Outcome(application.Outcome)</dd></div>
+                            @if (application.DeletionScheduledAt is not null) { <div class="record-retention"><dt>Automatic deletion</dt><dd>@application.DeletionScheduledAt.Value.ToString("d MMM yyyy, h:mm tt")</dd></div> }
+                        </dl>
+                        <div class="record-actions"><a class="text-link" asp-action="Details" asp-route-slug="@application.Slug">View read-only details</a><span class="demo-card-lock">Synthetic record</span></div>
+                    </article>
+                }
+            </div>
+        }
+    </div>
+</section>
