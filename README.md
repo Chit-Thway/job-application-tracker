@@ -4,9 +4,9 @@ A private ASP.NET Core job-search organizer for tracking applications, follow-up
 
 ## Current status
 
-Milestone 8 adds transparent retention review and traffic-independent database cleanup. Eligible unsaved records receive a professional **Deletion scheduled** state with an exact 14-day deadline and a direct Save escape route across the library, details, dashboard, Action Centre, and Settings. The application library also supports remembered card/list views plus an explicit, owner-scoped selection mode for confirmed bulk deletion, pipeline-stage changes, and append-only notes.
+Milestone 9 adds a portfolio-friendly public demonstration with a synthetic dashboard, application library, Action Centre, and application details. It uses a deterministic in-memory catalog, fictional slugs, a non-personalized public layout, and read-only routes that never query private application tables. Every demo page carries an explicit synthetic-data notice and a route to private sign-in.
 
-Ghosting remains a deliberate user decision: the tracker suggests a follow-up after 14 days without a meaningful employer response and offers confirmation after 30 days, but never changes the outcome automatically. Status history, contacts and interactions, tasks, appointments, manual entry, deterministic extraction, safe public-URL import, and the explicit-click browser extension remain available throughout the workflow. The public synthetic demo remains scoped to a later milestone.
+The private tracker retains transparent three-calendar-month retention, exact 14-day deletion deadlines, card/list application views, owner-scoped bulk actions, deliberate ghosting confirmation, workflow history, contacts and interactions, tasks, appointments, deterministic extraction, safe public-URL import, and the explicit-click browser extension.
 
 ## Technology
 
@@ -71,10 +71,19 @@ Then open [https://localhost:7239](https://localhost:7239).
 | `/companies/new` | Manual company entry |
 | `/actions` | Overdue tasks, follow-up warnings, Ghosted decisions, scheduled-deletion warnings, and upcoming appointments |
 | `/settings` | Authenticated retention policy, owner-scoped counts, and scheduler health |
-| `/demo` | Public synthetic demo placeholder |
+| `/demo` | Public, read-only synthetic three-month dashboard |
+| `/demo/applications` | Searchable synthetic application library |
+| `/demo/applications/{slug}` | Read-only synthetic application details and workflow history |
+| `/demo/actions` | Synthetic tasks, appointments, ghosting checks, and retention warnings |
 | `/health` | Minimal plain-text health response |
 
 The registration page is public, but account creation requires an unexpired, unused, unrevoked invitation code.
+
+## Public synthetic demo
+
+The public demo is available without an account and is deliberately separated from authenticated data access. `DemoCatalog` constructs six deterministic fictional applications in memory, including fictional companies, `example.test` contacts, activity, tasks, appointments, pipeline stages, an accepted offer, hourly pay, and a scheduled-deletion example. Public routes use readable slugs rather than private application GUIDs.
+
+The demo has its own layout so publicly cacheable responses never include signed-in navigation or account-specific state. Only `GET` exploration is supported; `POST`, `PUT`, `PATCH`, and `DELETE` requests under `/demo` receive `405 Method Not Allowed`. Automated tests seed a private canary record and prove it cannot appear in demo HTML, query results, unknown-record errors, scripts, or cacheable responses.
 
 ## Manual tracking
 
@@ -224,6 +233,6 @@ Browser tests will be added when the product has critical interactive journeys.
 
 ## Product direction
 
-The MVP will provide a private authenticated tracker and a separate public read-only synthetic demo. It will cover applications, companies, status history, contacts and interactions, tasks, appointments, three-calendar-month dashboard reporting, ghosting warnings, and transparent automatic retention for old unsaved applications.
+The MVP provides a private authenticated tracker and a separate public read-only synthetic demo. Together they cover applications, companies, status history, contacts and interactions, tasks, appointments, three-calendar-month dashboard reporting, ghosting warnings, and transparent automatic retention for old unsaved applications.
 
 Built for Chit-Thway.

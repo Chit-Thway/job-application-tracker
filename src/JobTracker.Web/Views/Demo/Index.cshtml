@@ -1,0 +1,181 @@
+@model DemoDashboardViewModel
+@{
+    Layout = "_DemoLayout";
+    ViewData["Title"] = "Demo dashboard";
+    var windowApplications = Model.Applications
+        .Where(item => item.AppliedOn >= Model.StartsOn && item.AppliedOn <= Model.EndsOn)
+        .OrderByDescending(item => item.AppliedOn)
+        .ToList();
+    var stageSegments = windowApplications
+        .GroupBy(item => item.Stage)
+        .Select((group, index) => new
+        {
+            Stage = group.Key,
+            Label = ApplicationDisplay.Stage(group.Key),
+            Count = group.Count(),
+            ColorIndex = index,
+        })
+        .ToList();
+    var responseCount = windowApplications.Sum(item => item.Activity.Count(activity => activity.IsEmployerResponse));
+    var interviewCount = windowApplications.Sum(item => item.Appointments.Count(appointment => appointment.Type == "Interview"));
+    var openTasks = Model.Applications
+        .SelectMany(application => application.Tasks
+            .Where(task => !task.IsCompleted)
+            .Select(task => (Application: application, Task: task)))
+        .OrderBy(item => item.Task.DueAt)
+        .ToList();
+    var upcomingAppointments = Model.Applications
+        .SelectMany(application => application.Appointments
+            .Where(appointment => appointment.StartsAt >= DemoCatalogStartOfDay(Model.Today))
+            .Select(appointment => (Application: application, Appointment: appointment)))
+        .OrderBy(item => item.Appointment.StartsAt)
+        .ToList();
+    var recentActivity = Model.Applications
+        .SelectMany(application => application.Activity.Select(activity => (Application: application, Activity: activity)))
+        .OrderByDescending(item => item.Activity.OccurredAt)
+        .Take(6)
+        .ToList();
+    var months = Enumerable.Range(0, 3)
+        .Select(offset => new DateOnly(Model.StartsOn.Year, Model.StartsOn.Month, 1).AddMonths(offset))
+        .ToList();
+
+    static DateTimeOffset DemoCatalogStartOfDay(DateOnly date) =>
+        new(date.ToDateTime(TimeOnly.MinValue), TimeSpan.FromHours(8));
+
+    static string DonutPoint(double percentage)
+    {
+        const double centre = 21;
+        const double radius = 15.9155;
+        var radians = (percentage * 3.6 - 90) * Math.PI / 180;
+        var x = centre + radius * Math.Cos(radians);
+        var y = centre + radius * Math.Sin(radians);
+        return $"{x.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture)} {y.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture)}";
+    }
+
+    static string DonutArc(double startPercentage, double percentage)
+    {
+        const double radius = 15.9155;
+        var endPercentage = startPercentage + percentage;
+        var largeArc = percentage > 50 ? 1 : 0;
+        return $"M {DonutPoint(startPercentage)} A {radius} {radius} 0 {largeArc} 1 {DonutPoint(endPercentage)}";
+    }
+}
+
+<section class="workspace-hero dashboard-hero demo-dashboard-hero">
+    <div class="shell dashboard-heading">
+        <div>
+            <p class="eyebrow">Public portfolio demo</p>
+            <h1>A realistic tracker,<br />with zero real data.</h1>
+            <p>@Model.StartsOn.ToString("d MMM") – @Model.EndsOn.ToString("d MMM yyyy") <span class="timezone-note">@DemoCatalog.TimeZoneId</span></p>
+        </div>
+        <div class="dashboard-hero-actions">
+            <p>Explore the complete read-only workflow.</p>
+            <a class="button button-primary" asp-action="Applications">Browse synthetic applications</a>
+        </div>
+    </div>
+</section>
+
+<section class="workspace-content dashboard-workspace">
+    <div class="shell">
+        <div class="dashboard-metrics" aria-label="Synthetic three-month summary">
+            <article class="dashboard-metric-card"><span>Applications</span><strong>@windowApplications.Count</strong><small>Across three calendar months</small></article>
+            <article class="dashboard-metric-card"><span>Employer responses</span><strong>@responseCount</strong><small>Meaningful synthetic responses</small></article>
+            <article class="dashboard-metric-card"><span>Interviews</span><strong>@interviewCount</strong><small>Upcoming in this demo</small></article>
+            <article class="dashboard-metric-card attention-metric"><span>Needs attention</span><strong>@openTasks.Count</strong><small>Open follow-ups in the sample</small></article>
+        </div>
+
+        <div class="dashboard-months" aria-label="Synthetic applications by calendar month">
+            @foreach (var month in months)
+            {
+                var nextMonth = month.AddMonths(1);
+                var count = windowApplications.Count(item => item.AppliedOn >= month && item.AppliedOn < nextMonth);
+                <article class="dashboard-month @(month == months[^1] ? "is-current" : null)">
+                    <span>@month.ToString("MMM yyyy")</span><strong>@count</strong><small>@(count == 1 ? "application" : "applications")</small>
+                </article>
+            }
+        </div>
+
+        <div class="dashboard-grid">
+            <div class="dashboard-main-column">
+                <article class="dashboard-panel">
+                    <div class="dashboard-panel-heading">
+                        <div><p class="mini-label">Pipeline</p><h2>Where applications stand</h2></div>
+                        <a class="text-link" asp-action="Applications">View applications</a>
+                    </div>
+                    <div class="pipeline-chart" data-pipeline-chart>
+                        <div class="pipeline-donut-wrap">
+                            <svg class="pipeline-donut" viewBox="0 0 42 42" role="img" aria-labelledby="demo-pipeline-title demo-pipeline-description">
+                                <title id="demo-pipeline-title">Synthetic applications by pipeline stage</title>
+                                <desc id="demo-pipeline-description">@string.Join(", ", stageSegments.Select(item => $"{item.Label}: {item.Count}"))</desc>
+                                <circle class="pipeline-donut-track" cx="21" cy="21" r="15.9155" pathLength="100"></circle>
+                                @{ var cumulativePercentage = 0d; }
+                                @foreach (var stage in stageSegments)
+                                {
+                                    var percentage = stage.Count * 100d / windowApplications.Count;
+                                    var label = $"{stage.Label}: {stage.Count} {(stage.Count == 1 ? "application" : "applications")}";
+                                    if (stageSegments.Count == 1)
+                                    {
+                                        <circle class="pipeline-donut-segment pipeline-stage-@stage.ColorIndex" cx="21" cy="21" r="15.9155" tabindex="0" role="img" aria-label="@label" data-pipeline-label="@stage.Label" data-pipeline-count="@stage.Count"><title>@label</title></circle>
+                                    }
+                                    else
+                                    {
+                                        <path class="pipeline-donut-segment pipeline-stage-@stage.ColorIndex" d="@DonutArc(cumulativePercentage, percentage)" tabindex="0" role="img" aria-label="@label" data-pipeline-label="@stage.Label" data-pipeline-count="@stage.Count"><title>@label</title></path>
+                                    }
+                                    cumulativePercentage += percentage;
+                                }
+                            </svg>
+                            <div class="pipeline-donut-centre" aria-hidden="true">
+                                <div class="pipeline-donut-total" data-pipeline-total><strong>@windowApplications.Count</strong><span>Total</span></div>
+                                <div class="pipeline-donut-tooltip" data-pipeline-tooltip hidden><strong data-pipeline-tooltip-label></strong><span data-pipeline-tooltip-count></span></div>
+                            </div>
+                        </div>
+                        <ul class="pipeline-legend" aria-label="Synthetic pipeline stage totals">
+                            @foreach (var stage in stageSegments)
+                            {
+                                <li><span class="pipeline-legend-swatch pipeline-stage-@stage.ColorIndex" aria-hidden="true"></span><span>@stage.Label</span><strong>@stage.Count</strong></li>
+                            }
+                        </ul>
+                    </div>
+                </article>
+
+                <article class="dashboard-panel">
+                    <div class="dashboard-panel-heading"><div><p class="mini-label">Recent activity</p><h2>The latest synthetic movement</h2></div></div>
+                    <ol class="dashboard-activity-list">
+                        @foreach (var item in recentActivity)
+                        {
+                            <li>
+                                <span class="activity-marker" aria-hidden="true"></span>
+                                <div><p class="activity-kind">@item.Activity.Kind</p><a asp-action="Details" asp-route-slug="@item.Application.Slug">@item.Application.RoleTitle</a><span>@item.Activity.Summary · @item.Application.CompanyName</span></div>
+                                <time datetime="@item.Activity.OccurredAt.ToString("O")">@item.Activity.OccurredAt.ToString("d MMM, h:mm tt")</time>
+                            </li>
+                        }
+                    </ol>
+                </article>
+            </div>
+
+            <aside class="dashboard-side-column">
+                <article class="dashboard-panel action-summary-panel">
+                    <div class="dashboard-panel-heading"><div><p class="mini-label">Attention</p><h2>What needs you next</h2></div><a class="text-link" asp-action="ActionCentre">Open Action Centre</a></div>
+                    <ul class="attention-list compact-attention-list">
+                        @foreach (var item in openTasks.Take(3))
+                        {
+                            <li><span class="attention-icon" aria-hidden="true">✓</span><div><a asp-action="Details" asp-route-slug="@item.Application.Slug">@item.Task.Title</a><span>@item.Application.RoleTitle · @(item.Task.DueAt is null ? "No due date" : item.Task.DueAt.Value.ToString("d MMM, h:mm tt"))</span></div></li>
+                        }
+                    </ul>
+                </article>
+
+                <article class="dashboard-panel">
+                    <div class="dashboard-panel-heading"><div><p class="mini-label">Coming up</p><h2>Appointments</h2></div></div>
+                    <div class="dashboard-appointment-list">
+                        @foreach (var item in upcomingAppointments.Take(3))
+                        {
+                            <a asp-action="Details" asp-route-slug="@item.Application.Slug"><span>@item.Appointment.StartsAt.ToString("ddd d MMM")</span><strong>@item.Appointment.Type</strong><small>@item.Application.RoleTitle · @item.Appointment.StartsAt.ToString("h:mm tt")</small></a>
+                        }
+                    </div>
+                </article>
+            </aside>
+        </div>
+    </div>
+</section>
+
+<script src="~/js/dashboard-pipeline.js" asp-append-version="true"></script>

@@ -1,0 +1,41 @@
+@model DemoActionCentreViewModel
+@{
+    Layout = "_DemoLayout";
+    ViewData["Title"] = "Demo Action Centre";
+    var todayStart = new DateTimeOffset(Model.Today.ToDateTime(TimeOnly.MinValue), TimeSpan.FromHours(8));
+    var openTasks = Model.Applications.SelectMany(application => application.Tasks.Where(task => !task.IsCompleted).Select(task => (Application: application, Task: task))).OrderBy(item => item.Task.DueAt).ToList();
+    var upcomingAppointments = Model.Applications.SelectMany(application => application.Appointments.Where(appointment => appointment.StartsAt >= todayStart).Select(appointment => (Application: application, Appointment: appointment))).OrderBy(item => item.Appointment.StartsAt).ToList();
+    var ghosting = Model.Applications.Where(application => application.Outcome == ApplicationOutcome.Active && application.Activity.All(activity => !activity.IsEmployerResponse) && application.AppliedOn <= Model.Today.AddDays(-14)).ToList();
+    var deletionScheduled = Model.Applications.Where(application => application.RetentionState == DemoRetentionState.DeletionScheduled).ToList();
+}
+
+<section class="workspace-hero compact-workspace-hero">
+    <div class="shell page-heading-grid"><div><p class="eyebrow">Synthetic Action Centre</p><h1>The next move,<br />without the private data.</h1><p>See how tasks, appointments, ghosting checks, and retention warnings come together.</p></div><div class="foundation-pill"><span class="status-dot" aria-hidden="true"></span>Read-only queue</div></div>
+</section>
+
+<section class="workspace-content">
+    <div class="shell action-centre-grid">
+        <div class="action-centre-main">
+            <article class="dashboard-panel">
+                <div class="dashboard-panel-heading"><div><p class="mini-label">Follow-ups</p><h2>Open tasks</h2></div><span class="count-badge">@openTasks.Count</span></div>
+                <ul class="workflow-record-list task-list">@foreach (var item in openTasks) { var overdue = item.Task.DueAt is not null && item.Task.DueAt < todayStart; <li><div><h3><a class="text-link" asp-action="Details" asp-route-slug="@item.Application.Slug">@item.Task.Title</a></h3><p class="task-state @(overdue ? "is-overdue" : null)">@(overdue ? "Overdue" : "Due") @(item.Task.DueAt is null ? "without a date" : item.Task.DueAt.Value.ToString("d MMM yyyy, h:mm tt"))</p><p>@item.Application.RoleTitle · @item.Application.CompanyName</p><p>@item.Task.Notes</p></div><span class="demo-card-lock">Read only</span></li> }</ul>
+            </article>
+
+            <article class="dashboard-panel">
+                <div class="dashboard-panel-heading"><div><p class="mini-label">Ghosting review</p><h2>No-response checks</h2></div><span class="count-badge">@ghosting.Count</span></div>
+                @if (ghosting.Count == 0) { <div class="dashboard-empty"><strong>No sample needs a ghosting review.</strong></div> } else { <ul class="attention-list">@foreach (var application in ghosting) { <li><span class="attention-icon" aria-hidden="true">!</span><div><a asp-action="Details" asp-route-slug="@application.Slug">@application.RoleTitle</a><span>@application.CompanyName · Applied @application.AppliedOn.ToString("d MMM yyyy")</span><small>The private tracker suggests follow-up after 14 days and requires confirmation after 30 days.</small></div></li> }</ul> }
+            </article>
+        </div>
+
+        <aside class="action-centre-side">
+            <article class="dashboard-panel">
+                <div class="dashboard-panel-heading"><div><p class="mini-label">Coming up</p><h2>Appointments</h2></div><span class="count-badge">@upcomingAppointments.Count</span></div>
+                <div class="dashboard-appointment-list">@foreach (var item in upcomingAppointments) { <a asp-action="Details" asp-route-slug="@item.Application.Slug"><span>@item.Appointment.StartsAt.ToString("ddd d MMM")</span><strong>@item.Appointment.Type</strong><small>@item.Application.RoleTitle · @item.Appointment.StartsAt.ToString("h:mm tt")</small></a> }</div>
+            </article>
+            <article class="dashboard-panel deletion-attention-panel">
+                <div class="dashboard-panel-heading"><div><p class="mini-label">Retention</p><h2>Deletion scheduled</h2></div><span class="count-badge">@deletionScheduled.Count</span></div>
+                @foreach (var application in deletionScheduled) { <div class="action-item-warning action-item-deletion-scheduled"><div><strong><a asp-action="Details" asp-route-slug="@application.Slug">@application.RoleTitle</a></strong><span>@application.CompanyName</span></div><span class="action-tag is-deletion-scheduled">Deletes @application.DeletionScheduledAt!.Value.ToString("d MMM")</span></div> }
+            </article>
+        </aside>
+    </div>
+</section>

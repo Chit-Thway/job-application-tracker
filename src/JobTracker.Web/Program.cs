@@ -2,6 +2,7 @@ using JobTracker.Web.Data;
 using JobTracker.Web.Identity;
 using JobTracker.Web.Applications;
 using JobTracker.Web.Extraction;
+using JobTracker.Web.Demo;
 using System.Net;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -87,6 +88,7 @@ builder.Services.AddRateLimiter(options =>
 builder.Services.AddSingleton<DevelopmentMailStore>();
 builder.Services.AddSingleton<IAccountEmailSender, DevelopmentAccountEmailSender>();
 builder.Services.AddSingleton(TimeProvider.System);
+builder.Services.AddSingleton<DemoCatalog>();
 builder.Services.AddScoped<DevelopmentAccountBootstrapper>();
 builder.Services.AddScoped<InvitationService>();
 builder.Services.AddScoped<InvitationRegistrationService>();

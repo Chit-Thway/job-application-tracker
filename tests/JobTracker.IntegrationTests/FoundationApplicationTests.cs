@@ -13,11 +13,13 @@ public sealed class FoundationApplicationTests : IClassFixture<JobTrackerWebAppl
     }
 
     [Theory]
-    [InlineData("/", "Job Application Tracker")]
-    [InlineData("/demo", "A realistic demo. Never real data.")]
+    [InlineData("/", "Job Application Tracker", "Milestone 8", "Retention review and scheduled cleanup")]
+    [InlineData("/demo", "A realistic tracker", "Milestone 9", "Public synthetic demo")]
     public async Task FoundationRoutes_ReturnSuccessfulBrandedPages(
         string route,
-        string expectedText)
+        string expectedText,
+        string milestone,
+        string footerText)
     {
         var client = CreateClient();
 
@@ -26,8 +28,8 @@ public sealed class FoundationApplicationTests : IClassFixture<JobTrackerWebAppl
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Contains(expectedText, content, StringComparison.Ordinal);
-        Assert.Contains("Milestone 8", content, StringComparison.Ordinal);
-        Assert.Contains("Retention review and scheduled cleanup", content, StringComparison.Ordinal);
+        Assert.Contains(milestone, content, StringComparison.Ordinal);
+        Assert.Contains(footerText, content, StringComparison.Ordinal);
     }
 
     [Theory]

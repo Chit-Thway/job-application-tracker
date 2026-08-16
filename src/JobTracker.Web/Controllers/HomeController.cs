@@ -105,9 +105,6 @@ public class HomeController(
         return View(await retention.GetSettingsAsync(cancellationToken));
     }
 
-    [HttpGet("/demo")]
-    public IActionResult Demo() => FoundationPage(nameof(Demo));
-
     [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
     [HttpGet("/error")]
     public IActionResult Error()
