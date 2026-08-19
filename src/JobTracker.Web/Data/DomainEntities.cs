@@ -29,6 +29,7 @@ public sealed class JobApplication : OwnedEntity
     public string? Notes { get; set; }
     public bool IsSavedForever { get; set; }
     public DateTimeOffset? DeletionScheduledAt { get; set; }
+    public DateTimeOffset? DeletionWarningDismissedAt { get; set; }
 }
 
 public sealed class ExtractionDraft : OwnedEntity

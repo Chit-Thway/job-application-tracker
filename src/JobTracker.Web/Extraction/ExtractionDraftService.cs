@@ -190,10 +190,13 @@ public sealed class ExtractionDraftService(
                 input.CompanyName,
                 input.CompanyLocation,
                 cancellationToken);
-            var timeZoneId = await database.Users
+            var preferences = await database.Users
                 .AsNoTracking()
                 .Where(user => user.Id == ownerId)
-                .Select(user => user.TimeZoneId)
+                .Select(user => new RetentionPreferences(
+                    user.TimeZoneId,
+                    user.RetentionMonths,
+                    user.DeletionGraceDays))
                 .SingleAsync(cancellationToken);
             var metadata = new ReviewedExtractionMetadata(
                 NullIfWhiteSpace(input.WorkplaceMode),
@@ -221,7 +224,9 @@ public sealed class ExtractionDraftService(
                     input.IsSavedForever,
                     null,
                     now,
-                    timeZoneId),
+                    preferences.TimeZoneId,
+                    retentionMonths: preferences.RetentionMonths,
+                    gracePeriodDays: preferences.DeletionGraceDays),
             };
             var history = new StatusHistory
             {

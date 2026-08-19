@@ -8,7 +8,7 @@ namespace JobTracker.IntegrationTests;
 public sealed partial class ApplicationWorkflowTests
 {
     [Fact]
-    public async Task ApplicationLibrary_SupportsViewSelectionAndThreeBulkActions()
+    public async Task ApplicationLibrary_SupportsListStatusEditingAndFiveBulkActions()
     {
         var client = await CreateAuthenticatedClientAsync();
         var firstId = await CreateApplicationAsync(client, "Synthetic Bulk First");
@@ -19,7 +19,17 @@ public sealed partial class ApplicationWorkflowTests
         Assert.Equal(HttpStatusCode.OK, index.StatusCode);
         Assert.Contains("data-application-view=\"cards\"", indexContent, StringComparison.Ordinal);
         Assert.Contains("data-application-view=\"list\"", indexContent, StringComparison.Ordinal);
+        Assert.Contains("data-application-view=\"list\" aria-pressed=\"true\"", indexContent, StringComparison.Ordinal);
+        Assert.Contains("application-results is-list-view", indexContent, StringComparison.Ordinal);
         Assert.Contains("data-selection-toggle", indexContent, StringComparison.Ordinal);
+        Assert.Contains("class=\"application-rank\"", indexContent, StringComparison.Ordinal);
+        Assert.Contains("formaction=\"/applications/bulk/saved\"", indexContent, StringComparison.Ordinal);
+        Assert.Contains("data-inline-status-form", indexContent, StringComparison.Ordinal);
+        Assert.Contains("Save status", indexContent, StringComparison.Ordinal);
+        Assert.Contains("data-status-discard", indexContent, StringComparison.Ordinal);
+        Assert.DoesNotContain("<option value=\"RecruiterContact\"", indexContent, StringComparison.Ordinal);
+        Assert.DoesNotContain("<option value=\"ReferenceCheck\"", indexContent, StringComparison.Ordinal);
+        Assert.DoesNotContain("<option value=\"OfferDeclined\"", indexContent, StringComparison.Ordinal);
         Assert.Contains("All saved", indexContent, StringComparison.Ordinal);
         Assert.Contains("All unsaved", indexContent, StringComparison.Ordinal);
         Assert.Contains("All deletion scheduled", indexContent, StringComparison.Ordinal);
@@ -48,6 +58,40 @@ public sealed partial class ApplicationWorkflowTests
 
         index = await client.GetAsync("/applications");
         token = ExtractAntiforgeryToken(await index.Content.ReadAsStringAsync());
+        var saveResponse = await client.PostAsync(
+            "/applications/bulk/saved",
+            Form(
+                ("SelectedApplicationIds", firstId.ToString()),
+                ("SelectedApplicationIds", secondId.ToString()),
+                ("isSavedForever", "true"),
+                ("__RequestVerificationToken", token)));
+        Assert.Equal(HttpStatusCode.Redirect, saveResponse.StatusCode);
+
+        index = await client.GetAsync("/applications");
+        token = ExtractAntiforgeryToken(await index.Content.ReadAsStringAsync());
+        var unsaveResponse = await client.PostAsync(
+            "/applications/bulk/saved",
+            Form(
+                ("SelectedApplicationIds", secondId.ToString()),
+                ("isSavedForever", "false"),
+                ("__RequestVerificationToken", token)));
+        Assert.Equal(HttpStatusCode.Redirect, unsaveResponse.StatusCode);
+
+        index = await client.GetAsync("/applications");
+        token = ExtractAntiforgeryToken(await index.Content.ReadAsStringAsync());
+        var inlineStatusResponse = await client.PostAsync(
+            $"/applications/{firstId}/status",
+            Form(
+                ("Status.Stage", PipelineStage.Interview.ToString()),
+                ("Status.Outcome", ApplicationOutcome.Active.ToString()),
+                ("Status.Note", "Interview booked from the application list."),
+                ("returnTo", "index"),
+                ("__RequestVerificationToken", token)));
+        Assert.Equal(HttpStatusCode.Redirect, inlineStatusResponse.StatusCode);
+        Assert.Equal("/applications", inlineStatusResponse.Headers.Location?.OriginalString);
+
+        index = await client.GetAsync("/applications");
+        token = ExtractAntiforgeryToken(await index.Content.ReadAsStringAsync());
         var deleteReview = await client.PostAsync(
             "/applications/bulk/delete",
             Form(
@@ -71,7 +115,9 @@ public sealed partial class ApplicationWorkflowTests
         {
             var database = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
             var first = await database.JobApplications.SingleAsync(item => item.Id == firstId);
-            Assert.Equal(PipelineStage.Screening, first.Stage);
+            Assert.Equal(PipelineStage.Interview, first.Stage);
+            Assert.True(first.IsSavedForever);
+            Assert.Null(first.DeletionScheduledAt);
             Assert.False(await database.JobApplications.AnyAsync(item => item.Id == secondId));
             Assert.Contains(database.StatusHistory, item =>
                 item.JobApplicationId == firstId
@@ -80,6 +126,10 @@ public sealed partial class ApplicationWorkflowTests
                 item.JobApplicationId == firstId
                 && item.Note == "Shared bulk workflow note."
                 && item.NewStage == null);
+            Assert.Contains(database.StatusHistory, item =>
+                item.JobApplicationId == firstId
+                && item.NewStage == PipelineStage.Interview
+                && item.Note == "Interview booked from the application list.");
         }
 
         var details = await client.GetAsync($"/applications/{firstId}");

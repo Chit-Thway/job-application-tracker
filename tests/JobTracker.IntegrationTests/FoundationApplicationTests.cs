@@ -13,12 +13,12 @@ public sealed class FoundationApplicationTests : IClassFixture<JobTrackerWebAppl
     }
 
     [Theory]
-    [InlineData("/", "Job Application Tracker", "Milestone 10", "Launch hardening and diagnostics")]
-    [InlineData("/demo", "A realistic tracker", "Milestone 10", "Hardened public synthetic demo")]
+    [InlineData("/", "Your job search", "Private tracker", "Synthetic public demo")]
+    [InlineData("/demo", "A realistic tracker", "Synthetic data", "Read only")]
     public async Task FoundationRoutes_ReturnSuccessfulBrandedPages(
         string route,
         string expectedText,
-        string milestone,
+        string footerLabel,
         string footerText)
     {
         var client = CreateClient();
@@ -28,8 +28,24 @@ public sealed class FoundationApplicationTests : IClassFixture<JobTrackerWebAppl
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Contains(expectedText, content, StringComparison.Ordinal);
-        Assert.Contains(milestone, content, StringComparison.Ordinal);
+        Assert.Contains(footerLabel, content, StringComparison.Ordinal);
         Assert.Contains(footerText, content, StringComparison.Ordinal);
+        Assert.DoesNotContain("Milestone", content, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task PrivacyRoute_IsPublicAndExplainsPrivateDataBoundaries()
+    {
+        var client = CreateClient();
+
+        var response = await client.GetAsync("/privacy");
+        var content = await response.Content.ReadAsStringAsync();
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Contains("Your search data", content, StringComparison.Ordinal);
+        Assert.Contains("Private records are never part of the public demo", content, StringComparison.Ordinal);
+        Assert.Contains("does not send it to an external AI service", content, StringComparison.Ordinal);
+        Assert.DoesNotContain("Milestone", content, StringComparison.OrdinalIgnoreCase);
     }
 
     [Theory]
@@ -131,6 +147,10 @@ public sealed class FoundationApplicationTests : IClassFixture<JobTrackerWebAppl
         Assert.Contains("card.addEventListener(\"click\"", content, StringComparison.Ordinal);
         Assert.Contains("event.preventDefault()", content, StringComparison.Ordinal);
         Assert.Contains("checkbox.checked = !checkbox.checked", content, StringComparison.Ordinal);
+        Assert.Contains("let initialView = \"list\"", content, StringComparison.Ordinal);
+        Assert.Contains("job-tracker-application-view-v2", content, StringComparison.Ordinal);
+        Assert.Contains("data-inline-status-form", content, StringComparison.Ordinal);
+        Assert.Contains("data-status-discard", content, StringComparison.Ordinal);
     }
 
     [Fact]

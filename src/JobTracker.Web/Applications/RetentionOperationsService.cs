@@ -11,6 +11,8 @@ public sealed record RetentionRunSummary(
 
 public sealed record RetentionSettingsSnapshot(
     string TimeZoneId,
+    int RetentionMonths,
+    int DeletionGraceDays,
     int SavedCount,
     int RecentCount,
     int EligibleCount,
@@ -27,10 +29,13 @@ public sealed class RetentionOperationsService(
     {
         var ownerId = currentUser.UserId
             ?? throw new InvalidOperationException("An authenticated user is required.");
-        var timeZoneId = await database.Users
+        var preferences = await database.Users
             .AsNoTracking()
             .Where(user => user.Id == ownerId)
-            .Select(user => user.TimeZoneId)
+            .Select(user => new RetentionPreferences(
+                user.TimeZoneId,
+                user.RetentionMonths,
+                user.DeletionGraceDays))
             .SingleAsync(cancellationToken);
         var applications = await database.JobApplications
             .AsNoTracking()
@@ -49,7 +54,8 @@ public sealed class RetentionOperationsService(
                 application.IsSavedForever,
                 application.DeletionScheduledAt,
                 now,
-                timeZoneId))
+                preferences.TimeZoneId,
+                preferences.RetentionMonths))
             .ToList();
         var lastRun = await database.RetentionRuns
             .AsNoTracking()
@@ -61,11 +67,62 @@ public sealed class RetentionOperationsService(
             .FirstOrDefaultAsync(cancellationToken);
 
         return new RetentionSettingsSnapshot(
-            timeZoneId,
+            preferences.TimeZoneId,
+            preferences.RetentionMonths,
+            preferences.DeletionGraceDays,
             states.Count(item => item.State == ApplicationRetentionState.Saved),
             states.Count(item => item.State == ApplicationRetentionState.Recent),
             states.Count(item => item.State == ApplicationRetentionState.Eligible),
             states.Count(item => item.State == ApplicationRetentionState.DeletionScheduled),
             lastRun);
+    }
+
+    public async Task<bool> UpdateSettingsAsync(
+        int retentionMonths,
+        int deletionGraceDays,
+        CancellationToken cancellationToken = default)
+    {
+        if (!RetentionPolicy.IsAllowed(retentionMonths, deletionGraceDays))
+        {
+            return false;
+        }
+
+        var ownerId = currentUser.UserId
+            ?? throw new InvalidOperationException("An authenticated user is required.");
+        var user = await database.Users.SingleAsync(
+            item => item.Id == ownerId,
+            cancellationToken);
+        if (user.RetentionMonths == retentionMonths
+            && user.DeletionGraceDays == deletionGraceDays)
+        {
+            return true;
+        }
+
+        var now = timeProvider.GetUtcNow();
+        var applications = await database.JobApplications
+            .Where(application => application.OwnerId == ownerId)
+            .ToListAsync(cancellationToken);
+
+        user.RetentionMonths = retentionMonths;
+        user.DeletionGraceDays = deletionGraceDays;
+        foreach (var application in applications)
+        {
+            var previousSchedule = application.DeletionScheduledAt;
+            application.DeletionScheduledAt = RetentionPolicy.ReconcileSchedule(
+                application.AppliedOn,
+                application.IsSavedForever,
+                null,
+                now,
+                user.TimeZoneId,
+                retentionMonths: retentionMonths,
+                gracePeriodDays: deletionGraceDays);
+            if (previousSchedule != application.DeletionScheduledAt)
+            {
+                application.DeletionWarningDismissedAt = null;
+            }
+        }
+
+        await database.SaveChangesAsync(cancellationToken);
+        return true;
     }
 }

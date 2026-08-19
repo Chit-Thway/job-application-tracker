@@ -24,6 +24,16 @@ public sealed class RetentionPolicyTests
     }
 
     [Fact]
+    public void EligibleOn_UsesTheSelectedOneToThreeMonthPeriod()
+    {
+        var appliedOn = new DateOnly(2026, 1, 31);
+
+        Assert.Equal(new DateOnly(2026, 2, 28), RetentionPolicy.EligibleOn(appliedOn, 1));
+        Assert.Equal(new DateOnly(2026, 3, 31), RetentionPolicy.EligibleOn(appliedOn, 2));
+        Assert.Equal(new DateOnly(2026, 4, 30), RetentionPolicy.EligibleOn(appliedOn, 3));
+    }
+
+    [Fact]
     public void IsEligible_UsesTheOwnersLocalCalendarDate()
     {
         var appliedOn = new DateOnly(2026, 5, 14);
@@ -97,6 +107,42 @@ public sealed class RetentionPolicyTests
                 now,
                 "Australia/Perth",
                 startFreshGracePeriod: true));
+    }
+
+    [Theory]
+    [InlineData(3)]
+    [InlineData(5)]
+    [InlineData(10)]
+    [InlineData(14)]
+    public void ReconcileSchedule_UsesTheSelectedGracePeriod(int gracePeriodDays)
+    {
+        var now = new DateTimeOffset(2026, 8, 14, 3, 25, 0, TimeSpan.Zero);
+
+        var result = RetentionPolicy.ReconcileSchedule(
+            new DateOnly(2026, 7, 1),
+            false,
+            null,
+            now,
+            "Australia/Perth",
+            retentionMonths: 1,
+            gracePeriodDays: gracePeriodDays);
+
+        Assert.Equal(now.AddDays(gracePeriodDays), result);
+    }
+
+    [Theory]
+    [InlineData(1, 3, true)]
+    [InlineData(2, 10, true)]
+    [InlineData(3, 14, true)]
+    [InlineData(0, 14, false)]
+    [InlineData(3, 7, false)]
+    [InlineData(4, 3, false)]
+    public void IsAllowed_AcceptsOnlyTheExposedChoices(
+        int retentionMonths,
+        int gracePeriodDays,
+        bool expected)
+    {
+        Assert.Equal(expected, RetentionPolicy.IsAllowed(retentionMonths, gracePeriodDays));
     }
 
     [Fact]

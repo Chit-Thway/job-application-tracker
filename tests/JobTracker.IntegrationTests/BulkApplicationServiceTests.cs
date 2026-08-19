@@ -22,7 +22,7 @@ public sealed class BulkApplicationServiceTests
         database.Users.AddRange(owner, other);
         database.JobApplications.AddRange(first, second, privateOther);
         await database.SaveChangesAsync();
-        var now = new DateTimeOffset(2026, 8, 14, 8, 0, 0, TimeSpan.Zero);
+        var now = new DateTimeOffset(2026, 12, 14, 8, 0, 0, TimeSpan.Zero);
         var service = new ApplicationTrackerService(
             database,
             new FixedCurrentUser(owner.Id),
@@ -55,6 +55,23 @@ public sealed class BulkApplicationServiceTests
         Assert.Equal(2, notes.Count);
         Assert.All(notes, item => Assert.Equal("Shared interview preparation note.", item.Note));
         Assert.DoesNotContain(notes, item => item.OwnerId == other.Id);
+
+        first.DeletionScheduledAt = now.AddDays(2);
+        await database.SaveChangesAsync();
+        var saveResult = await service.BulkSetSavedForeverAsync(
+            [first.Id, privateOther.Id],
+            true);
+        Assert.Equal(1, saveResult.MatchedCount);
+        Assert.Equal(1, saveResult.ChangedCount);
+        Assert.True(first.IsSavedForever);
+        Assert.Null(first.DeletionScheduledAt);
+        Assert.False(privateOther.IsSavedForever);
+
+        var unsaveResult = await service.BulkSetSavedForeverAsync([first.Id], false);
+        Assert.Equal(1, unsaveResult.MatchedCount);
+        Assert.Equal(1, unsaveResult.ChangedCount);
+        Assert.False(first.IsSavedForever);
+        Assert.Equal(now.AddDays(RetentionPolicy.GracePeriodDays), first.DeletionScheduledAt);
 
         var selected = await service.FindSelectedAsync([first.Id, privateOther.Id]);
         Assert.Equal(first.Id, Assert.Single(selected).Id);

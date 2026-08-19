@@ -1,7 +1,6 @@
 using System.Diagnostics;
 using JobTracker.Web.Applications;
 using JobTracker.Web.Data;
-using JobTracker.Web.Foundation;
 using JobTracker.Web.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -11,12 +10,20 @@ namespace JobTracker.Web.Controllers;
 public class HomeController(
     DashboardService dashboard,
     ApplicationWorkflowService workflow,
-    RetentionOperationsService retention) : Controller
+    RetentionOperationsService retention,
+    ApplicationTrackerService applications) : Controller
 {
     [HttpGet("/")]
     public IActionResult Index()
     {
         SetPage("home");
+        return View();
+    }
+
+    [HttpGet("/privacy")]
+    public IActionResult Privacy()
+    {
+        SetPage("privacy");
         return View();
     }
 
@@ -97,12 +104,58 @@ public class HomeController(
         return RedirectToAction(nameof(ActionCentre));
     }
 
+    [HttpPost("/actions/applications/{applicationId:guid}/dismiss-deletion-warning")]
+    [Authorize]
+    public async Task<IActionResult> DismissDeletionWarning(
+        Guid applicationId,
+        CancellationToken cancellationToken)
+    {
+        var result = await applications.DismissDeletionWarningAsync(
+            applicationId,
+            cancellationToken);
+        if (result == ApplicationWriteResult.NotFound)
+        {
+            return NotFound();
+        }
+
+        if (result == ApplicationWriteResult.InvalidRetentionState)
+        {
+            TempData["Error"] = "That deletion warning is no longer active.";
+            return RedirectToAction(nameof(ActionCentre));
+        }
+
+        TempData["Success"] = "Warning dismissed. Automatic deletion is still scheduled.";
+        return RedirectToAction(nameof(ActionCentre));
+    }
+
     [HttpGet("/settings")]
     [Authorize]
     public async Task<IActionResult> Settings(CancellationToken cancellationToken)
     {
         SetPage("settings");
         return View(await retention.GetSettingsAsync(cancellationToken));
+    }
+
+    [HttpPost("/settings/retention")]
+    [Authorize]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> UpdateRetentionSettings(
+        int retentionMonths,
+        int deletionGraceDays,
+        CancellationToken cancellationToken)
+    {
+        var updated = await retention.UpdateSettingsAsync(
+            retentionMonths,
+            deletionGraceDays,
+            cancellationToken);
+        if (!updated)
+        {
+            TempData["Error"] = "Choose one of the available retention and warning periods.";
+            return RedirectToAction(nameof(Settings));
+        }
+
+        TempData["Success"] = "Retention settings updated. Pending schedules were recalculated from today.";
+        return RedirectToAction(nameof(Settings));
     }
 
     [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
@@ -130,13 +183,6 @@ public class HomeController(
         {
             RequestId = Activity.Current?.Id ?? HttpContext.TraceIdentifier,
         });
-    }
-
-    private IActionResult FoundationPage(string actionName)
-    {
-        var page = FoundationPageCatalog.GetByAction(actionName);
-        SetPage(page.Section);
-        return View("Foundation", page);
     }
 
     private void SetPage(string section)

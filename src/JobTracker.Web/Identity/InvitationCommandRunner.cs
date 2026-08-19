@@ -2,7 +2,8 @@ namespace JobTracker.Web.Identity;
 
 public sealed class InvitationCommandRunner(
     InvitationService invitations,
-    IHostEnvironment environment)
+    IHostEnvironment environment,
+    IConfiguration configuration)
 {
     public async Task<int?> TryRunAsync(
         string[] arguments,
@@ -14,23 +15,36 @@ public sealed class InvitationCommandRunner(
             return null;
         }
 
-        if (!environment.IsDevelopment())
+        var confirmedProductionCommand = arguments.Any(argument =>
+            string.Equals(argument, "--confirm-production", StringComparison.OrdinalIgnoreCase));
+        var commandArguments = arguments
+            .Where(argument => !string.Equals(
+                argument,
+                "--confirm-production",
+                StringComparison.OrdinalIgnoreCase))
+            .ToArray();
+
+        if (!environment.IsDevelopment()
+            && (!configuration.GetValue<bool>("InvitationCommands:Enabled")
+                || !confirmedProductionCommand))
         {
-            Console.Error.WriteLine("Invitation commands are available only in Development.");
+            Console.Error.WriteLine(
+                "Invitation commands are disabled outside Development. " +
+                "Temporarily set InvitationCommands:Enabled=true and add --confirm-production.");
             return 1;
         }
 
-        if (arguments.Length < 2)
+        if (commandArguments.Length < 2)
         {
             WriteUsage();
             return 1;
         }
 
-        return arguments[1].ToLowerInvariant() switch
+        return commandArguments[1].ToLowerInvariant() switch
         {
-            "create" => await CreateAsync(arguments, cancellationToken),
-            "list" => await ListAsync(arguments, cancellationToken),
-            "revoke" => await RevokeAsync(arguments, cancellationToken),
+            "create" => await CreateAsync(commandArguments, cancellationToken),
+            "list" => await ListAsync(commandArguments, cancellationToken),
+            "revoke" => await RevokeAsync(commandArguments, cancellationToken),
             _ => UnknownCommand(),
         };
     }
@@ -125,5 +139,8 @@ public sealed class InvitationCommandRunner(
         Console.WriteLine("  invitations create [--days 1-30]");
         Console.WriteLine("  invitations list");
         Console.WriteLine("  invitations revoke <invitation-id>");
+        Console.WriteLine(
+            "  Outside Development, temporarily enable InvitationCommands:Enabled " +
+            "and append --confirm-production.");
     }
 }

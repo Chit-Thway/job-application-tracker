@@ -62,7 +62,7 @@ public sealed partial class ApplicationWorkflowTests
         var recruiterContactResponse = await client.PostAsync(
             $"/applications/{applicationId}/status",
             Form(
-                ("Status.Stage", PipelineStage.RecruiterContact.ToString()),
+                ("Status.Stage", PipelineStage.Screening.ToString()),
                 ("Status.Outcome", ApplicationOutcome.Active.ToString()),
                 ("Status.Note", "Recruiter made contact."),
                 ("__RequestVerificationToken", statusToken)));
@@ -88,9 +88,9 @@ public sealed partial class ApplicationWorkflowTests
         Assert.Contains("Send dashboard follow-up", dashboardContent, StringComparison.Ordinal);
         Assert.Contains("class=\"pipeline-donut\"", dashboardContent, StringComparison.Ordinal);
         Assert.Contains("data-pipeline-label=\"Applied\"", dashboardContent, StringComparison.Ordinal);
-        Assert.Contains("data-pipeline-label=\"Recruiter contact\"", dashboardContent, StringComparison.Ordinal);
+        Assert.Contains("data-pipeline-label=\"Screening\"", dashboardContent, StringComparison.Ordinal);
         Assert.Contains("aria-label=\"Applied: 1 application\"", dashboardContent, StringComparison.Ordinal);
-        Assert.Contains("aria-label=\"Recruiter contact: 1 application\"", dashboardContent, StringComparison.Ordinal);
+        Assert.Contains("aria-label=\"Screening: 1 application\"", dashboardContent, StringComparison.Ordinal);
         Assert.Contains("<path class=\"pipeline-donut-segment pipeline-stage-0\"", dashboardContent, StringComparison.Ordinal);
         Assert.Contains("<path class=\"pipeline-donut-segment pipeline-stage-1\"", dashboardContent, StringComparison.Ordinal);
         Assert.Contains("/js/dashboard-pipeline.js", dashboardContent, StringComparison.Ordinal);

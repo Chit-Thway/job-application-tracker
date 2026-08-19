@@ -16,7 +16,7 @@
         <form class="filter-panel demo-filter-panel" method="get" aria-label="Demo application filters">
             <div class="filter-grid compact-filter">
                 <div class="field filter-search"><label for="query">Search</label><input id="query" name="query" value="@Model.Query" placeholder="Role or fictional company" /></div>
-                <div class="field"><label for="stage">Stage</label><select id="stage" name="stage"><option value="">All stages</option>@foreach (var stage in Enum.GetValues<PipelineStage>()) { <option value="@stage" selected="@(Model.Stage == stage)">@ApplicationDisplay.Stage(stage)</option> }</select></div>
+                <div class="field"><label for="stage">Stage</label><select id="stage" name="stage"><option value="">All stages</option>@foreach (var stage in ApplicationDisplay.ActiveStages) { <option value="@stage" selected="@(Model.Stage == stage)">@ApplicationDisplay.Stage(stage)</option> }</select></div>
                 <div class="filter-actions"><button class="button button-primary" type="submit">Apply filters</button><a class="button button-secondary" asp-action="Applications">Clear</a></div>
             </div>
         </form>

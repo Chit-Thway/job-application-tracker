@@ -2,6 +2,7 @@ using System.Net;
 using System.Text.RegularExpressions;
 using JobTracker.Web.Data;
 using JobTracker.Web.Identity;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -35,6 +36,33 @@ public sealed partial class AuthenticationJourneyTests
         Assert.Equal(HttpStatusCode.OK, registrationResponse.StatusCode);
         Assert.Contains("Create your account.", registrationContent, StringComparison.Ordinal);
         Assert.Contains("Invitation code", registrationContent, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task InvitationCommands_RequireProductionSettingAndExplicitConfirmation()
+    {
+        await using (var disabledScope = factory.Services.CreateAsyncScope())
+        {
+            var disabledRunner = disabledScope.ServiceProvider
+                .GetRequiredService<InvitationCommandRunner>();
+
+            Assert.Equal(
+                1,
+                await disabledRunner.TryRunAsync(
+                    ["invitations", "list", "--confirm-production"]));
+        }
+
+        using var enabledFactory = factory.WithWebHostBuilder(builder =>
+            builder.UseSetting("InvitationCommands:Enabled", "true"));
+        await using var enabledScope = enabledFactory.Services.CreateAsyncScope();
+        var enabledRunner = enabledScope.ServiceProvider
+            .GetRequiredService<InvitationCommandRunner>();
+
+        Assert.Equal(1, await enabledRunner.TryRunAsync(["invitations", "list"]));
+        Assert.Equal(
+            0,
+            await enabledRunner.TryRunAsync(
+                ["invitations", "list", "--confirm-production"]));
     }
 
     [Fact]
@@ -104,6 +132,30 @@ public sealed partial class AuthenticationJourneyTests
             var manager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
             Assert.Null(await manager.FindByEmailAsync(secondEmail));
         }
+    }
+
+    [Fact]
+    public async Task MalformedEmail_IsRejectedWithoutUsingTheInvitation()
+    {
+        var invitation = await CreateInvitationAsync();
+        var client = CreateClient();
+
+        var response = await PostRegistrationAsync(
+            client,
+            invitation.Code,
+            "not-an-email-address",
+            TestPassword);
+        var content = await response.Content.ReadAsStringAsync();
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Contains("not a valid e-mail address", content, StringComparison.OrdinalIgnoreCase);
+
+        await using var scope = factory.Services.CreateAsyncScope();
+        var database = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+        var storedInvitation = await database.Invitations
+            .SingleAsync(item => item.Id == invitation.Id);
+        Assert.Null(storedInvitation.UsedAt);
+        Assert.Null(storedInvitation.UsedByUserId);
     }
 
     [Fact]

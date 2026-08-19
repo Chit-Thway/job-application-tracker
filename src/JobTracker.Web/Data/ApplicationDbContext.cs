@@ -25,6 +25,15 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
         {
             entity.Property(user => user.DisplayName).HasMaxLength(120).IsRequired();
             entity.Property(user => user.TimeZoneId).HasMaxLength(100).IsRequired();
+            entity.ToTable(table =>
+            {
+                table.HasCheckConstraint(
+                    "CK_AspNetUsers_RetentionMonths",
+                    "\"RetentionMonths\" IN (1, 2, 3)");
+                table.HasCheckConstraint(
+                    "CK_AspNetUsers_DeletionGraceDays",
+                    "\"DeletionGraceDays\" IN (3, 5, 10, 14)");
+            });
         });
 
         builder.Entity<Invitation>(entity =>

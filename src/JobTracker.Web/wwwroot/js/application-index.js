@@ -23,7 +23,7 @@
             button.setAttribute("aria-pressed", active.toString());
         });
         try {
-            localStorage.setItem("job-tracker-application-view", view);
+            localStorage.setItem("job-tracker-application-view-v2", view);
         } catch {
             // The view still works when browser storage is unavailable.
         }
@@ -33,13 +33,13 @@
         button.addEventListener("click", () => setView(button.dataset.applicationView));
     });
 
-    let initialView = "cards";
+    let initialView = "list";
     try {
-        initialView = localStorage.getItem("job-tracker-application-view") === "list"
-            ? "list"
-            : "cards";
+        initialView = localStorage.getItem("job-tracker-application-view-v2") === "cards"
+            ? "cards"
+            : "list";
     } catch {
-        initialView = "cards";
+        initialView = "list";
     }
     setView(initialView);
 
@@ -117,6 +117,79 @@
             });
             updateSelection();
         });
+    });
+
+    const statusClasses = [
+        "status-stage-applied",
+        "status-stage-screening",
+        "status-stage-assessment",
+        "status-stage-interview",
+        "status-stage-offer",
+        "status-outcome-active",
+        "status-outcome-accepted",
+        "status-outcome-rejected",
+        "status-outcome-withdrawn",
+        "status-outcome-ghosted"
+    ];
+    const stageClasses = {
+        Applied: "status-stage-applied",
+        Screening: "status-stage-screening",
+        Assessment: "status-stage-assessment",
+        Interview: "status-stage-interview",
+        Offer: "status-stage-offer"
+    };
+    const outcomeClasses = {
+        Active: "status-outcome-active",
+        Accepted: "status-outcome-accepted",
+        Rejected: "status-outcome-rejected",
+        Withdrawn: "status-outcome-withdrawn",
+        Ghosted: "status-outcome-ghosted"
+    };
+
+    document.querySelectorAll("[data-inline-status-form]").forEach(form => {
+        const selects = [...form.querySelectorAll("[data-status-select]")];
+        const editor = form.querySelector("[data-status-editor]");
+        const note = editor?.querySelector("textarea");
+        const discard = form.querySelector("[data-status-discard]");
+
+        const updateTone = select => {
+            const field = select.closest("[data-status-tone]");
+            if (!field) {
+                return;
+            }
+
+            field.classList.remove(...statusClasses);
+            const tones = select.dataset.statusKind === "stage" ? stageClasses : outcomeClasses;
+            const tone = tones[select.value];
+            if (tone) {
+                field.classList.add(tone);
+            }
+        };
+
+        const updateEditor = () => {
+            const changed = selects.some(select => select.value !== select.dataset.originalValue);
+            if (editor) {
+                editor.hidden = !changed;
+            }
+        };
+
+        selects.forEach(select => {
+            select.addEventListener("change", () => {
+                updateTone(select);
+                updateEditor();
+            });
+        });
+        discard?.addEventListener("click", () => {
+            selects.forEach(select => {
+                select.value = select.dataset.originalValue;
+                updateTone(select);
+            });
+            if (note) {
+                note.value = "";
+            }
+            updateEditor();
+        });
+        updateEditor();
     });
 
     setSelectionMode(false);

@@ -80,6 +80,38 @@ public sealed class ApplicationWorkflowServiceTests
     }
 
     [Fact]
+    public async Task OldUnansweredApplication_CanBeCorrectedFromWithdrawnBackToGhosted()
+    {
+        await using var database = Database("workflow-ghosted-correction");
+        var user = User("workflow-ghosted-correction-owner");
+        var application = Application(user.Id);
+        application.AppliedOn = new DateOnly(2026, 5, 14);
+        application.Outcome = ApplicationOutcome.Withdrawn;
+        database.Users.Add(user);
+        database.JobApplications.Add(application);
+        await database.SaveChangesAsync();
+        var service = new ApplicationWorkflowService(
+            database,
+            new FixedCurrentUser(user.Id),
+            new FixedTimeProvider(new DateTimeOffset(2026, 8, 16, 4, 0, 0, TimeSpan.Zero)));
+
+        var details = await service.FindAsync(application.Id);
+
+        Assert.NotNull(details);
+        Assert.True(details.CanConfirmGhosted);
+        Assert.Equal(
+            WorkflowWriteResult.Success,
+            await service.TransitionAsync(
+                application.Id,
+                new StatusTransitionInput(
+                    PipelineStage.Interview,
+                    ApplicationOutcome.Ghosted,
+                    "Corrected the earlier outcome.")));
+        Assert.Equal(ApplicationOutcome.Ghosted, application.Outcome);
+        Assert.Equal(PipelineStage.Interview, application.Stage);
+    }
+
+    [Fact]
     public async Task EmployerResponse_IsDerivedFromCorrectableInteractions()
     {
         await using var database = Database("workflow-response");

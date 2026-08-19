@@ -35,7 +35,7 @@ public sealed class DemoCatalog(TimeProvider timeProvider)
             Location: "Perth WA",
             WorkArrangement: "Hybrid",
             AppliedOn: today.AddDays(-4),
-            Stage: PipelineStage.RecruiterContact,
+            Stage: PipelineStage.Screening,
             Outcome: ApplicationOutcome.Active,
             RetentionState: DemoRetentionState.Saved,
             DeletionScheduledAt: null,

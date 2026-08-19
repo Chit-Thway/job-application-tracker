@@ -16,19 +16,35 @@ public sealed record ApplicationRetentionStatus(
     public bool IsDeletionScheduled => State == ApplicationRetentionState.DeletionScheduled;
 }
 
+public sealed record RetentionPreferences(
+    string TimeZoneId,
+    int RetentionMonths,
+    int DeletionGraceDays);
+
 public static class RetentionPolicy
 {
-    public const int RetentionMonths = 3;
-    public const int GracePeriodDays = 14;
+    public const int DefaultRetentionMonths = 3;
+    public const int DefaultGracePeriodDays = 14;
+    public const int RetentionMonths = DefaultRetentionMonths;
+    public const int GracePeriodDays = DefaultGracePeriodDays;
 
-    public static DateOnly EligibleOn(DateOnly appliedOn) =>
-        appliedOn.AddMonths(RetentionMonths);
+    public static IReadOnlyList<int> AllowedRetentionMonths { get; } =
+        Array.AsReadOnly([1, 2, 3]);
+
+    public static IReadOnlyList<int> AllowedGracePeriodDays { get; } =
+        Array.AsReadOnly([3, 5, 10, 14]);
+
+    public static DateOnly EligibleOn(
+        DateOnly appliedOn,
+        int retentionMonths = DefaultRetentionMonths) =>
+        appliedOn.AddMonths(retentionMonths);
 
     public static bool IsEligible(
         DateOnly appliedOn,
         DateTimeOffset now,
-        string timeZoneId) =>
-        LocalDate(now, timeZoneId) >= EligibleOn(appliedOn);
+        string timeZoneId,
+        int retentionMonths = DefaultRetentionMonths) =>
+        LocalDate(now, timeZoneId) >= EligibleOn(appliedOn, retentionMonths);
 
     public static DateTimeOffset? ReconcileSchedule(
         DateOnly appliedOn,
@@ -36,16 +52,18 @@ public static class RetentionPolicy
         DateTimeOffset? currentSchedule,
         DateTimeOffset now,
         string timeZoneId,
-        bool startFreshGracePeriod = false)
+        bool startFreshGracePeriod = false,
+        int retentionMonths = DefaultRetentionMonths,
+        int gracePeriodDays = DefaultGracePeriodDays)
     {
-        if (isSavedForever || !IsEligible(appliedOn, now, timeZoneId))
+        if (isSavedForever || !IsEligible(appliedOn, now, timeZoneId, retentionMonths))
         {
             return null;
         }
 
         if (startFreshGracePeriod || currentSchedule is null)
         {
-            return now.AddDays(GracePeriodDays);
+            return now.AddDays(gracePeriodDays);
         }
 
         return currentSchedule;
@@ -56,9 +74,10 @@ public static class RetentionPolicy
         bool isSavedForever,
         DateTimeOffset? deletionScheduledAt,
         DateTimeOffset now,
-        string timeZoneId)
+        string timeZoneId,
+        int retentionMonths = DefaultRetentionMonths)
     {
-        var eligibleOn = EligibleOn(appliedOn);
+        var eligibleOn = EligibleOn(appliedOn, retentionMonths);
         if (isSavedForever)
         {
             return new ApplicationRetentionStatus(
@@ -76,7 +95,7 @@ public static class RetentionPolicy
         }
 
         return new ApplicationRetentionStatus(
-            IsEligible(appliedOn, now, timeZoneId)
+            IsEligible(appliedOn, now, timeZoneId, retentionMonths)
                 ? ApplicationRetentionState.Eligible
                 : ApplicationRetentionState.Recent,
             eligibleOn,
@@ -85,4 +104,8 @@ public static class RetentionPolicy
 
     private static DateOnly LocalDate(DateTimeOffset value, string timeZoneId) =>
         DateOnly.FromDateTime(ApplicationTime.ToLocal(value, timeZoneId));
+
+    public static bool IsAllowed(int retentionMonths, int gracePeriodDays) =>
+        AllowedRetentionMonths.Contains(retentionMonths)
+        && AllowedGracePeriodDays.Contains(gracePeriodDays);
 }

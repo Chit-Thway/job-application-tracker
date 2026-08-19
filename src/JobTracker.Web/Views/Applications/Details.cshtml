@@ -13,7 +13,8 @@
         application.IsSavedForever,
         application.DeletionScheduledAt,
         workflow.CurrentTime,
-        workflow.TimeZoneId);
+        workflow.TimeZoneId,
+        workflow.RetentionMonths);
     var timeline = new List<(DateTimeOffset At, string Kind, string Title, string? Details, WorkflowInteractionItem? Interaction)>();
 
     foreach (var status in workflow.StatusHistory)
@@ -93,7 +94,7 @@
                             <div class="field">
                                 <label asp-for="Status.Stage"></label>
                                 <select asp-for="Status.Stage">
-                                    @foreach (var stage in Enum.GetValues<PipelineStage>())
+                                    @foreach (var stage in ApplicationDisplay.ActiveStages)
                                     {
                                         <option value="@stage">@ApplicationDisplay.Stage(stage)</option>
                                     }
@@ -103,7 +104,7 @@
                             <div class="field">
                                 <label asp-for="Status.Outcome"></label>
                                 <select asp-for="Status.Outcome">
-                                    @foreach (var outcome in Enum.GetValues<ApplicationOutcome>())
+                                    @foreach (var outcome in ApplicationDisplay.ActiveOutcomes)
                                     {
                                         var ghostedUnavailable = outcome == ApplicationOutcome.Ghosted
                                             && !workflow.CanConfirmGhosted
@@ -584,7 +585,7 @@
                 {
                     <h2>This application is saved.</h2>
                     <p>It is exempt from automatic retention deletion.</p>
-                    <p class="retention-note">If you unsave it after @retention.EligibleOn.ToString("d MMMM yyyy"), a new 14-day grace period starts.</p>
+                    <p class="retention-note">If you unsave it after @retention.EligibleOn.ToString("d MMMM yyyy"), a new @workflow.DeletionGraceDays-day grace period starts.</p>
                 }
                 else if (retention.State == ApplicationRetentionState.DeletionScheduled)
                 {
@@ -598,12 +599,12 @@
                 else if (retention.State == ApplicationRetentionState.Eligible)
                 {
                     <h2>Eligible for retention processing.</h2>
-                    <p>The database retention job will assign the full 14-day grace period on its next run. It will not be deleted immediately.</p>
+                    <p>The database retention job will assign the full @workflow.DeletionGraceDays-day grace period on its next run. It will not be deleted immediately.</p>
                 }
                 else
                 {
                     <h2>This application is not saved.</h2>
-                    <p>It becomes eligible for a 14-day scheduled-deletion grace period on @retention.EligibleOn.ToString("d MMMM yyyy").</p>
+                    <p>It becomes eligible for a @workflow.DeletionGraceDays-day scheduled-deletion grace period on @retention.EligibleOn.ToString("d MMMM yyyy").</p>
                 }
                 <form method="post" asp-action="SetSavedForever" asp-route-id="@application.Id">
                     <input type="hidden" name="isSavedForever" value="@(!application.IsSavedForever ? "true" : "false")" />

@@ -25,7 +25,8 @@ public sealed record ApplicationListItem(
     PipelineStage Stage,
     ApplicationOutcome Outcome,
     bool IsSavedForever,
-    DateTimeOffset? DeletionScheduledAt);
+    DateTimeOffset? DeletionScheduledAt,
+    DateTimeOffset? CreatedAt = null);
 
 public sealed record ApplicationDetails(
     Guid Id,
@@ -57,6 +58,7 @@ public enum ApplicationWriteResult
     Success,
     NotFound,
     InvalidCompany,
+    InvalidRetentionState,
 }
 
 public sealed record BulkApplicationResult(int MatchedCount, int ChangedCount);
@@ -146,6 +148,11 @@ public sealed class ApplicationTrackerService(
                     .SingleOrDefault())
                 .ThenBy(application => application.RoleTitle),
             _ => query.OrderByDescending(application => application.AppliedOn)
+                .ThenByDescending(application => database.StatusHistory
+                    .Where(history =>
+                        history.OwnerId == ownerId
+                        && history.JobApplicationId == application.Id)
+                    .Min(history => (DateTimeOffset?)history.EffectiveAt))
                 .ThenBy(application => application.RoleTitle),
         };
 
@@ -160,13 +167,18 @@ public sealed class ApplicationTrackerService(
                 application.Stage,
                 application.Outcome,
                 application.IsSavedForever,
-                application.DeletionScheduledAt))
+                application.DeletionScheduledAt,
+                database.StatusHistory
+                    .Where(history =>
+                        history.OwnerId == ownerId
+                        && history.JobApplicationId == application.Id)
+                    .Min(history => (DateTimeOffset?)history.EffectiveAt)))
             .ToListAsync(cancellationToken);
     }
 
     public async Task<string> GetCurrentTimeZoneIdAsync(
         CancellationToken cancellationToken = default) =>
-        await GetTimeZoneIdAsync(RequireOwnerId(), cancellationToken);
+        (await GetRetentionPreferencesAsync(RequireOwnerId(), cancellationToken)).TimeZoneId;
 
     public async Task<ApplicationDetails?> FindAsync(
         Guid id,
@@ -208,7 +220,7 @@ public sealed class ApplicationTrackerService(
         }
 
         var now = timeProvider.GetUtcNow();
-        var timeZoneId = await GetTimeZoneIdAsync(ownerId, cancellationToken);
+        var preferences = await GetRetentionPreferencesAsync(ownerId, cancellationToken);
 
         IDbContextTransaction? transaction = null;
         try
@@ -235,7 +247,9 @@ public sealed class ApplicationTrackerService(
                     input.IsSavedForever,
                     null,
                     now,
-                    timeZoneId),
+                    preferences.TimeZoneId,
+                    retentionMonths: preferences.RetentionMonths,
+                    gracePeriodDays: preferences.DeletionGraceDays),
             };
             var history = new StatusHistory
             {
@@ -288,7 +302,7 @@ public sealed class ApplicationTrackerService(
 
         var wasSavedForever = application.IsSavedForever;
         var now = timeProvider.GetUtcNow();
-        var timeZoneId = await GetTimeZoneIdAsync(ownerId, cancellationToken);
+        var preferences = await GetRetentionPreferencesAsync(ownerId, cancellationToken);
 
         application.CompanyId = input.CompanyId;
         application.RoleTitle = input.RoleTitle.Trim();
@@ -302,8 +316,14 @@ public sealed class ApplicationTrackerService(
             application.IsSavedForever,
             application.DeletionScheduledAt,
             now,
-            timeZoneId,
-            startFreshGracePeriod: wasSavedForever && !application.IsSavedForever);
+            preferences.TimeZoneId,
+            startFreshGracePeriod: wasSavedForever && !application.IsSavedForever,
+            retentionMonths: preferences.RetentionMonths,
+            gracePeriodDays: preferences.DeletionGraceDays);
+        if (application.IsSavedForever || wasSavedForever != application.IsSavedForever)
+        {
+            application.DeletionWarningDismissedAt = null;
+        }
 
         await database.SaveChangesAsync(cancellationToken);
         return ApplicationWriteResult.Success;
@@ -325,16 +345,45 @@ public sealed class ApplicationTrackerService(
 
         var wasSavedForever = application.IsSavedForever;
         var now = timeProvider.GetUtcNow();
-        var timeZoneId = await GetTimeZoneIdAsync(ownerId, cancellationToken);
+        var preferences = await GetRetentionPreferencesAsync(ownerId, cancellationToken);
         application.IsSavedForever = isSavedForever;
         application.DeletionScheduledAt = RetentionPolicy.ReconcileSchedule(
             application.AppliedOn,
             application.IsSavedForever,
             application.DeletionScheduledAt,
             now,
-            timeZoneId,
-            startFreshGracePeriod: wasSavedForever && !application.IsSavedForever);
+            preferences.TimeZoneId,
+            startFreshGracePeriod: wasSavedForever && !application.IsSavedForever,
+            retentionMonths: preferences.RetentionMonths,
+            gracePeriodDays: preferences.DeletionGraceDays);
+        if (application.IsSavedForever || wasSavedForever != application.IsSavedForever)
+        {
+            application.DeletionWarningDismissedAt = null;
+        }
 
+        await database.SaveChangesAsync(cancellationToken);
+        return ApplicationWriteResult.Success;
+    }
+
+    public async Task<ApplicationWriteResult> DismissDeletionWarningAsync(
+        Guid id,
+        CancellationToken cancellationToken = default)
+    {
+        var ownerId = RequireOwnerId();
+        var application = await database.JobApplications.SingleOrDefaultAsync(
+            item => item.Id == id && item.OwnerId == ownerId,
+            cancellationToken);
+        if (application is null)
+        {
+            return ApplicationWriteResult.NotFound;
+        }
+
+        if (application.IsSavedForever || application.DeletionScheduledAt is null)
+        {
+            return ApplicationWriteResult.InvalidRetentionState;
+        }
+
+        application.DeletionWarningDismissedAt = timeProvider.GetUtcNow();
         await database.SaveChangesAsync(cancellationToken);
         return ApplicationWriteResult.Success;
     }
@@ -419,6 +468,43 @@ public sealed class ApplicationTrackerService(
         return new BulkApplicationResult(applications.Count, changed.Count);
     }
 
+    public async Task<BulkApplicationResult> BulkSetSavedForeverAsync(
+        IReadOnlyCollection<Guid> applicationIds,
+        bool isSavedForever,
+        CancellationToken cancellationToken = default)
+    {
+        var ownerId = RequireOwnerId();
+        var applications = await FindTrackedSelectedAsync(applicationIds, cancellationToken);
+        var changed = applications
+            .Where(application => application.IsSavedForever != isSavedForever)
+            .ToList();
+        if (changed.Count == 0)
+        {
+            return new BulkApplicationResult(applications.Count, 0);
+        }
+
+        var now = timeProvider.GetUtcNow();
+        var preferences = await GetRetentionPreferencesAsync(ownerId, cancellationToken);
+        foreach (var application in changed)
+        {
+            var wasSavedForever = application.IsSavedForever;
+            application.IsSavedForever = isSavedForever;
+            application.DeletionScheduledAt = RetentionPolicy.ReconcileSchedule(
+                application.AppliedOn,
+                application.IsSavedForever,
+                application.DeletionScheduledAt,
+                now,
+                preferences.TimeZoneId,
+                startFreshGracePeriod: wasSavedForever && !application.IsSavedForever,
+                retentionMonths: preferences.RetentionMonths,
+                gracePeriodDays: preferences.DeletionGraceDays);
+            application.DeletionWarningDismissedAt = null;
+        }
+
+        await database.SaveChangesAsync(cancellationToken);
+        return new BulkApplicationResult(applications.Count, changed.Count);
+    }
+
     public async Task<BulkApplicationResult> BulkAddNoteAsync(
         IReadOnlyCollection<Guid> applicationIds,
         string note,
@@ -472,13 +558,16 @@ public sealed class ApplicationTrackerService(
             cancellationToken);
     }
 
-    private async Task<string> GetTimeZoneIdAsync(
+    private async Task<RetentionPreferences> GetRetentionPreferencesAsync(
         string ownerId,
         CancellationToken cancellationToken) =>
         await database.Users
             .AsNoTracking()
             .Where(user => user.Id == ownerId)
-            .Select(user => user.TimeZoneId)
+            .Select(user => new RetentionPreferences(
+                user.TimeZoneId,
+                user.RetentionMonths,
+                user.DeletionGraceDays))
             .SingleAsync(cancellationToken);
 
     private string RequireOwnerId() =>

@@ -42,6 +42,16 @@ dotnet run --project src/JobTracker.Web -- invitations revoke <invitation-id>
 
 Codes are shown once and must be delivered privately. The database stores only a SHA-256 fingerprint. Never place readable codes in GitHub, logs, screenshots, or support messages.
 
+Outside Development, invitation commands require two deliberate controls: the temporary setting `InvitationCommands:Enabled=true` and the explicit `--confirm-production` argument. There is no browser-accessible invitation administration endpoint. Run the published application from a controlled operator shell with its normal production connection configuration:
+
+```powershell
+$env:InvitationCommands__Enabled = "true"
+dotnet JobTracker.Web.dll invitations create --days 7 --confirm-production
+Remove-Item Env:InvitationCommands__Enabled
+```
+
+Use the same final argument for `list` and `revoke`. Remove the temporary setting immediately after the command, do not leave an invitation command running beside the web process, and never copy the production connection string or readable code into shell history. The Azure-specific operator invocation will be finalized with the deployment in Milestone 11.
+
 ## Email
 
 Development uses an in-memory message sink at `/dev/mail`; it disappears on restart and is unavailable outside Development. Before production, register a real `IAccountEmailSender`, configure credentials with Azure-managed settings, verify the sender domain, and test both verification and password-reset links from an external mailbox. Never log tokens or complete action URLs.

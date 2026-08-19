@@ -50,6 +50,8 @@ public sealed record ApplicationWorkflowDetails(
     ApplicationDetails Application,
     string TimeZoneId,
     DateTimeOffset CurrentTime,
+    int RetentionMonths,
+    int DeletionGraceDays,
     bool CanConfirmGhosted,
     DateTimeOffset? FirstEmployerResponseAt,
     IReadOnlyList<WorkflowStatusItem> StatusHistory,
@@ -128,7 +130,15 @@ public sealed class ApplicationWorkflowService(
                     && company.OwnerId == ownerId)
                 .Select(company => company.Name)
                 .SingleOrDefaultAsync(cancellationToken);
-        var timeZoneId = await GetTimeZoneIdAsync(ownerId, cancellationToken);
+        var preferences = await database.Users
+            .AsNoTracking()
+            .Where(user => user.Id == ownerId)
+            .Select(user => new RetentionPreferences(
+                user.TimeZoneId,
+                user.RetentionMonths,
+                user.DeletionGraceDays))
+            .SingleAsync(cancellationToken);
+        var timeZoneId = preferences.TimeZoneId;
         var currentTime = timeProvider.GetUtcNow();
         var localToday = DateOnly.FromDateTime(ApplicationTime.ToLocal(currentTime, timeZoneId));
 
@@ -246,9 +256,11 @@ public sealed class ApplicationWorkflowService(
                 application.DeletionScheduledAt),
             timeZoneId,
             currentTime,
+            preferences.RetentionMonths,
+            preferences.DeletionGraceDays,
             localToday >= application.AppliedOn.AddDays(30)
                 && firstResponse is null
-                && application.Outcome == ApplicationOutcome.Active,
+                && application.Outcome != ApplicationOutcome.Ghosted,
             firstResponse,
             history,
             contacts,
@@ -262,7 +274,7 @@ public sealed class ApplicationWorkflowService(
         StatusTransitionInput input,
         CancellationToken cancellationToken = default)
     {
-        if (!Enum.IsDefined(input.Stage) || !Enum.IsDefined(input.Outcome))
+        if (!ApplicationDisplay.IsActive(input.Stage) || !ApplicationDisplay.IsActive(input.Outcome))
         {
             return WorkflowWriteResult.InvalidTransition;
         }

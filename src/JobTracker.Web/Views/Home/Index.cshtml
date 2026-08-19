@@ -1,5 +1,6 @@
 @{
     ViewData["Title"] = "Welcome";
+    var isAuthenticated = User.Identity?.IsAuthenticated == true;
     var currentMonth = DateTime.Today;
     var months = Enumerable.Range(0, 3)
         .Select(offset => currentMonth.AddMonths(offset - 2).ToString("MMM"))
@@ -9,22 +10,33 @@
 <section class="hero">
     <div class="shell hero-grid">
         <div class="hero-copy">
-            <p class="eyebrow">Milestone 2 · Private foundation</p>
+            <p class="eyebrow">Private job-search workspace</p>
             <h1>Your job search,<br /><span>brought into focus.</span></h1>
             <p class="hero-lead">
-                A private, practical place to track every application, keep the opportunities that matter,
-                and see exactly what needs your attention next.
+                Track applications, follow-ups, contacts, and interviews in one deliberate workspace—without
+                losing the opportunities you want to keep.
             </p>
             <div class="button-row">
-                <a class="button button-primary" asp-controller="Home" asp-action="Dashboard">
-                    View dashboard shell
-                    <span aria-hidden="true">→</span>
-                </a>
-                <a class="button button-secondary" asp-controller="Applications" asp-action="Create">Add an application</a>
+                @if (isAuthenticated)
+                {
+                    <a class="button button-primary" asp-controller="Home" asp-action="Dashboard">
+                        Open your dashboard
+                        <span aria-hidden="true">→</span>
+                    </a>
+                    <a class="button button-secondary" asp-controller="Applications" asp-action="Create">Add an application</a>
+                }
+                else
+                {
+                    <a class="button button-primary" asp-controller="Demo" asp-action="Index">
+                        Explore the live demo
+                        <span aria-hidden="true">→</span>
+                    </a>
+                    <a class="button button-secondary" asp-controller="Account" asp-action="Login">Private sign in</a>
+                }
             </div>
             <p class="foundation-caption">
                 <span aria-hidden="true">●</span>
-                Your private account and database are connected. Application workflows arrive next.
+                Private accounts are invitation-only. The public demo contains synthetic data only.
             </p>
         </div>
 
@@ -34,7 +46,7 @@
                     <p class="mini-label">One focused dashboard</p>
                     <h2 id="window-title">Your three-month window</h2>
                 </div>
-                <span class="window-badge">Preview</span>
+                <span class="window-badge">Private</span>
             </div>
             <div class="month-track" aria-label="Current dashboard month range">
                 @foreach (var month in months)
@@ -42,25 +54,25 @@
                     <span class="month-chip @(month == months[^1] ? "is-current" : string.Empty)">@month</span>
                 }
             </div>
-            <div class="metric-grid" aria-label="Future dashboard metrics">
+            <div class="metric-grid" aria-label="Tracker principles">
                 <div class="metric">
-                    <span>Applications</span>
-                    <strong aria-label="No data yet">—</strong>
+                    <span>Dashboard</span>
+                    <strong>3 mo</strong>
                 </div>
                 <div class="metric">
-                    <span>Responses</span>
-                    <strong aria-label="No data yet">—</strong>
+                    <span>Saved records</span>
+                    <strong>Kept</strong>
                 </div>
                 <div class="metric">
-                    <span>Interviews</span>
-                    <strong aria-label="No data yet">—</strong>
+                    <span>Deletion warning</span>
+                    <strong>3–14 d</strong>
                 </div>
             </div>
             <div class="next-action-preview">
                 <span class="preview-icon" aria-hidden="true">✓</span>
                 <div>
-                    <strong>Nothing needs attention yet</strong>
-                    <span>Your future follow-ups will appear here.</span>
+                    <strong>Your next action stays visible</strong>
+                    <span>Follow-ups and appointments meet in one calm queue.</span>
                 </div>
             </div>
         </aside>
@@ -74,50 +86,58 @@
                 <p class="eyebrow">Designed around the real workflow</p>
                 <h2 id="value-title">Less admin. More momentum.</h2>
             </div>
-            <p>Every screen will answer one useful question without turning your search into another full-time job.</p>
+            <p>Capture the opportunity once, then let its status, history, tasks, and scheduled time stay connected.</p>
         </div>
 
         <div class="value-grid">
             <article class="value-card value-card-blue">
                 <span class="card-number">01</span>
                 <div class="card-symbol" aria-hidden="true">◎</div>
-                <h3>One clear dashboard</h3>
-                <p>See the current month and the two before it—your active search, not an endless archive.</p>
-                <a asp-controller="Home" asp-action="Dashboard">Preview dashboard <span aria-hidden="true">→</span></a>
+                <h3>Capture applications quickly</h3>
+                <p>Add one manually, paste a job description, import a public page, or capture the active browser tab.</p>
+                @if (isAuthenticated)
+                {
+                    <a asp-controller="Applications" asp-action="Create">Add an application <span aria-hidden="true">→</span></a>
+                }
+                else
+                {
+                    <a asp-controller="Demo" asp-action="Applications">See sample applications <span aria-hidden="true">→</span></a>
+                }
             </article>
             <article class="value-card value-card-violet">
                 <span class="card-number">02</span>
                 <div class="card-symbol" aria-hidden="true">◇</div>
-                <h3>Keep what matters</h3>
-                <p>Save important applications forever. Older unsaved records get a visible 14-day grace period.</p>
-                <a asp-controller="Home" asp-action="Applications">Preview applications <span aria-hidden="true">→</span></a>
+                <h3>Keep the full story</h3>
+                <p>Status changes, contacts, interactions, tasks, appointments, and notes stay attached to the application.</p>
+                <a asp-controller="Demo" asp-action="Applications">Explore the workflow <span aria-hidden="true">→</span></a>
             </article>
             <article class="value-card value-card-green">
                 <span class="card-number">03</span>
                 <div class="card-symbol" aria-hidden="true">↗</div>
                 <h3>Know the next move</h3>
-                <p>Bring follow-ups, interviews, tasks, ghosting warnings, and deadlines into one useful queue.</p>
-                <a asp-controller="Home" asp-action="ActionCentre">Preview Action Centre <span aria-hidden="true">→</span></a>
+                <p>See overdue tasks, upcoming appointments, ghosting decisions, and deletion warnings without rebuilding context.</p>
+                <a asp-controller="Demo" asp-action="ActionCentre">Open the sample Action Centre <span aria-hidden="true">→</span></a>
             </article>
         </div>
     </div>
 </section>
 
-<section class="foundation-section" aria-labelledby="foundation-title">
+<section class="foundation-section" aria-labelledby="privacy-title">
     <div class="shell foundation-grid">
         <div>
-            <p class="eyebrow">What works today</p>
-            <h2 id="foundation-title">A secure foundation for your data.</h2>
+            <p class="eyebrow">Private by design</p>
+            <h2 id="privacy-title">Your real search stays separate.</h2>
             <p>
-                This milestone establishes the .NET application, responsive visual system, accessible navigation,
-                health check, friendly errors, automated tests, and delivery pipeline.
+                Accounts require a one-time invitation and verified email. Private records are owner-isolated, while
+                the public portfolio demo is generated entirely from fictional data.
             </p>
+            <p><a class="foundation-link" asp-controller="Home" asp-action="Privacy">Read the privacy summary <span aria-hidden="true">→</span></a></p>
         </div>
         <ul class="check-list">
-            <li><span aria-hidden="true">✓</span> ASP.NET Core MVC on .NET 10 LTS</li>
-            <li><span aria-hidden="true">✓</span> Server-rendered Razor pages</li>
-            <li><span aria-hidden="true">✓</span> Verified private login and owner-isolated database</li>
-            <li><span aria-hidden="true">✓</span> Automated build and test foundation</li>
+            <li><span aria-hidden="true">✓</span> Invitation-only registration and verified email</li>
+            <li><span aria-hidden="true">✓</span> Owner-isolated applications and connected records</li>
+            <li><span aria-hidden="true">✓</span> Configurable retention timing and transparent deletion dates</li>
+            <li><span aria-hidden="true">✓</span> Synthetic public demo that never reads private tables</li>
         </ul>
     </div>
 </section>

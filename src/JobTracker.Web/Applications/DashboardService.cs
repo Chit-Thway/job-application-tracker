@@ -131,6 +131,12 @@ public sealed class DashboardService(
             .ThenBy(item => item.RoleTitle)
             .ToList();
         var windowApplicationIds = windowApplications.Select(item => item.Id).ToHashSet();
+        var pipelineApplications = applications
+            .Where(item => window.Contains(item.AppliedOn) || item.IsSavedForever)
+            .OrderByDescending(item => item.AppliedOn)
+            .ThenBy(item => item.RoleTitle)
+            .ToList();
+        var pipelineApplicationIds = pipelineApplications.Select(item => item.Id).ToHashSet();
 
         var openTasks = tasks
             .Where(item => applicationById.ContainsKey(item.JobApplicationId))
@@ -176,7 +182,8 @@ public sealed class DashboardService(
         var deletionScheduled = applications
             .Where(item =>
                 !item.IsSavedForever
-                && item.DeletionScheduledAt is not null)
+                && item.DeletionScheduledAt is not null
+                && item.DeletionWarningDismissedAt is null)
             .OrderBy(item => item.DeletionScheduledAt)
             .ThenBy(item => item.RoleTitle)
             .Select(item => new DashboardRetentionSummary(
@@ -189,12 +196,12 @@ public sealed class DashboardService(
 
         var recentActivity = BuildActivity(
             window,
-            windowApplications,
+            pipelineApplications,
             companies,
             interactions,
             statusHistory,
             applicationById,
-            windowApplicationIds);
+            pipelineApplicationIds);
 
         return new DashboardSnapshot(
             user.DisplayName,
@@ -210,15 +217,15 @@ public sealed class DashboardService(
                 windowApplications.Count(item =>
                     item.AppliedOn >= month.StartsOn && item.AppliedOn <= month.EndsOn)))
                 .ToList(),
-            Enum.GetValues<PipelineStage>()
+            ApplicationDisplay.ActiveStages
                 .Select(stage => new DashboardGroupSummary(
                     ApplicationDisplay.Stage(stage),
-                    windowApplications.Count(item => item.Stage == stage)))
+                    pipelineApplications.Count(item => ApplicationDisplay.NormalizeStage(item.Stage) == stage)))
                 .ToList(),
-            Enum.GetValues<ApplicationOutcome>()
+            ApplicationDisplay.ActiveOutcomes
                 .Select(outcome => new DashboardGroupSummary(
                     ApplicationDisplay.Outcome(outcome),
-                    windowApplications.Count(item => item.Outcome == outcome)))
+                    pipelineApplications.Count(item => ApplicationDisplay.NormalizeOutcome(item.Outcome) == outcome)))
                 .ToList(),
             windowApplications.Take(8).Select(item => new DashboardApplicationSummary(
                 item.Id,
@@ -294,15 +301,15 @@ public sealed class DashboardService(
 
     private static IReadOnlyList<DashboardActivitySummary> BuildActivity(
         DashboardCalendarWindow window,
-        IReadOnlyList<JobApplication> windowApplications,
+        IReadOnlyList<JobApplication> pipelineApplications,
         IReadOnlyDictionary<Guid, string> companies,
         IReadOnlyList<Interaction> interactions,
         IReadOnlyList<StatusHistory> statusHistory,
         IReadOnlyDictionary<Guid, JobApplication> applicationById,
-        IReadOnlySet<Guid> windowApplicationIds)
+        IReadOnlySet<Guid> pipelineApplicationIds)
     {
         var activity = new List<DashboardActivitySummary>();
-        foreach (var application in windowApplications)
+        foreach (var application in pipelineApplications.Where(item => window.Contains(item.AppliedOn)))
         {
             activity.Add(new DashboardActivitySummary(
                 application.Id,
@@ -315,7 +322,7 @@ public sealed class DashboardService(
 
         activity.AddRange(statusHistory
             .Where(item =>
-                windowApplicationIds.Contains(item.JobApplicationId)
+                pipelineApplicationIds.Contains(item.JobApplicationId)
                 && window.Contains(item.EffectiveAt)
                 && applicationById.ContainsKey(item.JobApplicationId))
             .Select(item =>
@@ -336,7 +343,7 @@ public sealed class DashboardService(
             }));
         activity.AddRange(interactions
             .Where(item =>
-                windowApplicationIds.Contains(item.JobApplicationId)
+                pipelineApplicationIds.Contains(item.JobApplicationId)
                 && window.Contains(item.OccurredAt)
                 && applicationById.ContainsKey(item.JobApplicationId))
             .Select(item =>

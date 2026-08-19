@@ -1,0 +1,73 @@
+@{
+    ViewData["Title"] = "Privacy";
+}
+
+<section class="workspace-hero privacy-hero">
+    <div class="shell workspace-heading">
+        <div>
+            <p class="eyebrow">Privacy summary</p>
+            <h1>Your search data<br />stays yours.</h1>
+            <p>A plain-language explanation of what the tracker stores, why it stores it, and when it is removed.</p>
+        </div>
+        <a class="button button-primary" asp-controller="Demo" asp-action="Index">Explore the synthetic demo</a>
+    </div>
+</section>
+
+<section class="workspace-content privacy-workspace">
+    <div class="shell privacy-layout">
+        <article class="detail-card privacy-intro">
+            <p class="mini-label">The short version</p>
+            <h2>Private records are never part of the public demo.</h2>
+            <p>
+                The tracker uses your information only to provide the application-tracking features you choose to use.
+                It does not sell personal information, display private records publicly, or use job descriptions to train an AI model.
+            </p>
+        </article>
+
+        <div class="privacy-grid">
+            <article class="detail-card">
+                <p class="mini-label">Information stored</p>
+                <h2>Your account and tracker records</h2>
+                <p>Your verified email, display name, password hash, and configured timezone support your private account.</p>
+                <p>Applications may contain companies, job descriptions, source text, status history, contacts, interactions, tasks, appointments, and notes that you enter or approve.</p>
+            </article>
+
+            <article class="detail-card">
+                <p class="mini-label">Purpose</p>
+                <h2>Only the workflow you requested</h2>
+                <p>Account email is used for verification, password reset, and security-related messages—not marketing.</p>
+                <p>Imported job content is processed by deterministic extraction rules. The application does not send it to an external AI service.</p>
+            </article>
+
+            <article class="detail-card">
+                <p class="mini-label">Retention</p>
+                <h2>Saved means kept; unsaved means temporary</h2>
+                <p>Saved applications remain until you delete or unsave them. You can choose whether unsaved applications reach retention eligibility after one, two, or three calendar months, followed by a visible 3-, 5-, 10-, or 14-day deletion schedule.</p>
+                <p>Deleting an application also removes its connected private workflow records.</p>
+            </article>
+
+            <article class="detail-card">
+                <p class="mini-label">Service providers</p>
+                <h2>Infrastructure, not advertising</h2>
+                <p>The deployed service uses a web host, a Supabase-hosted PostgreSQL database, and a transactional email provider. These services process only the information needed to operate the tracker.</p>
+                <p>The public synthetic demo is constructed separately and never queries private application tables.</p>
+            </article>
+
+            <article class="detail-card">
+                <p class="mini-label">Your choices</p>
+                <h2>Review, correct, save, or delete</h2>
+                <p>You can edit and delete individual records throughout the tracker. Saving cancels a pending automatic deletion schedule; unsaving an old record begins a fresh grace period.</p>
+                <p>For account-wide access or deletion, contact the person who issued your invitation.</p>
+            </article>
+
+            <article class="detail-card">
+                <p class="mini-label">Security</p>
+                <h2>Verification and owner isolation</h2>
+                <p>Registration requires an unused invitation and verification of the supplied email address. Passwords are stored as secure hashes, not readable text.</p>
+                <p>Private database queries are scoped to the signed-in owner, and authenticated pages are marked not to be cached.</p>
+            </article>
+        </div>
+
+        <p class="privacy-updated">Last updated 19 August 2026.</p>
+    </div>
+</section>

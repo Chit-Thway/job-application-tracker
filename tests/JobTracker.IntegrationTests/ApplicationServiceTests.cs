@@ -186,15 +186,25 @@ public sealed class ApplicationServiceTests
 
         Assert.Equal(
             ApplicationWriteResult.Success,
+            await service.DismissDeletionWarningAsync(application.Id));
+        Assert.Equal(now, application.DeletionWarningDismissedAt);
+
+        Assert.Equal(
+            ApplicationWriteResult.Success,
             await service.SetSavedForeverAsync(application.Id, true));
         Assert.True(application.IsSavedForever);
         Assert.Null(application.DeletionScheduledAt);
+        Assert.Null(application.DeletionWarningDismissedAt);
+        Assert.Equal(
+            ApplicationWriteResult.InvalidRetentionState,
+            await service.DismissDeletionWarningAsync(application.Id));
 
         Assert.Equal(
             ApplicationWriteResult.Success,
             await service.SetSavedForeverAsync(application.Id, false));
         Assert.False(application.IsSavedForever);
         Assert.Equal(now.AddDays(14), application.DeletionScheduledAt);
+        Assert.Null(application.DeletionWarningDismissedAt);
 
         var deletionScheduled = await service.SearchAsync(new ApplicationSearch(
             null,

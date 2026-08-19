@@ -23,6 +23,16 @@ public sealed class ApplicationsController(
         filters.Sort = filters.Sort is "oldest" or "title" or "company"
             ? filters.Sort
             : "newest";
+        if (filters.Stage is not null && !ApplicationDisplay.IsActive(filters.Stage.Value))
+        {
+            filters.Stage = ApplicationDisplay.NormalizeStage(filters.Stage.Value);
+        }
+
+        if (filters.Outcome is not null && !ApplicationDisplay.IsActive(filters.Outcome.Value))
+        {
+            filters.Outcome = ApplicationDisplay.NormalizeOutcome(filters.Outcome.Value);
+        }
+
         var items = await applications.SearchAsync(
             new ApplicationSearch(
                 filters.Query,
@@ -92,11 +102,25 @@ public sealed class ApplicationsController(
         Guid id,
         [Bind(Prefix = nameof(ApplicationWorkflowPageViewModel.Status))]
         StatusTransitionFormViewModel model,
+        string? returnTo,
         CancellationToken cancellationToken)
     {
         SetSection();
+        if (!ApplicationDisplay.IsActive(model.Stage) || !ApplicationDisplay.IsActive(model.Outcome))
+        {
+            ModelState.AddModelError(
+                $"{nameof(ApplicationWorkflowPageViewModel.Status)}.{nameof(model.Stage)}",
+                "Choose one of the available pipeline stages and outcomes.");
+        }
+
         if (!ModelState.IsValid)
         {
+            if (returnTo == "index")
+            {
+                TempData["Error"] = "Choose one of the available pipeline stages and outcomes.";
+                return RedirectToAction(nameof(Index));
+            }
+
             return await WorkflowViewAsync(
                 id,
                 page => page.Status = model,
@@ -114,6 +138,12 @@ public sealed class ApplicationsController(
 
         if (result == WorkflowWriteResult.InvalidTransition)
         {
+            if (returnTo == "index")
+            {
+                TempData["Error"] = "That status change is not available. Ghosted can be confirmed only after 30 days, and the new state must differ from the current state.";
+                return RedirectToAction(nameof(Index));
+            }
+
             ModelState.AddModelError(
                 $"{nameof(ApplicationWorkflowPageViewModel.Status)}.{nameof(model.Stage)}",
                 "Choose a valid change. Ghosted can be confirmed only after 30 days, and the new state must differ from the current state.");
@@ -124,6 +154,11 @@ public sealed class ApplicationsController(
         }
 
         TempData["Success"] = "Application status updated and added to the history.";
+        if (returnTo == "index")
+        {
+            return RedirectToAction(nameof(Index));
+        }
+
         return RedirectToAction(nameof(Details), null, new { id }, "history");
     }
 
@@ -553,7 +588,7 @@ public sealed class ApplicationsController(
             return RedirectToAction(nameof(Index));
         }
 
-        if (model.Stage is null || !Enum.IsDefined(model.Stage.Value))
+        if (model.Stage is null || !ApplicationDisplay.IsActive(model.Stage.Value))
         {
             TempData["Error"] = "Choose a valid pipeline stage for the selected applications.";
             return RedirectToAction(nameof(Index));
@@ -596,6 +631,30 @@ public sealed class ApplicationsController(
         TempData[result.ChangedCount == 0 ? "Error" : "Success"] = result.ChangedCount == 0
             ? "None of the selected applications could be found."
             : $"Added the note to {result.ChangedCount} application histor{(result.ChangedCount == 1 ? "y" : "ies")}.";
+        return RedirectToAction(nameof(Index));
+    }
+
+    [HttpPost("/applications/bulk/saved")]
+    public async Task<IActionResult> BulkSetSavedForever(
+        BulkApplicationActionViewModel model,
+        bool isSavedForever,
+        CancellationToken cancellationToken)
+    {
+        SetSection();
+        if (!NormalizeSelection(model))
+        {
+            return RedirectToAction(nameof(Index));
+        }
+
+        var result = await applications.BulkSetSavedForeverAsync(
+            model.SelectedApplicationIds,
+            isSavedForever,
+            cancellationToken);
+        TempData[result.MatchedCount == 0 ? "Error" : "Success"] = result.MatchedCount == 0
+            ? "None of the selected applications could be found."
+            : result.ChangedCount == 0
+                ? $"The selected applications were already {(isSavedForever ? "saved" : "not saved")}."
+                : $"{(isSavedForever ? "Saved" : "Unsaved")} {result.ChangedCount} selected application{(result.ChangedCount == 1 ? string.Empty : "s")}.";
         return RedirectToAction(nameof(Index));
     }
 
@@ -647,8 +706,8 @@ public sealed class ApplicationsController(
             Workflow = details,
             Status = new StatusTransitionFormViewModel
             {
-                Stage = details.Application.Stage,
-                Outcome = details.Application.Outcome,
+                Stage = ApplicationDisplay.NormalizeStage(details.Application.Stage),
+                Outcome = ApplicationDisplay.NormalizeOutcome(details.Application.Outcome),
             },
             Interaction = new InteractionFormViewModel
             {

@@ -1,6 +1,12 @@
 @model ApplicationIndexViewModel
 @{
     ViewData["Title"] = "Applications";
+    var recencyRanks = Model.Applications
+        .OrderByDescending(application => application.AppliedOn)
+        .ThenByDescending(application => application.CreatedAt)
+        .ThenBy(application => application.RoleTitle)
+        .Select((application, index) => new { application.Id, Rank = index + 1 })
+        .ToDictionary(item => item.Id, item => item.Rank);
 }
 
 <section class="workspace-hero">
@@ -38,7 +44,7 @@
                     <label for="stage-filter">Stage</label>
                     <select id="stage-filter" name="Stage">
                         <option value="">All stages</option>
-                        @foreach (var stage in Enum.GetValues<PipelineStage>())
+                        @foreach (var stage in ApplicationDisplay.ActiveStages)
                         {
                             <option value="@stage" selected="@(Model.Filters.Stage == stage)">@ApplicationDisplay.Stage(stage)</option>
                         }
@@ -48,7 +54,7 @@
                     <label for="outcome-filter">Outcome</label>
                     <select id="outcome-filter" name="Outcome">
                         <option value="">All outcomes</option>
-                        @foreach (var outcome in Enum.GetValues<ApplicationOutcome>())
+                        @foreach (var outcome in ApplicationDisplay.ActiveOutcomes)
                         {
                             <option value="@outcome" selected="@(Model.Filters.Outcome == outcome)">@ApplicationDisplay.Outcome(outcome)</option>
                         }
@@ -101,10 +107,10 @@
             {
                 <div class="application-toolbar-actions">
                     <div class="view-switch" role="group" aria-label="Application view">
-                        <button class="view-switch-button is-active" type="button" data-application-view="cards" aria-pressed="true" title="Card view">
-                            <span aria-hidden="true">&#9638;</span><span>Default</span>
+                        <button class="view-switch-button" type="button" data-application-view="cards" aria-pressed="false" title="Card view">
+                            <span aria-hidden="true">&#9638;</span><span>Cards</span>
                         </button>
-                        <button class="view-switch-button" type="button" data-application-view="list" aria-pressed="false" title="List view">
+                        <button class="view-switch-button is-active" type="button" data-application-view="list" aria-pressed="true" title="List view">
                             <span aria-hidden="true">&#9776;</span><span>List</span>
                         </button>
                     </div>
@@ -128,13 +134,17 @@
                     <button type="button" data-select-preset="scheduled">All deletion scheduled</button>
                     <button type="button" data-select-preset="none">Clear</button>
                 </div>
+                <div class="bulk-retention-actions" aria-label="Save selected applications">
+                    <button class="button button-secondary button-small bulk-save-button" type="submit" name="isSavedForever" value="true" formaction="/applications/bulk/saved">Save selected</button>
+                    <button class="button button-secondary button-small bulk-unsave-button" type="submit" name="isSavedForever" value="false" formaction="/applications/bulk/saved">Unsave selected</button>
+                </div>
                 <div class="bulk-action-grid">
                     <div class="bulk-action-control">
                         <label for="bulk-stage">Change status</label>
                         <div>
                             <select id="bulk-stage" name="Stage">
                                 <option value="">Choose a new stage</option>
-                                @foreach (var stage in Enum.GetValues<PipelineStage>())
+                                @foreach (var stage in ApplicationDisplay.ActiveStages)
                                 {
                                     <option value="@stage">@ApplicationDisplay.Stage(stage)</option>
                                 }
@@ -168,10 +178,13 @@
         }
         else
         {
-            <div class="record-grid application-results" data-application-results>
+            <div class="record-grid application-results is-list-view" data-application-results>
                 @foreach (var application in Model.Applications)
                 {
+                    var currentStage = ApplicationDisplay.NormalizeStage(application.Stage);
+                    var currentOutcome = ApplicationDisplay.NormalizeOutcome(application.Outcome);
                     <article class="record-card application-record" data-saved="@application.IsSavedForever.ToString().ToLowerInvariant()" data-deletion-scheduled="@((application.DeletionScheduledAt is not null).ToString().ToLowerInvariant())">
+                        <span class="application-rank" aria-label="Recency number @recencyRanks[application.Id]">@recencyRanks[application.Id]</span>
                         <label class="application-select" title="Select @application.RoleTitle">
                             <input type="checkbox" name="SelectedApplicationIds" value="@application.Id" form="bulk-application-form" />
                             <span aria-hidden="true"></span>
@@ -186,22 +199,59 @@
                                 @(application.IsSavedForever ? "Saved" : application.DeletionScheduledAt is not null ? "Deletion scheduled" : "Not saved")
                             </span>
                         </div>
-                        <dl class="record-meta">
-                            <div><dt>Applied</dt><dd>@application.AppliedOn.ToString("d MMM yyyy")</dd></div>
-                            <div><dt>Stage</dt><dd>@ApplicationDisplay.Stage(application.Stage)</dd></div>
-                            <div><dt>Outcome</dt><dd>@ApplicationDisplay.Outcome(application.Outcome)</dd></div>
-                            @if (application.DeletionScheduledAt is not null)
-                            {
-                                <div class="record-retention"><dt>Automatic deletion</dt><dd>@ApplicationTime.Display(application.DeletionScheduledAt.Value, Model.TimeZoneId)</dd></div>
-                            }
-                        </dl>
+                        <form method="post" asp-action="TransitionStatus" asp-route-id="@application.Id" class="application-inline-status-form" data-inline-status-form>
+                            <input type="hidden" name="returnTo" value="index" />
+                            <dl class="record-meta">
+                                <div><dt>Applied</dt><dd>@application.AppliedOn.ToString("d MMM yyyy")</dd></div>
+                                <div class="status-field @ApplicationDisplay.StageCssClass(currentStage)" data-status-tone>
+                                    <dt><label for="stage-@application.Id">Stage</label></dt>
+                                    <dd>
+                                        <select id="stage-@application.Id" name="Status.Stage" data-status-select data-status-kind="stage" data-original-value="@currentStage">
+                                            @foreach (var stage in ApplicationDisplay.ActiveStages)
+                                            {
+                                                <option value="@stage" selected="@(stage == currentStage)">@ApplicationDisplay.Stage(stage)</option>
+                                            }
+                                        </select>
+                                    </dd>
+                                </div>
+                                <div class="status-field @ApplicationDisplay.OutcomeCssClass(currentOutcome)" data-status-tone>
+                                    <dt><label for="outcome-@application.Id">Outcome</label></dt>
+                                    <dd>
+                                        <select id="outcome-@application.Id" name="Status.Outcome" data-status-select data-status-kind="outcome" data-original-value="@currentOutcome">
+                                            @foreach (var outcome in ApplicationDisplay.ActiveOutcomes)
+                                            {
+                                                <option value="@outcome" selected="@(outcome == currentOutcome)">@ApplicationDisplay.Outcome(outcome)</option>
+                                            }
+                                        </select>
+                                    </dd>
+                                </div>
+                                @if (application.DeletionScheduledAt is not null)
+                                {
+                                    <div class="record-retention"><dt>Automatic deletion</dt><dd>@ApplicationTime.Display(application.DeletionScheduledAt.Value, Model.TimeZoneId)</dd></div>
+                                }
+                            </dl>
+                            <div class="application-inline-status-editor" data-status-editor hidden>
+                                <label for="status-note-@application.Id">Optional status note</label>
+                                <textarea id="status-note-@application.Id" name="Status.Note" maxlength="2000" rows="2" placeholder="What changed?"></textarea>
+                                <div>
+                                    <button class="button button-primary button-small" type="submit">Save status</button>
+                                    <button class="button button-secondary button-small" type="button" data-status-discard>Discard</button>
+                                </div>
+                            </div>
+                        </form>
                         <div class="record-actions">
-                            <a class="text-link" asp-action="Details" asp-route-id="@application.Id">View details</a>
-                            <a class="text-link" asp-action="Edit" asp-route-id="@application.Id">Edit</a>
+                            <div class="record-link-actions">
+                                <a class="text-link" asp-action="Details" asp-route-id="@application.Id">View details</a>
+                                <a class="text-link" asp-action="Edit" asp-route-id="@application.Id">Edit</a>
+                            </div>
                             <form method="post" asp-action="SetSavedForever" asp-route-id="@application.Id">
                                 <input type="hidden" name="isSavedForever" value="@(!application.IsSavedForever ? "true" : "false")" />
                                 <input type="hidden" name="returnTo" value="index" />
-                                <button class="link-button" type="submit">@(application.IsSavedForever ? "Unsave" : "Save")</button>
+                                <button class="save-bookmark @(application.IsSavedForever ? "is-saved" : null)" type="submit" aria-label="@(application.IsSavedForever ? "Unsave" : "Save") @application.RoleTitle" title="@(application.IsSavedForever ? "Unsave" : "Save")">
+                                    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                                        <path d="M6.75 3.75h10.5a1 1 0 0 1 1 1v15.1l-6.25-3.7-6.25 3.7V4.75a1 1 0 0 1 1-1Z" />
+                                    </svg>
+                                </button>
                             </form>
                         </div>
                     </article>

@@ -38,10 +38,10 @@ public sealed class CriticalJourneysTests(BrowserJourneyFixture fixture)
             .ToBeVisibleAsync();
 
         await page.GetByText("Record a status change", new() { Exact = true }).ClickAsync();
-        await page.GetByLabel("Stage").SelectOptionAsync("RecruiterContact");
+        await page.GetByLabel("Stage").SelectOptionAsync("Screening");
         await page.Locator("#Status_Note").FillAsync("Recruiter requested a short introductory call.");
         await page.GetByRole(AriaRole.Button, new() { Name = "Add to history" }).ClickAsync();
-        await Expect(page.GetByRole(AriaRole.Heading, new() { Name = "Recruiter contact · Active" }))
+        await Expect(page.GetByRole(AriaRole.Heading, new() { Name = "Screening · Active" }))
             .ToBeVisibleAsync();
 
         await page.GetByRole(AriaRole.Link, new() { Name = "Dashboard", Exact = true }).ClickAsync();

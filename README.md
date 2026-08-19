@@ -8,7 +8,7 @@ Milestone 10 raises the complete tracker to a launch-candidate baseline: product
 
 Milestone 9's portfolio-friendly public demonstration remains available with a synthetic dashboard, application library, Action Centre, and application details. It uses a deterministic in-memory catalog, fictional slugs, a non-personalized public layout, and read-only routes that never query private application tables.
 
-The private tracker retains transparent three-calendar-month retention, exact 14-day deletion deadlines, card/list application views, owner-scoped bulk actions, deliberate ghosting confirmation, workflow history, contacts and interactions, tasks, appointments, deterministic extraction, safe public-URL import, and the explicit-click browser extension.
+The private tracker retains a focused three-calendar-month dashboard plus configurable one-to-three-month retention and 3-to-14-day deletion warnings, card/list application views, owner-scoped bulk actions, deliberate ghosting confirmation, workflow history, contacts and interactions, tasks, appointments, deterministic extraction, safe public-URL import, and the explicit-click browser extension.
 
 ## Technology
 
@@ -56,7 +56,8 @@ Then open [https://localhost:7239](https://localhost:7239).
 
 | Route | Current behavior |
 |---|---|
-| `/` | Branded foundation landing page |
+| `/` | Public product landing page |
+| `/privacy` | Plain-language privacy and retention summary |
 | `/account/login` | Private account sign-in |
 | `/account/register` | Account creation with a private one-time invitation |
 | `/account/forgot-password` | Password-reset request |
@@ -98,7 +99,7 @@ New applications begin at the `Applied` pipeline stage with an `Active` outcome 
 
 New applications default to not saved. **Saved** applications are exempt from future automatic retention deletion, and the setting can be changed from the application list, details page, or edit form. Milestone 8 adds a visible **Deletion scheduled** grace period and automated cleanup; changing the setting never immediately deletes anything.
 
-The application library defaults to the familiar two-column card view and remembers an optional compact list view in local browser storage. Selection mode supports manual selection or all-shown, saved, unsaved, and deletion-scheduled presets. Bulk stage changes append status history, bulk notes append a dated history entry without overwriting existing notes, and bulk deletion always opens a separate permanent-action review page.
+The application library defaults to a numbered compact list ordered newest first and remembers an optional card view in local browser storage. Each row supports a bookmark-style Saved control and inline stage/outcome review. Selection mode supports manual selection or all-shown, saved, unsaved, and deletion-scheduled presets, plus bulk save and unsave. Bulk stage changes append status history, bulk notes append a dated history entry without overwriting existing notes, and bulk deletion always opens a separate permanent-action review page.
 
 ## Complete tracking workflow
 
@@ -147,7 +148,7 @@ The migrations create ASP.NET Core Identity tables, owner-aware private data tab
 
 ## Automatic retention cleanup
 
-Unsaved applications become eligible on the three-calendar-month anniversary of their application date in the owner's configured timezone. The first retention run after eligibility assigns an exact deletion time 14 full days later. Saving at any point cancels that time immediately; unsaving an already-old application starts a fresh 14-day grace period.
+Each owner chooses whether unsaved applications become eligible on the one-, two-, or three-calendar-month anniversary of their application date in the configured timezone. They also choose a 3-, 5-, 10-, or 14-day deletion-warning period. Changing these settings recalculates that owner's pending schedules from the current time and never deletes immediately. Saving at any point cancels the deadline; unsaving an already-old application starts a fresh configured grace period.
 
 Milestone 8 places cleanup in the database so it does not depend on website traffic. After applying the migration, open the Supabase SQL editor and run `database/supabase/configure-retention-cron.sql` once. It enables Supabase Cron and schedules the atomic cleanup function hourly at minute 17. Use `database/supabase/verify-retention-cron.sql` to inspect the job and its privacy-safe operational history. Retention runs store timestamps, counts, success state, and a short database error code only; they never retain deleted role titles, company names, notes, or source text.
 
@@ -200,6 +201,8 @@ dotnet run --project src/JobTracker.Web -- invitations revoke 00000000-0000-0000
 ```
 
 Start the web application normally, open `/account/register`, and enter the code. Account creation and code consumption occur in one protected database transaction. The code cannot be reused, and the new account remains blocked from private pages until its email is verified through the local `/dev/mail` message.
+
+Production invitation commands are disabled by default. An operator must temporarily set `InvitationCommands:Enabled=true` and append `--confirm-production` to the command; either control by itself is insufficient. Keep this setting off during normal web operation and follow `docs/operations.md` for the production procedure.
 
 ## Quality checks
 

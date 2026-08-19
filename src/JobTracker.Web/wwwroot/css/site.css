@@ -1677,6 +1677,23 @@ textarea:focus-visible {
   cursor: pointer;
 }
 
+.bulk-retention-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.55rem;
+}
+
+.bulk-retention-actions .button:not(:disabled) {
+  color: #0c5948;
+  background: #e2f0d9;
+  border-color: transparent;
+}
+
+.bulk-retention-actions .bulk-unsave-button:not(:disabled) {
+  color: var(--ink);
+  background: var(--surface-muted);
+}
+
 .bulk-action-grid {
   display: grid;
   grid-template-columns: minmax(16rem, 0.85fr) minmax(20rem, 1.4fr) auto;
@@ -1763,6 +1780,10 @@ textarea:focus-visible {
   box-shadow: var(--shadow-sm);
 }
 
+.application-rank {
+  display: none;
+}
+
 .application-select {
   position: absolute;
   top: 1.15rem;
@@ -1812,6 +1833,13 @@ textarea:focus-visible {
   transition: background 160ms ease, border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
 }
 
+.application-results.is-selection-mode .application-record a,
+.application-results.is-selection-mode .application-record button,
+.application-results.is-selection-mode .application-record select,
+.application-results.is-selection-mode .application-record textarea {
+  pointer-events: none;
+}
+
 .application-results.is-selection-mode .record-card:hover {
   border-color: var(--blue-deep);
   box-shadow: 0 0 0 2px rgba(62, 99, 221, 0.1), var(--shadow-sm);
@@ -1829,11 +1857,44 @@ textarea:focus-visible {
 }
 
 .application-results.is-list-view .record-card {
-  grid-template-columns: minmax(15rem, 1.25fr) minmax(24rem, 1fr) auto;
+  grid-template-columns: 2.25rem minmax(14rem, 1.25fr) minmax(24rem, 1fr) auto;
   align-items: center;
   gap: 1rem;
   padding-top: 1.15rem;
   padding-bottom: 1.15rem;
+}
+
+.application-results.is-list-view .application-rank {
+  display: grid;
+  width: 2.25rem;
+  height: 2.25rem;
+  place-items: center;
+  align-self: center;
+  color: var(--blue-deep);
+  background: var(--blue-soft);
+  border-radius: 50%;
+  font-size: 0.8rem;
+  font-weight: 850;
+}
+
+.retention-settings-form {
+  display: grid;
+  gap: 1rem;
+  margin: 1.5rem 0;
+  padding: 1.1rem;
+  background: var(--surface-muted);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+}
+
+.retention-setting-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.retention-settings-form .button {
+  justify-self: start;
 }
 
 .application-results.is-list-view .record-meta {
@@ -1841,16 +1902,25 @@ textarea:focus-visible {
 }
 
 .application-results.is-list-view .record-actions {
-  justify-content: flex-end;
+  display: grid;
+  min-width: 8.25rem;
+  align-self: stretch;
+  align-content: space-between;
+  justify-items: end;
   padding: 0 0 0 1rem;
   border-top: 0;
   border-left: 1px solid var(--line);
 }
 
 .application-results.is-list-view .record-actions form {
-  width: 100%;
+  width: auto;
   margin-left: 0;
-  text-align: right;
+  grid-row: 1;
+}
+
+.application-results.is-list-view .record-link-actions {
+  grid-row: 2;
+  justify-content: flex-end;
 }
 
 .record-card-top {
@@ -1920,6 +1990,109 @@ textarea:focus-visible {
   border-radius: var(--radius-sm);
 }
 
+.record-meta .status-stage-applied,
+.record-meta .status-outcome-active {
+  background: #e2f0d9;
+}
+
+.record-meta .status-stage-screening {
+  background: #ddebf7;
+}
+
+.record-meta .status-stage-assessment {
+  background: #fff2cc;
+}
+
+.record-meta .status-stage-interview {
+  background: #e4dfec;
+}
+
+.record-meta .status-stage-offer,
+.record-meta .status-outcome-withdrawn {
+  background: #fce4d6;
+}
+
+.record-meta .status-outcome-accepted {
+  background: #c6e0b4;
+}
+
+.record-meta .status-outcome-rejected {
+  background: #f4cccc;
+}
+
+.record-meta .status-outcome-ghosted {
+  background: #e7e6e6;
+}
+
+.status-field,
+.status-field dt,
+.status-field select {
+  color: #172036;
+}
+
+.status-field select {
+  width: 100%;
+  margin: 0.12rem 0 0;
+  padding: 0.15rem 1.4rem 0.15rem 0;
+  background-color: transparent;
+  border: 0;
+  border-radius: 0;
+  font: inherit;
+  font-size: 0.88rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.status-field select:focus-visible {
+  outline: 2px solid var(--blue);
+  outline-offset: 2px;
+}
+
+.application-inline-status-form {
+  display: grid;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.application-inline-status-editor {
+  display: grid;
+  grid-template-columns: minmax(14rem, 1fr) auto;
+  align-items: end;
+  gap: 0.5rem 0.75rem;
+  padding: 0.75rem;
+  background: var(--surface-muted);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+}
+
+.application-inline-status-editor[hidden] {
+  display: none;
+}
+
+.application-inline-status-editor > label {
+  grid-column: 1 / -1;
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.application-inline-status-editor textarea {
+  min-height: 3rem;
+  padding: 0.65rem 0.75rem;
+  color: var(--ink);
+  background: var(--surface-raised);
+  border: 1px solid var(--field-border);
+  border-radius: 0.65rem;
+  font: inherit;
+  resize: vertical;
+}
+
+.application-inline-status-editor > div,
+.record-link-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
 .record-meta dt,
 .detail-list dt,
 .confirmation-summary dt {
@@ -1950,6 +2123,40 @@ textarea:focus-visible {
 
 .record-actions form {
   margin-left: auto;
+}
+
+.save-bookmark {
+  display: grid;
+  width: 2.55rem;
+  height: 2.55rem;
+  padding: 0;
+  place-items: center;
+  color: var(--ink-soft);
+  background: var(--surface-muted);
+  border: 0;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: color 160ms ease, background 160ms ease, transform 160ms ease;
+}
+
+.save-bookmark:hover {
+  color: var(--blue-deep);
+  transform: translateY(-1px);
+}
+
+.save-bookmark.is-saved {
+  color: #17735d;
+  background: #dff4e9;
+}
+
+.save-bookmark svg {
+  width: 1.2rem;
+  height: 1.2rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.8;
 }
 
 .link-button {
@@ -2312,11 +2519,18 @@ textarea:focus-visible {
   }
 
   .application-results.is-list-view .record-card {
-    grid-template-columns: 1fr;
+    grid-template-columns: 2.25rem minmax(0, 1fr);
+  }
+
+  .application-results.is-list-view .application-inline-status-form,
+  .application-results.is-list-view .record-actions {
+    grid-column: 1 / -1;
   }
 
   .application-results.is-list-view .record-actions {
-    justify-content: flex-start;
+    display: flex;
+    justify-content: space-between;
+    justify-items: stretch;
     padding: 1rem 0 0;
     border-top: 1px solid var(--line);
     border-left: 0;
@@ -2378,6 +2592,18 @@ textarea:focus-visible {
   .application-toolbar-actions {
     width: 100%;
     margin-left: 0;
+  }
+
+  .application-inline-status-editor {
+    grid-template-columns: 1fr;
+  }
+
+  .application-inline-status-editor > div {
+    justify-content: flex-start;
+  }
+
+  .retention-setting-fields {
+    grid-template-columns: 1fr;
   }
 
   .detail-list div,
@@ -3729,6 +3955,17 @@ html[data-theme="dark"] .next-action-card {
   font-weight: 900;
 }
 
+.task-check {
+  color: #173b9e;
+  background: #dce6ff;
+  border: 1px solid #b9c9fa;
+}
+
+.dismiss-warning-button {
+  color: var(--ink-soft);
+  font-weight: 800;
+}
+
 .attention-row .attention-icon,
 .action-item-warning .action-tag {
   color: #7b4c00;
@@ -3913,6 +4150,12 @@ html[data-theme="dark"] .attention-row .attention-icon,
 html[data-theme="dark"] .action-item-warning .action-tag {
   color: #ffd57d;
   background: #4a3b20;
+}
+
+html[data-theme="dark"] .task-check {
+  color: #dce5ff;
+  background: rgba(62, 99, 221, 0.22);
+  border-color: rgba(126, 152, 255, 0.32);
 }
 
 html[data-theme="dark"] .state-deletion-scheduled,
@@ -4525,6 +4768,74 @@ html[data-theme="dark"] .job-description-popover {
   max-width: 40rem;
   margin: 0 0 0.5rem;
   color: var(--ink-soft);
+}
+
+.foundation-link {
+  color: var(--blue);
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.foundation-link:hover {
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+
+.privacy-hero .workspace-heading > div {
+  max-width: 48rem;
+}
+
+.privacy-layout {
+  display: grid;
+  gap: 1.25rem;
+}
+
+.privacy-intro {
+  max-width: none;
+}
+
+.privacy-intro h2,
+.privacy-grid h2 {
+  margin: 0.35rem 0 0.75rem;
+}
+
+.privacy-intro p:last-child,
+.privacy-grid p {
+  color: var(--ink-soft);
+  line-height: 1.7;
+}
+
+.privacy-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1.25rem;
+}
+
+.privacy-grid .detail-card {
+  height: 100%;
+}
+
+.privacy-updated {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: 0.9rem;
+}
+
+.footer-status a {
+  color: inherit;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.footer-status a:hover {
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+
+@media (max-width: 52rem) {
+  .privacy-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 html[data-theme="dark"] .demo-notice {

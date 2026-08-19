@@ -5,6 +5,7 @@
         .Select((item, index) => (Item: item, ColorIndex: index))
         .Where(item => item.Item.Count > 0)
         .ToList();
+    var pipelineCount = Model.Stages.Sum(item => item.Count);
     var overdueCount = Model.OpenTasks.Count(item => item.IsOverdue);
     var currentMonth = Model.Months[^1];
 
@@ -84,12 +85,12 @@
             <div class="dashboard-main-column">
                 <article class="dashboard-panel">
                     <div class="dashboard-panel-heading">
-                        <div><p class="mini-label">Pipeline</p><h2>Where applications stand</h2></div>
+                        <div><p class="mini-label">Pipeline · recent + saved</p><h2>Where applications stand</h2></div>
                         <a class="text-link" asp-controller="Applications" asp-action="Index">View all applications</a>
                     </div>
-                    @if (Model.ApplicationCount == 0)
+                    @if (pipelineCount == 0)
                     {
-                        <div class="dashboard-empty"><strong>No applications in this window yet.</strong><span>Add one when you are ready.</span></div>
+                        <div class="dashboard-empty"><strong>No recent or saved applications yet.</strong><span>Add one when you are ready.</span></div>
                     }
                     else
                     {
@@ -105,7 +106,7 @@
                                     @for (var index = 0; index < stageSegments.Count; index++)
                                     {
                                         var stage = stageSegments[index];
-                                        var percentage = stage.Item.Count * 100d / Model.ApplicationCount;
+                                        var percentage = stage.Item.Count * 100d / pipelineCount;
                                         var accessibleLabel = $"{stage.Item.Label}: {stage.Item.Count} {(stage.Item.Count == 1 ? "application" : "applications")}";
                                         if (stageSegments.Count == 1)
                                         {
@@ -136,8 +137,8 @@
                                 </svg>
                                 <div class="pipeline-donut-centre" aria-hidden="true">
                                     <div class="pipeline-donut-total" data-pipeline-total>
-                                        <strong>@Model.ApplicationCount</strong>
-                                        <span>Total</span>
+                                        <strong>@pipelineCount</strong>
+                                        <span>Recent + saved</span>
                                     </div>
                                     <div class="pipeline-donut-tooltip" data-pipeline-tooltip hidden>
                                         <strong data-pipeline-tooltip-label></strong>

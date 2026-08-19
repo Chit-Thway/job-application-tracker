@@ -57,6 +57,9 @@
                                             <input type="hidden" name="returnTo" value="actions" />
                                             <button class="button button-primary button-small" type="submit">Save and keep</button>
                                         </form>
+                                        <form method="post" asp-action="DismissDeletionWarning" asp-route-applicationId="@item.ApplicationId">
+                                            <button class="link-button dismiss-warning-button" type="submit" aria-label="Dismiss deletion warning for @item.RoleTitle">Dismiss</button>
+                                        </form>
                                     </div>
                                 </article>
                             }
