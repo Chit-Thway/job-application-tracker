@@ -51,6 +51,7 @@
                         <a class="@NavClass("settings")" aria-current="@AriaCurrent("settings")" asp-controller="Home" asp-action="Settings">Settings</a>
                     }
                     <a class="@NavClass("demo")" aria-current="@AriaCurrent("demo")" asp-controller="Demo" asp-action="Index">Demo</a>
+                    <a class="@NavClass("extension")" aria-current="@AriaCurrent("extension")" asp-controller="Home" asp-action="BrowserExtension">Install extension</a>
                     @if (HostEnvironment.IsDevelopment())
                     {
                         <a class="nav-link" asp-controller="DevelopmentMail" asp-action="Index">Local messages</a>

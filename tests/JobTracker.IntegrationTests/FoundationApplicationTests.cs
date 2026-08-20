@@ -70,6 +70,21 @@ public sealed class FoundationApplicationTests : IClassFixture<JobTrackerWebAppl
     }
 
     [Theory]
+    [InlineData("/")]
+    [InlineData("/demo")]
+    public async Task PublicHeaders_LinkToBrowserExtensionInstallPage(string route)
+    {
+        var client = CreateClient();
+
+        var response = await client.GetAsync(route);
+        var content = await response.Content.ReadAsStringAsync();
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Contains("href=\"/extension\"", content, StringComparison.Ordinal);
+        Assert.Contains("Install extension", content, StringComparison.Ordinal);
+    }
+
+    [Theory]
     [InlineData("/dashboard")]
     [InlineData("/applications")]
     [InlineData("/applications/new")]
