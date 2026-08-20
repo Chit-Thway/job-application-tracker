@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
 
 namespace JobTracker.Web.Models;
 
@@ -15,6 +16,9 @@ public sealed class LoginViewModel
     public bool RememberMe { get; set; }
 
     public string? ReturnUrl { get; set; }
+
+    [BindNever]
+    public bool EmailVerificationRequired { get; set; }
 }
 
 public sealed class RegisterViewModel

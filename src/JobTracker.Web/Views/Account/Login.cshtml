@@ -10,6 +10,21 @@
         <h1>Welcome back.</h1>
         <p class="account-lead">Sign in with your verified Job Application Tracker account.</p>
 
+        @if (Model.EmailVerificationRequired)
+        {
+            <aside class="verification-required-alert" role="alert" aria-live="assertive">
+                <span class="verification-required-icon" aria-hidden="true">!</span>
+                <div>
+                    <h2>Email verification required</h2>
+                    <p>Your password is correct, but you must verify your email address before you can sign in.</p>
+                    <form method="post" asp-action="ResendVerification" class="verification-resend-form">
+                        <input type="hidden" name="Email" value="@Model.Email" />
+                        <button class="button verification-resend-button" type="submit">Resend verification email</button>
+                    </form>
+                </div>
+            </aside>
+        }
+
         <form method="post" asp-action="Login" class="account-form">
             <input asp-for="ReturnUrl" type="hidden" />
             <div asp-validation-summary="ModelOnly" class="validation-summary" role="alert"></div>

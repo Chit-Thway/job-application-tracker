@@ -112,6 +112,14 @@ public sealed class AccountController(
             {
                 return LocalRedirect(SafeReturnUrl(model.ReturnUrl));
             }
+
+            if (result.IsNotAllowed
+                && !await userManager.IsEmailConfirmedAsync(user)
+                && await userManager.CheckPasswordAsync(user, model.Password))
+            {
+                model.EmailVerificationRequired = true;
+                return View(model);
+            }
         }
 
         ModelState.AddModelError(

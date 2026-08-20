@@ -294,7 +294,10 @@ public sealed partial class AuthenticationJourneyTests
         var unverifiedContent = await unverifiedResponse.Content.ReadAsStringAsync();
 
         Assert.Equal(HttpStatusCode.OK, unverifiedResponse.StatusCode);
-        Assert.Contains("Unable to sign in", unverifiedContent, StringComparison.Ordinal);
+        Assert.Contains("Email verification required", unverifiedContent, StringComparison.Ordinal);
+        Assert.Contains("Your password is correct", unverifiedContent, StringComparison.Ordinal);
+        Assert.Contains("Resend verification email", unverifiedContent, StringComparison.Ordinal);
+        Assert.DoesNotContain("Unable to sign in", unverifiedContent, StringComparison.Ordinal);
 
         await ConfirmUserAsync(user.Id);
 
@@ -316,6 +319,22 @@ public sealed partial class AuthenticationJourneyTests
 
         var afterLogout = await client.GetAsync("/dashboard");
         Assert.Equal(HttpStatusCode.Redirect, afterLogout.StatusCode);
+    }
+
+    [Fact]
+    public async Task UnverifiedUserWithWrongPassword_ReceivesOnlyGenericSignInError()
+    {
+        var email = $"unverified-wrong-password-{Guid.NewGuid():N}@example.test";
+        await CreateUserAsync(email, emailConfirmed: false);
+        var client = CreateClient();
+
+        var response = await PostLoginAsync(client, email, "Definitely-not-the-password-123!");
+        var content = await response.Content.ReadAsStringAsync();
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Contains("Unable to sign in", content, StringComparison.Ordinal);
+        Assert.DoesNotContain("Email verification required", content, StringComparison.Ordinal);
+        Assert.DoesNotContain("Your password is correct", content, StringComparison.Ordinal);
     }
 
     [Fact]
