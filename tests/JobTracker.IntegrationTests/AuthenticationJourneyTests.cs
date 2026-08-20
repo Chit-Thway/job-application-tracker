@@ -66,6 +66,43 @@ public sealed partial class AuthenticationJourneyTests
     }
 
     [Fact]
+    public async Task InvitationCommand_WithEmail_SendsRegistrationMessageWithoutPrintingCodePath()
+    {
+        var recipient = $"invite-{Guid.NewGuid():N}@example.test";
+        using var enabledFactory = factory.WithWebHostBuilder(builder =>
+        {
+            builder.UseSetting("InvitationCommands:Enabled", "true");
+            builder.UseSetting("Email:PublicBaseUrl", "https://tracker.example.test");
+        });
+
+        await using var scope = enabledFactory.Services.CreateAsyncScope();
+        var runner = scope.ServiceProvider.GetRequiredService<InvitationCommandRunner>();
+
+        Assert.Equal(
+            0,
+            await runner.TryRunAsync(
+                [
+                    "invitations",
+                    "create",
+                    "--days",
+                    "7",
+                    "--email",
+                    recipient,
+                    "--confirm-production",
+                ]));
+
+        var message = enabledFactory.Services
+            .GetRequiredService<DevelopmentMailStore>()
+            .Messages
+            .First(item => string.Equals(
+                item.Recipient,
+                recipient,
+                StringComparison.OrdinalIgnoreCase));
+        Assert.StartsWith("Your Job Application Tracker invitation", message.Subject);
+        Assert.Equal("https://tracker.example.test/account/register", message.ActionUrl);
+    }
+
+    [Fact]
     public async Task ValidInvitation_CreatesUnverifiedAccount_VerifiesAndCannotBeReused()
     {
         var invitation = await CreateInvitationAsync();

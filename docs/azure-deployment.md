@@ -48,6 +48,8 @@ App Service settings are environment configuration, not source-controlled values
 | `ConnectionStrings__DefaultConnection` | Production Supabase Session Pooler connection string with TLS required |
 | `Email__Endpoint` | Communication Services HTTPS endpoint, for example `https://name.communication.azure.com` |
 | `Email__SenderAddress` | Exact MailFrom address displayed by the connected Azure Managed Domain |
+| `Email__PublicBaseUrl` | Public HTTPS origin without a trailing path, for example `https://name.azurewebsites.net` |
+| `Email__SupportAddress` | Support mailbox displayed as a `mailto:` link in account messages |
 | `AllowedHosts` | The assigned host, for example `chit-thway-job-tracker.azurewebsites.net` |
 
 Never put the database password, invitation code, email token, publish profile, or Azure access key in GitHub text, workflow YAML, logs, screenshots, or support messages.
@@ -68,7 +70,7 @@ The identity represented by these values should be federated only to this reposi
 1. Open the Azure HTTPS address and confirm the public landing page and `/demo` load without authentication.
 2. Confirm `/health/live` and `/health/ready` return HTTP 200 with minimal Healthy JSON.
 3. Confirm signed-out visitors are redirected away from private routes and cannot mutate `/demo`.
-4. Create a single production invitation from a controlled operator shell, register a QA mailbox, receive the real verification email, verify it, and sign in.
+4. Create a single production invitation from a controlled operator shell with `--email`, register the mailbox using the delivered one-time code, receive the real verification email, verify it, and sign in.
 5. Request a password reset and confirm the real message completes the reset without leaking a token into logs.
 6. Exercise application creation, Saved state, status history, dashboard, owner isolation, and retention scheduling.
 7. Restart the web app and confirm existing sign-in behavior, database access, health, and email still work.

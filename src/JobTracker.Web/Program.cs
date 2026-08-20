@@ -134,6 +134,10 @@ else
             options => Uri.TryCreate(options.Endpoint, UriKind.Absolute, out var endpoint)
                 && endpoint.Scheme == Uri.UriSchemeHttps,
             "Email:Endpoint must be an absolute HTTPS Azure Communication Services endpoint.")
+        .Validate(
+            options => Uri.TryCreate(options.PublicBaseUrl, UriKind.Absolute, out var publicBaseUrl)
+                && publicBaseUrl.Scheme == Uri.UriSchemeHttps,
+            "Email:PublicBaseUrl must be the absolute HTTPS address of the deployed application.")
         .ValidateOnStart();
     builder.Services.AddSingleton(serviceProvider =>
     {

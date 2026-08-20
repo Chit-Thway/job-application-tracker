@@ -1,7 +1,10 @@
+using System.Net.Mail;
+
 namespace JobTracker.Web.Identity;
 
 public sealed class InvitationCommandRunner(
     InvitationService invitations,
+    IAccountEmailSender emailSender,
     IHostEnvironment environment,
     IConfiguration configuration)
 {
@@ -54,14 +57,30 @@ public sealed class InvitationCommandRunner(
         CancellationToken cancellationToken)
     {
         var validForDays = 7;
-        if (arguments.Length == 4
-            && string.Equals(arguments[2], "--days", StringComparison.OrdinalIgnoreCase)
-            && int.TryParse(arguments[3], out var parsedDays))
+        string? recipientAddress = null;
+
+        for (var index = 2; index < arguments.Length; index += 2)
         {
-            validForDays = parsedDays;
-        }
-        else if (arguments.Length != 2)
-        {
+            if (index + 1 >= arguments.Length)
+            {
+                WriteUsage();
+                return 1;
+            }
+
+            if (string.Equals(arguments[index], "--days", StringComparison.OrdinalIgnoreCase)
+                && int.TryParse(arguments[index + 1], out var parsedDays))
+            {
+                validForDays = parsedDays;
+                continue;
+            }
+
+            if (string.Equals(arguments[index], "--email", StringComparison.OrdinalIgnoreCase)
+                && MailAddress.TryCreate(arguments[index + 1].Trim(), out var parsedAddress))
+            {
+                recipientAddress = parsedAddress.Address;
+                continue;
+            }
+
             WriteUsage();
             return 1;
         }
@@ -75,6 +94,28 @@ public sealed class InvitationCommandRunner(
         var invitation = await invitations.CreateAsync(validForDays, cancellationToken);
         Console.WriteLine($"Invitation ID: {invitation.Id}");
         Console.WriteLine($"Expires (UTC): {invitation.ExpiresAt:O}");
+
+        if (recipientAddress is not null)
+        {
+            try
+            {
+                await emailSender.SendInvitationAsync(
+                    recipientAddress,
+                    invitation.Code,
+                    invitation.ExpiresAt);
+            }
+            catch
+            {
+                await invitations.RevokeAsync(invitation.Id, cancellationToken);
+                Console.Error.WriteLine(
+                    "The invitation email could not be sent. The unused invitation was revoked.");
+                return 1;
+            }
+
+            Console.WriteLine("Invitation email accepted by the configured provider.");
+            return 0;
+        }
+
         Console.WriteLine("Invitation code (shown once; keep it private):");
         Console.WriteLine(invitation.Code);
         return 0;
@@ -136,7 +177,7 @@ public sealed class InvitationCommandRunner(
     private static void WriteUsage()
     {
         Console.WriteLine("Invitation commands:");
-        Console.WriteLine("  invitations create [--days 1-30]");
+        Console.WriteLine("  invitations create [--days 1-30] [--email recipient@example.com]");
         Console.WriteLine("  invitations list");
         Console.WriteLine("  invitations revoke <invitation-id>");
         Console.WriteLine(

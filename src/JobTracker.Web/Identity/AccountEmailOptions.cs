@@ -13,4 +13,11 @@ public sealed class AccountEmailOptions
     [EmailAddress]
     public string SenderAddress { get; init; } = string.Empty;
 
+    [Required]
+    [Url]
+    public string PublicBaseUrl { get; init; } = string.Empty;
+
+    [Required]
+    [EmailAddress]
+    public string SupportAddress { get; init; } = string.Empty;
 }

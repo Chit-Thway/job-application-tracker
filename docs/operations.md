@@ -36,11 +36,12 @@ Stop the web process before running invitation commands so the CLI owns the proc
 
 ```powershell
 dotnet run --project src/JobTracker.Web -- invitations create --days 7
+dotnet run --project src/JobTracker.Web -- invitations create --days 7 --email recipient@example.com
 dotnet run --project src/JobTracker.Web -- invitations list
 dotnet run --project src/JobTracker.Web -- invitations revoke <invitation-id>
 ```
 
-Codes are shown once and must be delivered privately. The database stores only a SHA-256 fingerprint. Never place readable codes in GitHub, logs, screenshots, or support messages.
+Without `--email`, codes are shown once and must be delivered privately. With `--email`, the configured provider sends a branded invitation and the readable code is not printed. The database stores only a SHA-256 fingerprint. Never place readable codes in GitHub, logs, screenshots, or support messages.
 
 Outside Development, invitation commands require two deliberate controls: the temporary setting `InvitationCommands:Enabled=true` and the explicit `--confirm-production` argument. There is no browser-accessible invitation administration endpoint. Run the published application from a controlled operator shell with its normal production connection configuration:
 
@@ -54,7 +55,9 @@ Use the same final argument for `list` and `revoke`. Remove the temporary settin
 
 ## Email
 
-Development uses an in-memory message sink at `/dev/mail`; it disappears on restart and is unavailable outside Development. Production uses Azure Communication Services Email through the App Service managed identity. Configure the HTTPS endpoint and exact MailFrom address with App Service settings, grant the web app identity email-sending access, and test both verification and password-reset links from an external mailbox. Never log recipients, tokens, or complete action URLs.
+Development uses an in-memory message sink at `/dev/mail`; it disappears on restart and is unavailable outside Development. Production uses Azure Communication Services Email through the App Service managed identity. Configure the HTTPS endpoint, exact MailFrom address, public application URL, and support address with App Service settings, grant the web app identity email-sending access, and test invitation, verification, and password-reset messages from an external mailbox. Never log recipients, invitation codes, tokens, or complete action URLs.
+
+Azure Communication Services Email is an outbound delivery service, not an inbox. The application logs only the Azure operation ID. To retain message and recipient delivery evidence, configure Azure Monitor diagnostic settings for Email Send Mail and Email Status Update logs and choose a Log Analytics workspace or storage destination. Logging begins only after the diagnostic setting is enabled and can add Azure ingestion/storage charges.
 
 ## Health and diagnostics
 

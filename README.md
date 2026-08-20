@@ -185,9 +185,10 @@ After the initial account exists, create additional accounts through private one
 
 ```powershell
 dotnet run --project src/JobTracker.Web -- invitations create --days 7
+dotnet run --project src/JobTracker.Web -- invitations create --days 7 --email recipient@example.com
 ```
 
-The lifetime can be from 1 to 30 days. The readable code is printed once; give it privately to its intended recipient and do not paste it into GitHub, logs, or chat. The database stores only its SHA-256 fingerprint, so the readable code cannot be recovered later.
+The lifetime can be from 1 to 30 days. With `--email`, the configured provider sends the branded registration message without printing the readable code. Without it, the code is printed once and must be delivered privately. Do not paste a readable code into GitHub, logs, or chat. The database stores only its SHA-256 fingerprint, so the readable code cannot be recovered later.
 
 List invitation IDs and states without revealing their codes:
 

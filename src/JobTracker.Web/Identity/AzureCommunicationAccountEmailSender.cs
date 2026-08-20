@@ -12,23 +12,40 @@ public sealed class AzureCommunicationAccountEmailSender(
 {
     private readonly AccountEmailOptions settings = options.Value;
 
+    public Task SendInvitationAsync(
+        string recipientAddress,
+        string invitationCode,
+        DateTimeOffset expiresAt) =>
+        SendAsync(
+            recipientAddress,
+            AccountEmailTemplates.Invitation(
+                invitationCode,
+                expiresAt,
+                settings.PublicBaseUrl,
+                settings.SupportAddress));
+
     public Task SendVerificationAsync(ApplicationUser user, string verificationUrl) =>
-        SendAsync(user, AccountEmailTemplates.Verification(verificationUrl));
+        SendAsync(
+            RequiredEmail(user),
+            AccountEmailTemplates.Verification(
+                verificationUrl,
+                settings.PublicBaseUrl,
+                settings.SupportAddress));
 
     public Task SendPasswordResetAsync(ApplicationUser user, string resetUrl) =>
-        SendAsync(user, AccountEmailTemplates.PasswordReset(resetUrl));
+        SendAsync(
+            RequiredEmail(user),
+            AccountEmailTemplates.PasswordReset(
+                resetUrl,
+                settings.PublicBaseUrl,
+                settings.SupportAddress));
 
-    private async Task SendAsync(ApplicationUser user, AccountEmailContent content)
+    private async Task SendAsync(string recipientAddress, AccountEmailContent content)
     {
-        if (string.IsNullOrWhiteSpace(user.Email))
-        {
-            throw new InvalidOperationException("The account does not have an email address.");
-        }
-
         var operation = await client.SendAsync(
             WaitUntil.Started,
             settings.SenderAddress,
-            user.Email,
+            recipientAddress,
             content.Subject,
             content.Html,
             content.PlainText);
@@ -37,4 +54,9 @@ public sealed class AzureCommunicationAccountEmailSender(
             "Account email accepted by Azure Communication Services. OperationId={OperationId}",
             operation.Id);
     }
+
+    private static string RequiredEmail(ApplicationUser user) =>
+        string.IsNullOrWhiteSpace(user.Email)
+            ? throw new InvalidOperationException("The account does not have an email address.")
+            : user.Email;
 }
