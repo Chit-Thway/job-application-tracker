@@ -4,6 +4,7 @@ using JobTracker.Web.Applications;
 using JobTracker.Web.Extraction;
 using JobTracker.Web.Demo;
 using JobTracker.Web.Diagnostics;
+using JobTracker.Web.Admin;
 using Azure.Communication.Email;
 using Azure.Identity;
 using System.Net;
@@ -93,6 +94,8 @@ builder.Services.ConfigureApplicationCookie(options =>
     options.ExpireTimeSpan = TimeSpan.FromHours(8);
     options.SlidingExpiration = true;
 });
+builder.Services.Configure<SecurityStampValidatorOptions>(options =>
+    options.ValidationInterval = TimeSpan.Zero);
 
 builder.Services.AddRateLimiter(options =>
 {
@@ -154,7 +157,11 @@ else
     builder.Services.AddSingleton<IAccountEmailSender, AzureCommunicationAccountEmailSender>();
 }
 builder.Services.AddSingleton(TimeProvider.System);
+builder.Services.Configure<AdminOptions>(
+    builder.Configuration.GetSection(AdminOptions.SectionName));
 builder.Services.AddSingleton<DemoCatalog>();
+builder.Services.AddScoped<AdminRoleInitializer>();
+builder.Services.AddScoped<AdminManagementService>();
 builder.Services.AddScoped<DevelopmentAccountBootstrapper>();
 builder.Services.AddScoped<InvitationService>();
 builder.Services.AddScoped<InvitationRegistrationService>();
@@ -303,6 +310,13 @@ if (app.Environment.IsDevelopment())
     await using var bootstrapScope = app.Services.CreateAsyncScope();
     await bootstrapScope.ServiceProvider
         .GetRequiredService<DevelopmentAccountBootstrapper>()
+        .InitializeAsync();
+}
+
+await using (var adminScope = app.Services.CreateAsyncScope())
+{
+    await adminScope.ServiceProvider
+        .GetRequiredService<AdminRoleInitializer>()
         .InitializeAsync();
 }
 

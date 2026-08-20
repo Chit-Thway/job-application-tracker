@@ -91,7 +91,13 @@ public sealed class InvitationCommandRunner(
             return 1;
         }
 
-        var invitation = await invitations.CreateAsync(validForDays, cancellationToken);
+        var invitation = recipientAddress is null
+            ? await invitations.CreateAsync(validForDays, cancellationToken)
+            : await invitations.CreateForRecipientAsync(
+                validForDays,
+                recipientAddress,
+                "command-line",
+                cancellationToken);
         Console.WriteLine($"Invitation ID: {invitation.Id}");
         Console.WriteLine($"Expires (UTC): {invitation.ExpiresAt:O}");
 

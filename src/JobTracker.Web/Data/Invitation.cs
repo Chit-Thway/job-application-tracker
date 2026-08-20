@@ -14,6 +14,12 @@ public sealed class Invitation
 
     public DateTimeOffset? RevokedAt { get; set; }
 
+    public string? RecipientEmail { get; set; }
+
+    public string? RecipientEmailNormalized { get; set; }
+
+    public string? CreatedByUserId { get; set; }
+
     public string? UsedByUserId { get; set; }
 
     public ApplicationUser? UsedByUser { get; set; }

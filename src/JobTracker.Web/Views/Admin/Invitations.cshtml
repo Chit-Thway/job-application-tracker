@@ -1,0 +1,83 @@
+@model AdminInvitationsViewModel
+@{
+    ViewData["Title"] = "Invitation administration";
+}
+
+<section class="admin-page">
+    <div class="shell">
+        <div class="admin-heading admin-heading-compact">
+            <div>
+                <p class="eyebrow">Private administration</p>
+                <h1>Invitations.</h1>
+                <p>Send a single-use code tied to the intended email address.</p>
+            </div>
+        </div>
+
+        <partial name="_AdminNav" />
+
+        <section class="admin-panel admin-invite-form">
+            <div>
+                <p class="mini-label">New invitation</p>
+                <h2>Invite a QA user</h2>
+                <p>The recipient receives the branded registration message. The code cannot register a different email address.</p>
+            </div>
+            <form method="post" asp-controller="Admin" asp-action="CreateInvitation">
+                <div asp-validation-summary="ModelOnly" class="validation-summary"></div>
+                <div class="field">
+                    <label asp-for="Input.Email"></label>
+                    <input asp-for="Input.Email" autocomplete="email" />
+                    <span asp-validation-for="Input.Email" class="field-error"></span>
+                </div>
+                <div class="field">
+                    <label asp-for="Input.ValidForDays"></label>
+                    <select asp-for="Input.ValidForDays">
+                        <option value="1">1 day</option>
+                        <option value="3">3 days</option>
+                        <option value="7">7 days</option>
+                        <option value="14">14 days</option>
+                        <option value="30">30 days</option>
+                    </select>
+                    <span asp-validation-for="Input.ValidForDays" class="field-error"></span>
+                </div>
+                <button class="button button-primary" type="submit">Send invitation</button>
+            </form>
+        </section>
+
+        <section class="admin-panel">
+            <div class="admin-panel-heading">
+                <div>
+                    <p class="mini-label">Invitation register</p>
+                    <h2>Recent invitations</h2>
+                </div>
+                <span>@Model.Invitations.Count total</span>
+            </div>
+            @if (Model.Invitations.Count == 0)
+            {
+                <p class="admin-empty">No invitations have been created.</p>
+            }
+            else
+            {
+                <div class="admin-invitation-list">
+                    @foreach (var invitation in Model.Invitations)
+                    {
+                        <article>
+                            <div>
+                                <strong>@invitation.RecipientEmail</strong>
+                                <p>Created @invitation.CreatedAt.ToUniversalTime().ToString("d MMM yyyy, HH:mm 'UTC'") · expires @invitation.ExpiresAt.ToUniversalTime().ToString("d MMM yyyy, HH:mm 'UTC'")</p>
+                            </div>
+                            <div class="admin-invitation-actions">
+                                <span class="admin-status is-@invitation.Status.ToLowerInvariant()">@invitation.Status</span>
+                                @if (invitation.Status == "Available")
+                                {
+                                    <form method="post" asp-controller="Admin" asp-action="RevokeInvitation" asp-route-invitationId="@invitation.Id">
+                                        <button class="button button-secondary button-small" type="submit">Revoke</button>
+                                    </form>
+                                }
+                            </div>
+                        </article>
+                    }
+                </div>
+            }
+        </section>
+    </div>
+</section>

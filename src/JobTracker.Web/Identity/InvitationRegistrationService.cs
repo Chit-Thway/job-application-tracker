@@ -60,6 +60,16 @@ public sealed class InvitationRegistrationService(
                 return InvitationRegistrationResult.InvalidInvitation();
             }
 
+            var normalizedEmail = userManager.NormalizeEmail(email.Trim());
+            if (invitation.RecipientEmailNormalized is not null
+                && !string.Equals(
+                    invitation.RecipientEmailNormalized,
+                    normalizedEmail,
+                    StringComparison.Ordinal))
+            {
+                return InvitationRegistrationResult.InvalidInvitation();
+            }
+
             var user = new ApplicationUser
             {
                 Id = Guid.NewGuid().ToString(),
@@ -67,6 +77,7 @@ public sealed class InvitationRegistrationService(
                 Email = email.Trim(),
                 DisplayName = displayName.Trim(),
                 TimeZoneId = "Australia/Perth",
+                CreatedAt = now,
             };
 
             var identityResult = await userManager.CreateAsync(user, password);

@@ -1,0 +1,199 @@
+using System.Net;
+using System.Text.RegularExpressions;
+using JobTracker.Web.Admin;
+using JobTracker.Web.Data;
+using JobTracker.Web.Identity;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+
+namespace JobTracker.IntegrationTests;
+
+public sealed partial class AdminManagementTests
+    : IClassFixture<JobTrackerWebApplicationFactory>
+{
+    private const string TestPassword = "A-Strong-Admin-Test-482!";
+    private readonly JobTrackerWebApplicationFactory factory;
+
+    public AdminManagementTests(JobTrackerWebApplicationFactory factory)
+    {
+        this.factory = factory;
+    }
+
+    [Fact]
+    public async Task AdminPages_RequireAdministratorRole()
+    {
+        var user = await CreateUserAsync(admin: false);
+        var client = CreateClient();
+        Assert.Equal(HttpStatusCode.Redirect, (await LoginAsync(client, user.Email!)).StatusCode);
+
+        var response = await client.GetAsync("/admin");
+
+        Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
+        Assert.Contains(
+            "/account/access-denied",
+            response.Headers.Location?.OriginalString,
+            StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Administrator_CanOpenPrivateOverviewAndNavigation()
+    {
+        var administrator = await CreateUserAsync(admin: true);
+        var client = CreateClient();
+        await LoginAsync(client, administrator.Email!);
+
+        var response = await client.GetAsync("/admin");
+        var content = await response.Content.ReadAsStringAsync();
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Contains("Administration.", content, StringComparison.Ordinal);
+        Assert.Contains("What admins cannot see", content, StringComparison.Ordinal);
+        Assert.Contains("href=\"/admin\"", content, StringComparison.Ordinal);
+        Assert.DoesNotContain(TestPassword, content, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task RoleAndLockOperations_ProtectCurrentAdministratorAndWriteAudit()
+    {
+        var administrator = await CreateUserAsync(admin: true);
+        var user = await CreateUserAsync(admin: false);
+        await using var scope = factory.Services.CreateAsyncScope();
+        var service = scope.ServiceProvider.GetRequiredService<AdminManagementService>();
+        var database = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+
+        var selfDemotion = await service.RemoveAdminAsync(administrator.Id, administrator.Id);
+        var selfLock = await service.SetLockedAsync(administrator.Id, administrator.Id, true);
+        var promotion = await service.PromoteAsync(administrator.Id, user.Id);
+        var lockResult = await service.SetLockedAsync(administrator.Id, user.Id, true);
+        var unlockResult = await service.SetLockedAsync(administrator.Id, user.Id, false);
+        var removal = await service.RemoveAdminAsync(administrator.Id, user.Id);
+
+        Assert.False(selfDemotion.Succeeded);
+        Assert.False(selfLock.Succeeded);
+        Assert.True(promotion.Succeeded);
+        Assert.True(lockResult.Succeeded);
+        Assert.True(unlockResult.Succeeded);
+        Assert.True(removal.Succeeded);
+        Assert.True(await database.AdminAuditEntries.CountAsync() >= 4);
+    }
+
+    [Fact]
+    public async Task EmailedInvitation_IsBoundToItsIntendedRecipient()
+    {
+        var administrator = await CreateUserAsync(admin: true);
+        var intendedEmail = $"intended-{Guid.NewGuid():N}@example.test";
+        await using var scope = factory.Services.CreateAsyncScope();
+        var invitations = scope.ServiceProvider.GetRequiredService<InvitationService>();
+        var registrations = scope.ServiceProvider.GetRequiredService<InvitationRegistrationService>();
+        var invitation = await invitations.CreateForRecipientAsync(
+            7,
+            intendedEmail,
+            administrator.Id);
+
+        var wrongRecipient = await registrations.RegisterAsync(
+            invitation.Code,
+            "Wrong Recipient",
+            $"wrong-{Guid.NewGuid():N}@example.test",
+            TestPassword);
+        var intendedRecipient = await registrations.RegisterAsync(
+            invitation.Code,
+            "Intended Recipient",
+            intendedEmail,
+            TestPassword);
+
+        Assert.False(wrongRecipient.Succeeded);
+        Assert.True(intendedRecipient.Succeeded);
+    }
+
+    [Fact]
+    public async Task AdminInvitation_SendsMessageAndVerificationResendIsAudited()
+    {
+        var administrator = await CreateUserAsync(admin: true);
+        var unverified = await CreateUserAsync(admin: false, confirmed: false);
+        var invitationEmail = $"qa-{Guid.NewGuid():N}@example.test";
+        await using var scope = factory.Services.CreateAsyncScope();
+        var service = scope.ServiceProvider.GetRequiredService<AdminManagementService>();
+        var database = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+
+        var invitationResult = await service.CreateInvitationAsync(
+            administrator.Id,
+            new CreateAdminInvitationInput
+            {
+                Email = invitationEmail,
+                ValidForDays = 7,
+            });
+        var verificationResult = await service.ResendVerificationAsync(
+            administrator.Id,
+            unverified.Id,
+            _ => Task.FromResult("https://tracker.example.test/account/confirm-email?code=safe"));
+
+        var messages = factory.Services
+            .GetRequiredService<DevelopmentMailStore>()
+            .Messages;
+        Assert.True(invitationResult.Succeeded);
+        Assert.True(verificationResult.Succeeded);
+        Assert.Contains(messages, item => item.Recipient == invitationEmail);
+        Assert.Contains(messages, item => item.Recipient == unverified.Email);
+        Assert.Equal(2, await database.AdminAuditEntries.CountAsync(item =>
+            item.ActorUserId == administrator.Id
+            && (item.Action == "Invitation sent" || item.Action == "Verification resent")));
+    }
+
+    private async Task<ApplicationUser> CreateUserAsync(
+        bool admin,
+        bool confirmed = true)
+    {
+        var email = $"admin-test-{Guid.NewGuid():N}@example.test";
+        await using var scope = factory.Services.CreateAsyncScope();
+        var manager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+        var user = new ApplicationUser
+        {
+            Id = Guid.NewGuid().ToString(),
+            UserName = email,
+            Email = email,
+            EmailConfirmed = confirmed,
+            DisplayName = admin ? "Administrator Test" : "User Test",
+            TimeZoneId = "Australia/Perth",
+            CreatedAt = DateTimeOffset.UtcNow,
+        };
+        var result = await manager.CreateAsync(user, TestPassword);
+        Assert.True(result.Succeeded, string.Join(", ", result.Errors.Select(error => error.Code)));
+        if (admin)
+        {
+            var roleResult = await manager.AddToRoleAsync(user, AdminRole.Name);
+            Assert.True(roleResult.Succeeded);
+        }
+
+        return user;
+    }
+
+    private HttpClient CreateClient() =>
+        factory.CreateClient(new Microsoft.AspNetCore.Mvc.Testing.WebApplicationFactoryClientOptions
+        {
+            BaseAddress = new Uri("https://localhost"),
+            AllowAutoRedirect = false,
+            HandleCookies = true,
+        });
+
+    private static async Task<HttpResponseMessage> LoginAsync(HttpClient client, string email)
+    {
+        var page = await client.GetAsync("/account/login");
+        var html = await page.Content.ReadAsStringAsync();
+        var tokenMatch = AntiforgeryTokenRegex().Match(html);
+        Assert.True(tokenMatch.Success);
+        var token = WebUtility.HtmlDecode(tokenMatch.Groups[1].Value);
+        return await client.PostAsync(
+            "/account/login",
+            new FormUrlEncodedContent(new Dictionary<string, string>
+            {
+                ["Email"] = email,
+                ["Password"] = TestPassword,
+                ["RememberMe"] = "false",
+                ["__RequestVerificationToken"] = token,
+            }));
+    }
+
+    [GeneratedRegex("name=\"__RequestVerificationToken\" type=\"hidden\" value=\"([^\"]+)\"")]
+    private static partial Regex AntiforgeryTokenRegex();
+}

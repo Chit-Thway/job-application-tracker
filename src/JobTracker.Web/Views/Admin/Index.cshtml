@@ -1,0 +1,70 @@
+@model AdminDashboardViewModel
+@{
+    ViewData["Title"] = "Administration";
+}
+
+<section class="admin-page">
+    <div class="shell">
+        <div class="admin-heading">
+            <div>
+                <p class="eyebrow">Private administration</p>
+                <h1>Administration.</h1>
+                <p>Manage access without opening anyone's private job-search records.</p>
+            </div>
+            <span class="admin-security-badge">Admin only</span>
+        </div>
+
+        <partial name="_AdminNav" />
+
+        <div class="admin-metrics" aria-label="Account summary">
+            <article><span>Accounts</span><strong>@Model.UserCount</strong></article>
+            <article><span>Verified</span><strong>@Model.VerifiedUserCount</strong></article>
+            <article><span>Administrators</span><strong>@Model.AdminCount</strong></article>
+            <article><span>Available invitations</span><strong>@Model.AvailableInvitationCount</strong></article>
+        </div>
+
+        <div class="admin-grid">
+            <section class="admin-panel">
+                <div class="admin-panel-heading">
+                    <div>
+                        <p class="mini-label">Audit trail</p>
+                        <h2>Recent administration</h2>
+                    </div>
+                </div>
+                @if (Model.RecentActivity.Count == 0)
+                {
+                    <p class="admin-empty">No administrative changes have been recorded yet.</p>
+                }
+                else
+                {
+                    <div class="admin-audit-list">
+                        @foreach (var entry in Model.RecentActivity)
+                        {
+                            <article>
+                                <div>
+                                    <strong>@entry.Action</strong>
+                                    <p>@entry.Details</p>
+                                </div>
+                                <div class="admin-audit-meta">
+                                    <span>@entry.Actor</span>
+                                    <time datetime="@entry.OccurredAt.ToString("O")">@entry.OccurredAt.ToUniversalTime().ToString("d MMM yyyy, HH:mm 'UTC'")</time>
+                                </div>
+                            </article>
+                        }
+                    </div>
+                }
+            </section>
+
+            <aside class="admin-panel admin-boundary">
+                <p class="mini-label">Privacy boundary</p>
+                <h2>What admins cannot see</h2>
+                <ul>
+                    <li>Passwords or password-reset tokens</li>
+                    <li>Applications, notes, contacts, or appointments</li>
+                    <li>Another person's authenticated workspace</li>
+                </ul>
+                <p>Administration covers access and account safety only. There is no impersonation function.</p>
+            </aside>
+        </div>
+    </div>
+</section>

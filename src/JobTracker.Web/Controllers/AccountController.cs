@@ -15,7 +15,8 @@ public sealed class AccountController(
     UserManager<ApplicationUser> userManager,
     SignInManager<ApplicationUser> signInManager,
     IAccountEmailSender emailSender,
-    InvitationRegistrationService invitationRegistration) : Controller
+    InvitationRegistrationService invitationRegistration,
+    TimeProvider timeProvider) : Controller
 {
     [HttpGet("/account/register")]
     public IActionResult Register()
@@ -110,6 +111,8 @@ public sealed class AccountController(
 
             if (result.Succeeded)
             {
+                user.LastLoginAt = timeProvider.GetUtcNow();
+                await userManager.UpdateAsync(user);
                 return LocalRedirect(SafeReturnUrl(model.ReturnUrl));
             }
 

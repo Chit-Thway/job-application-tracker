@@ -15,6 +15,8 @@ public sealed record InvitationSummary(
     DateTimeOffset ExpiresAt,
     DateTimeOffset? UsedAt,
     DateTimeOffset? RevokedAt,
+    string? RecipientEmail,
+    string? CreatedByUserId,
     string Status);
 
 public sealed class InvitationService(
@@ -24,6 +26,24 @@ public sealed class InvitationService(
     public async Task<CreatedInvitation> CreateAsync(
         int validForDays,
         CancellationToken cancellationToken = default)
+        => await CreateCoreAsync(validForDays, null, null, cancellationToken);
+
+    public async Task<CreatedInvitation> CreateForRecipientAsync(
+        int validForDays,
+        string recipientEmail,
+        string createdByUserId,
+        CancellationToken cancellationToken = default)
+        => await CreateCoreAsync(
+            validForDays,
+            recipientEmail.Trim(),
+            createdByUserId,
+            cancellationToken);
+
+    private async Task<CreatedInvitation> CreateCoreAsync(
+        int validForDays,
+        string? recipientEmail,
+        string? createdByUserId,
+        CancellationToken cancellationToken)
     {
         if (validForDays is < 1 or > 30)
         {
@@ -39,6 +59,9 @@ public sealed class InvitationService(
             CodeHash = InvitationCode.Hash(code),
             CreatedAt = now,
             ExpiresAt = now.AddDays(validForDays),
+            RecipientEmail = recipientEmail,
+            RecipientEmailNormalized = recipientEmail?.ToUpperInvariant(),
+            CreatedByUserId = createdByUserId,
         };
 
         database.Invitations.Add(invitation);
@@ -66,6 +89,8 @@ public sealed class InvitationService(
             invitation.ExpiresAt,
             invitation.UsedAt,
             invitation.RevokedAt,
+            invitation.RecipientEmail,
+            invitation.CreatedByUserId,
             StatusFor(invitation, now))).ToList();
     }
 

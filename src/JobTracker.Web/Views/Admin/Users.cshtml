@@ -1,0 +1,92 @@
+@model AdminUsersViewModel
+@{
+    ViewData["Title"] = "Account administration";
+}
+
+<section class="admin-page">
+    <div class="shell">
+        <div class="admin-heading admin-heading-compact">
+            <div>
+                <p class="eyebrow">Private administration</p>
+                <h1>Accounts.</h1>
+                <p>Verification and access controls only. Private tracker data stays private.</p>
+            </div>
+        </div>
+
+        <partial name="_AdminNav" />
+
+        <form class="admin-search" method="get" asp-controller="Admin" asp-action="Users">
+            <div class="field">
+                <label for="admin-user-query">Search by name or email</label>
+                <input id="admin-user-query" name="query" value="@Model.Query" type="search" autocomplete="off" />
+            </div>
+            <button class="button button-primary" type="submit">Search</button>
+            @if (Model.Query.Length > 0)
+            {
+                <a class="button button-secondary" asp-controller="Admin" asp-action="Users">Clear</a>
+            }
+        </form>
+
+        <div class="admin-user-list">
+            @if (Model.Users.Count == 0)
+            {
+                <p class="admin-empty">No accounts match that search.</p>
+            }
+            @foreach (var account in Model.Users)
+            {
+                <article class="admin-user-card">
+                    <div class="admin-user-identity">
+                        <div class="admin-avatar" aria-hidden="true">@((account.DisplayName.Length > 0 ? account.DisplayName : account.Email)[0].ToString().ToUpperInvariant())</div>
+                        <div>
+                            <h2>@account.DisplayName</h2>
+                            <p>@account.Email</p>
+                            <div class="admin-badges">
+                                <span class="admin-status @(account.EmailConfirmed ? "is-positive" : "is-warning")">@(account.EmailConfirmed ? "Verified" : "Unverified")</span>
+                                <span class="admin-status @(account.IsLocked ? "is-danger" : "")">@(account.IsLocked ? "Locked" : "Active")</span>
+                                <span class="admin-status @(account.IsAdmin ? "is-admin" : "")">@(account.IsAdmin ? "Admin" : "User")</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <dl class="admin-user-dates">
+                        <div><dt>Created</dt><dd>@account.CreatedAt.ToUniversalTime().ToString("d MMM yyyy")</dd></div>
+                        <div><dt>Last sign-in</dt><dd>@(account.LastLoginAt?.ToUniversalTime().ToString("d MMM yyyy, HH:mm 'UTC'") ?? "Not recorded")</dd></div>
+                    </dl>
+
+                    <div class="admin-actions">
+                        @if (!account.EmailConfirmed)
+                        {
+                            <form method="post" asp-controller="Admin" asp-action="ResendVerification" asp-route-userId="@account.Id">
+                                <button class="button button-secondary button-small" type="submit">Resend verification</button>
+                            </form>
+                        }
+                        @if (account.IsLocked)
+                        {
+                            <form method="post" asp-controller="Admin" asp-action="Unlock" asp-route-userId="@account.Id">
+                                <button class="button button-secondary button-small" type="submit">Unlock</button>
+                            </form>
+                        }
+                        else
+                        {
+                            <form method="post" asp-controller="Admin" asp-action="Lock" asp-route-userId="@account.Id">
+                                <button class="button button-secondary button-small" type="submit">Lock</button>
+                            </form>
+                        }
+                        @if (account.IsAdmin)
+                        {
+                            <form method="post" asp-controller="Admin" asp-action="RemoveAdmin" asp-route-userId="@account.Id">
+                                <button class="button button-secondary button-small" type="submit">Remove admin</button>
+                            </form>
+                        }
+                        else
+                        {
+                            <form method="post" asp-controller="Admin" asp-action="Promote" asp-route-userId="@account.Id">
+                                <button class="button button-secondary button-small" type="submit">Make admin</button>
+                            </form>
+                        }
+                    </div>
+                </article>
+            }
+        </div>
+    </div>
+</section>

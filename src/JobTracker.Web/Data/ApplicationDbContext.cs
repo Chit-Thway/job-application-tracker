@@ -16,6 +16,7 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
     public DbSet<Appointment> Appointments => Set<Appointment>();
     public DbSet<RetentionRun> RetentionRuns => Set<RetentionRun>();
     public DbSet<Invitation> Invitations => Set<Invitation>();
+    public DbSet<AdminAuditEntry> AdminAuditEntries => Set<AdminAuditEntry>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -42,12 +43,27 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
             entity.Property(invitation => invitation.CodeHash).HasMaxLength(64).IsRequired();
             entity.Property(invitation => invitation.ConcurrencyStamp).IsConcurrencyToken();
             entity.Property(invitation => invitation.UsedByUserId).HasMaxLength(450);
+            entity.Property(invitation => invitation.CreatedByUserId).HasMaxLength(450);
+            entity.Property(invitation => invitation.RecipientEmail).HasMaxLength(320);
+            entity.Property(invitation => invitation.RecipientEmailNormalized).HasMaxLength(320);
             entity.HasIndex(invitation => invitation.CodeHash).IsUnique();
             entity.HasIndex(invitation => invitation.ExpiresAt);
+            entity.HasIndex(invitation => invitation.RecipientEmailNormalized);
             entity.HasOne(invitation => invitation.UsedByUser)
                 .WithMany()
                 .HasForeignKey(invitation => invitation.UsedByUserId)
                 .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<AdminAuditEntry>(entity =>
+        {
+            entity.HasKey(entry => entry.Id);
+            entity.Property(entry => entry.ActorUserId).HasMaxLength(450).IsRequired();
+            entity.Property(entry => entry.TargetUserId).HasMaxLength(450);
+            entity.Property(entry => entry.Action).HasMaxLength(80).IsRequired();
+            entity.Property(entry => entry.Details).HasMaxLength(300).IsRequired();
+            entity.HasIndex(entry => entry.OccurredAt);
+            entity.HasIndex(entry => entry.ActorUserId);
         });
 
         ConfigureOwnedEntity<Company>(builder);
