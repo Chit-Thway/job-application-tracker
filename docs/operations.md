@@ -1,6 +1,6 @@
 # Operations runbook
 
-This runbook covers setup and operation before Azure deployment. Production resource creation and final acceptance remain Milestone 11.
+This runbook covers setup and ongoing operation. Azure resource creation and first production acceptance are detailed in `docs/azure-deployment.md`.
 
 ## Fresh setup
 
@@ -54,7 +54,7 @@ Use the same final argument for `list` and `revoke`. Remove the temporary settin
 
 ## Email
 
-Development uses an in-memory message sink at `/dev/mail`; it disappears on restart and is unavailable outside Development. Before production, register a real `IAccountEmailSender`, configure credentials with Azure-managed settings, verify the sender domain, and test both verification and password-reset links from an external mailbox. Never log tokens or complete action URLs.
+Development uses an in-memory message sink at `/dev/mail`; it disappears on restart and is unavailable outside Development. Production uses Azure Communication Services Email through the App Service managed identity. Configure the HTTPS endpoint and exact MailFrom address with App Service settings, grant the web app identity email-sending access, and test both verification and password-reset links from an external mailbox. Never log recipients, tokens, or complete action URLs.
 
 ## Health and diagnostics
 

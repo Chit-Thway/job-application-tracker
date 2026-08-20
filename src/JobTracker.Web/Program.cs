@@ -4,6 +4,8 @@ using JobTracker.Web.Applications;
 using JobTracker.Web.Extraction;
 using JobTracker.Web.Demo;
 using JobTracker.Web.Diagnostics;
+using Azure.Communication.Email;
+using Azure.Identity;
 using System.Net;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
@@ -118,7 +120,35 @@ builder.Services.AddRateLimiter(options =>
 });
 
 builder.Services.AddSingleton<DevelopmentMailStore>();
-builder.Services.AddSingleton<IAccountEmailSender, DevelopmentAccountEmailSender>();
+if (builder.Environment.IsDevelopment() || builder.Environment.IsEnvironment("Testing"))
+{
+    builder.Services.AddSingleton<IAccountEmailSender, DevelopmentAccountEmailSender>();
+}
+else
+{
+    builder.Services
+        .AddOptions<AccountEmailOptions>()
+        .Bind(builder.Configuration.GetSection(AccountEmailOptions.SectionName))
+        .ValidateDataAnnotations()
+        .Validate(
+            options => Uri.TryCreate(options.Endpoint, UriKind.Absolute, out var endpoint)
+                && endpoint.Scheme == Uri.UriSchemeHttps,
+            "Email:Endpoint must be an absolute HTTPS Azure Communication Services endpoint.")
+        .ValidateOnStart();
+    builder.Services.AddSingleton(serviceProvider =>
+    {
+        var options = serviceProvider
+            .GetRequiredService<Microsoft.Extensions.Options.IOptions<AccountEmailOptions>>()
+            .Value;
+        return new EmailClient(
+            new Uri(options.Endpoint),
+            new DefaultAzureCredential(new DefaultAzureCredentialOptions
+            {
+                ExcludeInteractiveBrowserCredential = true,
+            }));
+    });
+    builder.Services.AddSingleton<IAccountEmailSender, AzureCommunicationAccountEmailSender>();
+}
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddSingleton<DemoCatalog>();
 builder.Services.AddScoped<DevelopmentAccountBootstrapper>();

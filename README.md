@@ -22,6 +22,7 @@ The private tracker retains a focused three-calendar-month dashboard plus config
 - xUnit unit and integration tests
 - Playwright for .NET browser tests
 - GitHub Actions
+- Azure App Service and Azure Communication Services Email for production
 
 Supabase provides PostgreSQL only; ASP.NET Core Identity owns authentication and application sessions.
 
@@ -226,6 +227,7 @@ See the launch-quality evidence and repeatable procedures in:
 - [`docs/accessibility.md`](docs/accessibility.md)
 - [`docs/operations.md`](docs/operations.md)
 - [`docs/backup-restore.md`](docs/backup-restore.md)
+- [`docs/azure-deployment.md`](docs/azure-deployment.md)
 
 ## Repository structure
 
