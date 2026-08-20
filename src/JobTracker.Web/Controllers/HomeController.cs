@@ -27,6 +27,20 @@ public class HomeController(
         return View();
     }
 
+    [HttpGet("/extension")]
+    public IActionResult BrowserExtension()
+    {
+        SetPage("extension");
+        return View();
+    }
+
+    [HttpGet("/extension/privacy")]
+    public IActionResult BrowserExtensionPrivacy()
+    {
+        SetPage("extension");
+        return View();
+    }
+
     [HttpGet("/dashboard")]
     [Authorize]
     public async Task<IActionResult> Dashboard(CancellationToken cancellationToken)

@@ -1,6 +1,10 @@
-# Job Application Tracker browser extension
+# Job Application Tracker Capture
 
-This unpacked Chrome/Edge Manifest V3 extension captures the active job advertisement, including its readable job description, and opens an editable review draft in the local tracker.
+This Chrome Manifest V3 extension captures the active job advertisement, including its readable job description, and opens an editable review draft in Job Application Tracker.
+
+## Install from the Chrome Web Store
+
+Open the extension page inside Job Application Tracker and choose **Install from Chrome Web Store**. Chrome shows the extension's permissions before installation and delivers approved updates automatically.
 
 ## Install for local development
 
@@ -12,7 +16,7 @@ This unpacked Chrome/Edge Manifest V3 extension captures the active job advertis
 
 After pulling an extension update, use the extension page's **Reload** button before retesting an already open job tab.
 
-The default tracker address is `http://localhost:5261`. Change it in the extension popup if the tracker is running at a different address. Non-local tracker addresses must use HTTPS.
+The published extension defaults to the production HTTPS tracker. Expand **Advanced tracker address** in the popup only when testing a different deployment or localhost.
 
 ## Use
 
@@ -29,6 +33,7 @@ If the tracker asks you to sign in, sign in, return to the job advertisement, an
 - `activeTab` grants temporary access only to the tab where the user clicked the extension.
 - `scripting` runs the deterministic page reader after that click.
 - `storage` remembers the tracker address locally in the browser.
+- Before each capture, the popup explains that the page URL and visible job content will be sent over HTTPS to the user's private tracker for review.
 - There are no broad host permissions, content scripts, background workers, analytics, remote APIs, or AI calls.
 - The captured payload travels in a URL fragment, which is not sent in the initial HTTP request. The tracker removes the fragment before posting the payload through its authenticated, anti-forgery-protected form.
 - A capture creates only a review draft. It never saves an application automatically.

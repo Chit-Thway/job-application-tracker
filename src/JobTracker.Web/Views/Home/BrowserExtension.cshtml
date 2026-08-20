@@ -1,0 +1,59 @@
+@inject IConfiguration Configuration
+@{
+    ViewData["Title"] = "Browser extension";
+    var storeUrl = Configuration["BrowserExtension:ChromeWebStoreUrl"];
+    var isPublished = Uri.TryCreate(storeUrl, UriKind.Absolute, out var parsedStoreUrl)
+        && parsedStoreUrl.Scheme == Uri.UriSchemeHttps;
+}
+
+<section class="workspace-hero extension-hero">
+    <div class="shell workspace-heading">
+        <div>
+            <p class="eyebrow">Chrome browser capture</p>
+            <h1>Bring the job page<br />straight into review.</h1>
+            <p>Capture the advertisement already open in your active tab without copying text or granting permanent access to every website.</p>
+        </div>
+        @if (isPublished)
+        {
+            <a class="button button-primary" href="@storeUrl" rel="noreferrer">Install from Chrome Web Store</a>
+        }
+        else
+        {
+            <span class="extension-store-pending" role="status">Chrome Web Store review in progress</span>
+        }
+    </div>
+</section>
+
+<section class="workspace-content extension-workspace">
+    <div class="shell extension-layout">
+        <article class="detail-card extension-overview">
+            <p class="mini-label">One deliberate click</p>
+            <h2>Capture first. Confirm later.</h2>
+            <ol class="extension-steps">
+                <li><strong>Open a job advertisement.</strong><span>Keep the job page visible in the active Chrome tab.</span></li>
+                <li><strong>Choose Capture this tab and review.</strong><span>The popup tells you exactly what will be read and sent.</span></li>
+                <li><strong>Check every suggested field.</strong><span>The tracker creates a private 24-hour draft and never saves an application automatically.</span></li>
+            </ol>
+        </article>
+
+        <div class="extension-trust-grid">
+            <article class="detail-card">
+                <p class="mini-label">Minimal permissions</p>
+                <h2>Only the tab you choose</h2>
+                <p>The extension requests temporary active-tab access, permission to run its deterministic reader after your click, and local storage for the tracker address.</p>
+            </article>
+            <article class="detail-card">
+                <p class="mini-label">No hidden activity</p>
+                <h2>No background browsing</h2>
+                <p>There are no broad host permissions, background workers, advertising trackers, remote code, or AI service calls.</p>
+            </article>
+            <article class="detail-card">
+                <p class="mini-label">Review boundary</p>
+                <h2>Nothing is auto-saved</h2>
+                <p>The capture opens an editable draft inside your authenticated tracker. You decide whether it becomes an application.</p>
+            </article>
+        </div>
+
+        <p class="extension-policy-link"><a class="foundation-link" asp-action="BrowserExtensionPrivacy">Read the browser extension privacy notice <span aria-hidden="true">→</span></a></p>
+    </div>
+</section>

@@ -13,6 +13,13 @@
         </div>
 
         <div class="editor-card extension-handoff-card">
+            <div class="extension-install-callout">
+                <div>
+                    <p class="mini-label">First time here?</p>
+                    <strong>Install the browser extension in two clicks.</strong>
+                </div>
+                <a class="button button-primary" asp-controller="Home" asp-action="BrowserExtension">Install extension</a>
+            </div>
             <div asp-validation-summary="All" class="validation-summary" role="alert"></div>
             <p id="extension-capture-status" class="extension-capture-status" role="status" aria-live="polite">
                 Open a job advertisement, click the Job Application Tracker extension, and choose <strong>Capture and review</strong>.

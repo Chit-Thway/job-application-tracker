@@ -10,7 +10,7 @@
 }
 
 body {
-  width: 360px;
+  width: 380px;
   margin: 0;
 }
 
@@ -57,6 +57,27 @@ h1 {
   line-height: 1.5;
 }
 
+.data-disclosure {
+  margin: 0 0 14px;
+  padding: 12px;
+  color: #273455;
+  background: #e9efff;
+  border-radius: 10px;
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.data-disclosure strong {
+  display: block;
+  margin-bottom: 3px;
+  color: #2745b4;
+  font-size: 11px;
+}
+
+.data-disclosure p {
+  margin: 0;
+}
+
 form {
   display: grid;
   gap: 8px;
@@ -65,6 +86,22 @@ form {
 label {
   font-size: 12px;
   font-weight: 750;
+}
+
+.tracker-settings {
+  color: #4e5a78;
+  font-size: 11px;
+}
+
+.tracker-settings summary {
+  cursor: pointer;
+  font-weight: 750;
+}
+
+.tracker-settings-fields {
+  display: grid;
+  gap: 7px;
+  margin-top: 9px;
 }
 
 input {
@@ -127,4 +164,10 @@ button:disabled {
   font-size: 10px;
   font-weight: 750;
   text-align: center;
+}
+
+.privacy a {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
 }

@@ -45,7 +45,28 @@ public sealed class FoundationApplicationTests : IClassFixture<JobTrackerWebAppl
         Assert.Contains("Your search data", content, StringComparison.Ordinal);
         Assert.Contains("Private records are never part of the public demo", content, StringComparison.Ordinal);
         Assert.Contains("does not send it to an external AI service", content, StringComparison.Ordinal);
+        Assert.Contains("extension privacy notice", content, StringComparison.Ordinal);
         Assert.DoesNotContain("Milestone", content, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task BrowserExtensionRoutes_ArePublicAndDiscloseCaptureData()
+    {
+        var client = CreateClient();
+
+        var overviewResponse = await client.GetAsync("/extension");
+        var overviewContent = await overviewResponse.Content.ReadAsStringAsync();
+        var privacyResponse = await client.GetAsync("/extension/privacy");
+        var privacyContent = await privacyResponse.Content.ReadAsStringAsync();
+
+        Assert.Equal(HttpStatusCode.OK, overviewResponse.StatusCode);
+        Assert.Contains("Bring the job page", overviewContent, StringComparison.Ordinal);
+        Assert.Contains("Install from Chrome Web Store", overviewContent, StringComparison.Ordinal);
+        Assert.Equal(HttpStatusCode.OK, privacyResponse.StatusCode);
+        Assert.Contains("Website content and page address", privacyContent, StringComparison.Ordinal);
+        Assert.Contains("No passive browsing history", privacyContent, StringComparison.Ordinal);
+        Assert.Contains("Chrome Web Store User Data Policy", privacyContent, StringComparison.Ordinal);
+        Assert.Contains("redacted@example.invalid", privacyContent, StringComparison.Ordinal);
     }
 
     [Theory]

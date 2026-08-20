@@ -1,0 +1,75 @@
+@{
+    ViewData["Title"] = "Browser extension privacy";
+}
+
+<section class="workspace-hero privacy-hero">
+    <div class="shell workspace-heading">
+        <div>
+            <p class="eyebrow">Browser extension privacy</p>
+            <h1>Your click defines<br />the boundary.</h1>
+            <p>What Job Application Tracker Capture reads, why it reads it, where it goes, and what it never does.</p>
+        </div>
+        <a class="button button-secondary" asp-action="BrowserExtension">Extension overview</a>
+    </div>
+</section>
+
+<section class="workspace-content privacy-workspace">
+    <div class="shell privacy-layout">
+        <article class="detail-card privacy-intro">
+            <p class="mini-label">The short version</p>
+            <h2>The extension acts only after you press its capture button.</h2>
+            <p>It reads the active tab's page URL and visible job-advertisement content, then sends that capture over HTTPS to your authenticated private tracker so you can review it. It never saves an application automatically.</p>
+        </article>
+
+        <div class="privacy-grid">
+            <article class="detail-card">
+                <p class="mini-label">Information handled</p>
+                <h2>Website content and page address</h2>
+                <p>A capture may include the page URL, role title, employer, location, employment type, salary, job reference, closing date, and visible job description.</p>
+                <p>The extension also stores the tracker address locally in Chrome so subsequent captures open the same tracker.</p>
+            </article>
+
+            <article class="detail-card">
+                <p class="mini-label">Purpose and consent</p>
+                <h2>Only the capture you request</h2>
+                <p>The popup prominently explains what will be shared before every capture. Pressing <strong>Capture this tab and review</strong> initiates that specific transfer.</p>
+                <p>The information is used only to construct the editable review draft requested by the user.</p>
+            </article>
+
+            <article class="detail-card">
+                <p class="mini-label">Transfer and storage</p>
+                <h2>HTTPS to the private tracker</h2>
+                <p>The capture is handed to the configured HTTPS tracker and posted through its authenticated, anti-forgery-protected review flow. A review draft expires after 24 hours if it is not confirmed.</p>
+                <p>Confirmed applications follow the tracker retention choices described in the main privacy summary.</p>
+            </article>
+
+            <article class="detail-card">
+                <p class="mini-label">What is not collected</p>
+                <h2>No passive browsing history</h2>
+                <p>The extension does not monitor background tabs, read cookies or passwords, collect analytics, run advertising trackers, or capture pages without an explicit click.</p>
+                <p>It does not contact an AI service or sell captured information.</p>
+            </article>
+
+            <article class="detail-card">
+                <p class="mini-label">Permissions</p>
+                <h2>Active tab, scripting, and storage</h2>
+                <p><strong>activeTab</strong> provides temporary access to the tab where the user clicks the extension. <strong>scripting</strong> runs the packaged deterministic page reader for that click. <strong>storage</strong> remembers the configured tracker address locally.</p>
+            </article>
+
+            <article class="detail-card">
+                <p class="mini-label">Limited use</p>
+                <h2>No unrelated use or sharing</h2>
+                <p>Information handled by the extension is used only to provide the prominently disclosed job-capture and review feature. It is not transferred for advertising, credit decisions, resale, or unrelated profiling.</p>
+                <p>The extension's use of information complies with the Chrome Web Store User Data Policy, including the Limited Use requirements.</p>
+            </article>
+        </div>
+
+        <article class="detail-card extension-contact-card">
+            <p class="mini-label">Questions or deletion requests</p>
+            <h2>Contact the tracker administrator</h2>
+            <p>Email <a class="inline-link" href="mailto:redacted@example.invalid">redacted@example.invalid</a> for extension privacy questions, account-wide access, or deletion requests.</p>
+        </article>
+
+        <p class="privacy-updated">Effective and last updated 20 August 2026.</p>
+    </div>
+</section>

@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const DEFAULT_TRACKER_URL = "http://localhost:5261";
+  const DEFAULT_TRACKER_URL = "https://chit-thway-job-tracker-b9bpfvb5csccb5hb.australiaeast-01.azurewebsites.net";
   const form = document.getElementById("capture-form");
   const trackerUrlInput = document.getElementById("tracker-url");
   const status = document.getElementById("status");

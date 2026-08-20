@@ -16,17 +16,27 @@
       </div>
     </header>
 
-    <p class="intro">Read the active job tab and open an editable review draft. Nothing is saved automatically.</p>
+    <p class="intro">Read the job advertisement you have open and create an editable review draft. Nothing is saved automatically.</p>
+
+    <aside class="data-disclosure" aria-labelledby="data-disclosure-title">
+      <strong id="data-disclosure-title">What this click shares</strong>
+      <p>The extension reads this tab's page URL and visible job content, then sends that capture over HTTPS to your private tracker for review.</p>
+    </aside>
 
     <form id="capture-form">
-      <label for="tracker-url">Tracker address</label>
-      <input id="tracker-url" name="tracker-url" type="url" value="http://localhost:5261" required spellcheck="false">
-      <small>Use HTTPS outside localhost.</small>
-      <button type="submit">Capture and review</button>
+      <details class="tracker-settings">
+        <summary>Advanced tracker address</summary>
+        <div class="tracker-settings-fields">
+          <label for="tracker-url">Tracker address</label>
+          <input id="tracker-url" name="tracker-url" type="url" value="https://chit-thway-job-tracker-b9bpfvb5csccb5hb.australiaeast-01.azurewebsites.net" required spellcheck="false">
+          <small>Change this only when using a different HTTPS deployment or localhost.</small>
+        </div>
+      </details>
+      <button type="submit">Capture this tab and review</button>
     </form>
 
     <p id="status" class="status" role="status" aria-live="polite"></p>
-    <p class="privacy">Runs only when clicked · active tab only</p>
+    <p class="privacy">Runs only when clicked · active tab only · <a href="https://chit-thway-job-tracker-b9bpfvb5csccb5hb.australiaeast-01.azurewebsites.net/extension/privacy" target="_blank" rel="noreferrer">Privacy details</a></p>
   </main>
   <script src="popup.js"></script>
 </body>

@@ -122,7 +122,7 @@ The HTML parser reads official Schema.org `JobPosting` JSON-LD first, including 
 
 ## Browser extension capture
 
-The unpacked Manifest V3 extension in `browser-extension` is the easiest option for script-heavy or automation-blocking job boards. It reads Schema.org `JobPosting` data, the readable description, and rendered job fields from the active tab only after the user clicks **Capture and review**. It includes selected-job-panel support for SEEK and Indeed, including hourly pay such as `$35–$40 an hour`. It does not fetch the page again, execute page-owned scripts, contact an AI service, or save an application directly.
+The Manifest V3 extension in `browser-extension` is the easiest option for script-heavy or automation-blocking job boards. It reads Schema.org `JobPosting` data, the readable description, and rendered job fields from the active tab only after the user clicks **Capture this tab and review**. It includes selected-job-panel support for SEEK and Indeed, including hourly pay such as `$35–$40 an hour`. It does not fetch the page again, execute page-owned scripts, contact an AI service, or save an application directly.
 
 Install it locally:
 
@@ -132,7 +132,7 @@ Install it locally:
 4. Pin **Job Application Tracker Capture** to the toolbar.
 5. Open a job advertisement, click the extension, and choose **Capture and review**.
 
-The extension defaults to `http://localhost:5261`; its popup can remember a different tracker address. Non-local tracker addresses must use HTTPS. The manifest requests only `activeTab`, `scripting`, and `storage`: there are no broad host permissions, content scripts, background workers, analytics, or remote APIs. The capture is handed to the authenticated tracker through a URL fragment, removed immediately from browser history, validated by the server, and stored only as an owner-scoped 24-hour review draft. See `browser-extension/README.md` for the focused install and privacy guide.
+The store build defaults to the production HTTPS tracker; its advanced popup settings can remember a different address for development. The manifest requests only `activeTab`, `scripting`, and `storage`: there are no broad host permissions, content scripts, background workers, analytics, or remote APIs. The popup prominently discloses that the selected page URL and visible job content are sent to the configured private tracker. The capture is handed to the authenticated tracker through a URL fragment, removed immediately from browser history, validated by the server, and stored only as an owner-scoped 24-hour review draft. See `browser-extension/README.md` and the public `/extension/privacy` route for the install and privacy details.
 
 ## Database setup
 

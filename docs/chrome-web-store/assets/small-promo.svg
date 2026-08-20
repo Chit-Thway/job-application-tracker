@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="440" height="280" viewBox="0 0 440 280">
+  <defs>
+    <linearGradient id="bg" x1="20" y1="20" x2="420" y2="260" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#182445"/>
+      <stop offset="1" stop-color="#2745b4"/>
+    </linearGradient>
+  </defs>
+  <rect width="440" height="280" fill="url(#bg)"/>
+  <circle cx="376" cy="44" r="96" fill="#8da5ff" opacity=".12"/>
+  <circle cx="48" cy="260" r="116" fill="#9aaeff" opacity=".09"/>
+  <rect x="48" y="48" width="88" height="88" rx="24" fill="#3e63dd"/>
+  <path d="M70 68h18v34c0 12-7 19-19 19-5 0-10-2-14-5l8-13c2 2 4 3 6 3 3 0 5-2 5-7V82h-4V68Zm23 0h31v14h-8v38h-15V82h-8V68Z" fill="#fff"/>
+  <text x="48" y="178" fill="#fff" font-family="Segoe UI, Arial, sans-serif" font-size="26" font-weight="700">Capture the job.</text>
+  <text x="48" y="210" fill="#cbd6ff" font-family="Segoe UI, Arial, sans-serif" font-size="19">Review every detail.</text>
+  <rect x="282" y="105" width="110" height="92" rx="14" fill="#fff" opacity=".98"/>
+  <rect x="300" y="124" width="60" height="7" rx="3.5" fill="#3e63dd"/>
+  <rect x="300" y="141" width="74" height="6" rx="3" fill="#cfd8f6"/>
+  <rect x="300" y="156" width="52" height="6" rx="3" fill="#cfd8f6"/>
+  <rect x="300" y="174" width="74" height="11" rx="5.5" fill="#3e63dd"/>
+</svg>
