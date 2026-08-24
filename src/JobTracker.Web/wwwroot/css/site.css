@@ -587,7 +587,8 @@ summary:focus-visible,
   color: var(--ink-soft);
 }
 
-.site-nav summary {
+.site-nav-summary,
+.site-nav-toggle {
   display: none;
 }
 
@@ -597,11 +598,6 @@ summary:focus-visible,
   gap: 0.2rem;
 }
 
-@media (min-width: 68.001rem) {
-  .site-nav:not([open]) > .nav-panel {
-    display: flex;
-  }
-}
 
 .nav-link,
 .nav-action {
@@ -1718,7 +1714,7 @@ html[data-theme="dark"] .verification-resend-button:hover {
     position: relative;
   }
 
-  .site-nav summary {
+  .site-nav-summary {
     display: flex;
     min-width: 5.5rem;
     min-height: 2.8rem;
@@ -1735,8 +1731,23 @@ html[data-theme="dark"] .verification-resend-button:hover {
     list-style: none;
   }
 
-  .site-nav summary::-webkit-details-marker {
-    display: none;
+  .site-nav-toggle {
+    position: absolute;
+    display: block;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    margin: -1px;
+    padding: 0;
+    border: 0;
+    clip: rect(0 0 0 0);
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .site-nav-toggle:focus-visible + .site-nav-summary {
+    outline: 3px solid var(--focus);
+    outline-offset: 3px;
   }
 
   .menu-lines,
@@ -1776,8 +1787,12 @@ html[data-theme="dark"] .verification-resend-button:hover {
     box-shadow: var(--shadow-lg);
   }
 
-  .site-nav[open] .nav-panel {
-    display: grid;
+  .site-nav-toggle:not(:checked) ~ .nav-panel {
+    display: none !important;
+  }
+
+  .site-nav-toggle:checked ~ .nav-panel {
+    display: grid !important;
     gap: 0.2rem;
   }
 

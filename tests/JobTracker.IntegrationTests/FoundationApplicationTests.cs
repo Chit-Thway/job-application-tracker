@@ -133,6 +133,8 @@ public sealed class FoundationApplicationTests : IClassFixture<JobTrackerWebAppl
         Assert.Equal("text/css", response.Content.Headers.ContentType?.MediaType);
         Assert.Contains("--blue: #3e63dd", content, StringComparison.Ordinal);
         Assert.Contains("html[data-theme=\"dark\"]", content, StringComparison.Ordinal);
+        Assert.Contains(".site-nav-toggle:not(:checked) ~ .nav-panel", content, StringComparison.Ordinal);
+        Assert.Contains(".site-nav-toggle:checked ~ .nav-panel", content, StringComparison.Ordinal);
         Assert.Contains(".detail-main > #history", content, StringComparison.Ordinal);
     }
 
@@ -211,7 +213,7 @@ public sealed class FoundationApplicationTests : IClassFixture<JobTrackerWebAppl
         var content = await response.Content.ReadAsStringAsync();
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        Assert.Contains("<details class=\"site-nav\" open>", content, StringComparison.Ordinal);
+        Assert.Contains("class=\"site-nav-toggle\"", content, StringComparison.Ordinal);
         Assert.Contains("href=\"/account/login\">Sign in</a>", content, StringComparison.Ordinal);
     }
 

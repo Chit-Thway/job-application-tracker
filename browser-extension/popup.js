@@ -98,6 +98,45 @@
 
       return null;
     };
+    const isVisible = element => {
+      if (!element || element.closest('[aria-hidden="true"]')) {
+        return false;
+      }
+
+      const style = window.getComputedStyle(element);
+      return style.display !== "none"
+        && style.visibility !== "hidden"
+        && element.getClientRects().length > 0;
+    };
+    const elementFrom = (root, ...selectors) => {
+      const scope = root ?? document;
+      for (const selector of selectors) {
+        for (const element of scope.querySelectorAll(selector)) {
+          if (isVisible(element)) {
+            return element;
+          }
+        }
+      }
+
+      return null;
+    };
+    const textFromElement = (root, ...selectors) => {
+      const element = elementFrom(root, ...selectors);
+      return clean(element?.innerText ?? element?.textContent);
+    };
+    const textFromElements = (root, ...selectors) => {
+      const scope = root ?? document;
+      const values = [];
+      for (const selector of selectors) {
+        for (const element of scope.querySelectorAll(selector)) {
+          if (!isVisible(element)) continue;
+          const value = clean(element.innerText ?? element.textContent);
+          if (value) values.push(value);
+        }
+      }
+
+      return clean(values.join(" "), 2000);
+    };
     const meta = (...selectors) => {
       for (const selector of selectors) {
         const value = clean(document.querySelector(selector)?.getAttribute("content"));
@@ -228,6 +267,11 @@
         .map(item => String(item).replace(/_/g, " ").toLowerCase().replace(/\b\w/g, letter => letter.toUpperCase()))
         .join(", "),
       200);
+    const matchedLabel = (value, pattern, maximum = 200) => {
+      const match = String(value ?? "").match(pattern);
+      return clean(match?.[0]?.replace(/-/g, " "), maximum);
+    };
+
 
     const isIndeed = window.location.hostname === "indeed.com"
       || window.location.hostname.startsWith("indeed.")
@@ -259,17 +303,76 @@
       ? clean(new URL(window.location.href).searchParams.get("vjk"), 200)
       : null;
 
+
+    const isLinkedIn = window.location.hostname === "linkedin.com"
+      || window.location.hostname.endsWith(".linkedin.com");
+    const linkedInDetail = isLinkedIn
+      ? elementFrom(
+        document,
+        ".jobs-search__job-details--container",
+        ".jobs-search__job-details",
+        ".scaffold-layout__detail",
+        "[data-job-details]")
+      : null;
+    const linkedInTitle = isLinkedIn
+      ? textFromElement(
+        linkedInDetail ?? document,
+        ".job-details-jobs-unified-top-card__job-title h1",
+        ".job-details-jobs-unified-top-card__job-title",
+        ".jobs-unified-top-card__job-title",
+        'h1 a[href*="/jobs/view/"]',
+        "h1")
+      : null;
+    const linkedInCompany = isLinkedIn
+      ? textFromElement(
+        linkedInDetail ?? document,
+        ".job-details-jobs-unified-top-card__company-name a",
+        ".job-details-jobs-unified-top-card__company-name",
+        ".jobs-unified-top-card__company-name a",
+        ".jobs-unified-top-card__company-name")
+      : null;
+    const linkedInHeaderMeta = isLinkedIn
+      ? textFromElement(
+        linkedInDetail ?? document,
+        ".job-details-jobs-unified-top-card__primary-description-container",
+        ".jobs-unified-top-card__primary-description")
+      : null;
+    const linkedInLocation = clean(linkedInHeaderMeta?.split("·")[0], 300);
+    const linkedInInsightText = isLinkedIn
+      ? textFromElements(
+        linkedInDetail ?? document,
+        "[data-test-job-type]",
+        ".job-details-jobs-unified-top-card__job-insight",
+        ".job-details-preferences-and-skills__pill")
+      : null;
+    const linkedInEmploymentType = matchedLabel(
+      linkedInInsightText,
+      /\b(?:full[- ]time|part[- ]time|contract|temporary|casual|internship|volunteer)\b/i);
+    const linkedInWorkplaceMode = matchedLabel(
+      `${linkedInInsightText ?? ""} ${linkedInHeaderMeta ?? ""}`,
+      /\b(?:remote|hybrid|on[- ]site)\b/i,
+      100);
+    const linkedInJobReference = isLinkedIn
+      ? clean(
+        new URL(window.location.href).searchParams.get("currentJobId")
+          ?? window.location.pathname.match(/\/jobs\/view\/(\d+)/)?.[1],
+        200)
+      : null;
     const roleTitle = clean(schemaPosting?.title, 200)
       ?? indeedTitle
+      ?? linkedInTitle
       ?? textFrom('[data-automation="job-detail-title"]', '[itemprop="title"]', "main h1", "h1");
     const companyName = organizationName(schemaPosting?.hiringOrganization)
       ?? indeedCompany
+      ?? linkedInCompany
       ?? textFrom('[data-automation="advertiser-name"]', '[itemprop="hiringOrganization"] [itemprop="name"]', '[itemprop="hiringOrganization"]');
     const companyLocation = addressText(schemaPosting?.jobLocation)
       ?? indeedLocation
+      ?? linkedInLocation
       ?? textFrom('[data-automation="job-detail-location"]', '[itemprop="jobLocation"]');
     const employmentType = employmentText(schemaPosting?.employmentType)
       ?? indeedEmploymentType
+      ?? linkedInEmploymentType
       ?? textFrom('[data-automation="job-detail-work-type"]', '[itemprop="employmentType"]');
     const salary = salaryText(schemaPosting?.baseSalary)
       ?? indeedSalary
@@ -277,15 +380,25 @@
     const workplaceMode = clean(
       String(schemaPosting?.jobLocationType ?? "").toUpperCase() === "TELECOMMUTE"
         ? "Remote"
-        : null,
+        : linkedInWorkplaceMode,
       100);
     const closingDate = clean(schemaPosting?.validThrough, 100)
       ?? textFrom('[data-automation="job-detail-closing-date"]', '[itemprop="validThrough"]');
-    const jobReference = identifierText(schemaPosting?.identifier) ?? indeedJobReference;
+    const jobReference = identifierText(schemaPosting?.identifier)
+      ?? indeedJobReference
+      ?? linkedInJobReference;
     const sourceSite = meta('meta[property="og:site_name"]', 'meta[name="application-name"]')
       ?? clean(window.location.hostname, 200);
-    const renderedDescriptionElement = document.querySelector(
-      '#jobDescriptionText, [data-automation="jobAdDetails"], [itemprop="description"], main article');
+    const linkedInDescriptionElement = isLinkedIn
+      ? elementFrom(
+        linkedInDetail ?? document,
+        "#job-details",
+        ".jobs-description-content__text",
+        ".jobs-box__html-content",
+        ".jobs-description__content")
+      : null;
+    const renderedDescriptionElement = linkedInDescriptionElement
+      ?? document.querySelector('#jobDescriptionText, [data-automation="jobAdDetails"], [itemprop="description"], main article');
     const description = stripHtml(schemaPosting?.description)
       ?? cleanMultiline(
         renderedDescriptionElement?.innerText ?? renderedDescriptionElement?.textContent,

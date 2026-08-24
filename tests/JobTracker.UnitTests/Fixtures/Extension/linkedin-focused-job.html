@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>LinkedIn focused job regression fixture</title>
+</head>
+<body>
+  <main class="scaffold-layout">
+    <section class="scaffold-layout__list" aria-label="Job results">
+      <a class="job-card-list__title" href="/jobs/view/11111111">Wrong result-card title</a>
+      <span class="job-card-container__primary-description">Wrong result-card company</span>
+    </section>
+
+    <section class="scaffold-layout__detail" aria-label="Focused job details">
+      <div class="jobs-search__job-details--container">
+        <header class="job-details-jobs-unified-top-card">
+          <div class="job-details-jobs-unified-top-card__company-name">
+            <a href="/company/synthetic-legal">Synthetic Legal</a>
+          </div>
+          <div class="job-details-jobs-unified-top-card__job-title">
+            <h1><a href="/jobs/view/4456324221">IT Service Desk Analyst</a></h1>
+          </div>
+          <div class="job-details-jobs-unified-top-card__primary-description-container">
+            Perth, Western Australia, Australia · 4 days ago · 92 people clicked apply
+          </div>
+          <button class="job-details-jobs-unified-top-card__job-insight" type="button">Full-time</button>
+          <button class="job-details-preferences-and-skills__pill" type="button">Hybrid</button>
+        </header>
+
+        <article id="job-details" class="jobs-description-content__text">
+          <h2>About the job</h2>
+          <p>Join our APAC IT team and provide practical service-desk support.</p>
+          <h3>What you will do</h3>
+          <ul>
+            <li>Troubleshoot user issues.</li>
+            <li>Document clear resolutions.</li>
+          </ul>
+        </article>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

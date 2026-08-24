@@ -36,11 +36,12 @@
             </a>
 
             <div class="header-actions">
-            <details class="site-nav" open>
-                <summary>
+            <div class="site-nav" data-site-nav>
+                <input class="site-nav-toggle" id="primary-navigation-toggle" type="checkbox" aria-label="Toggle primary navigation" />
+                <label class="site-nav-summary" for="primary-navigation-toggle">
                     <span>Menu</span>
                     <span class="menu-lines" aria-hidden="true"></span>
-                </summary>
+                </label>
                 <nav class="nav-panel" aria-label="Primary navigation">
                     @if (User.Identity?.IsAuthenticated == true)
                     {
@@ -75,7 +76,7 @@
                         <a class="@NavClass("login", action: true)" aria-current="@AriaCurrent("login")" asp-controller="Account" asp-action="Login">Sign in</a>
                     }
                 </nav>
-            </details>
+            </div>
 
             <button class="theme-toggle" id="theme-toggle" type="button" aria-label="Switch to dark mode" aria-pressed="false" title="Switch to dark mode">
                 <span class="theme-toggle-track" aria-hidden="true">
@@ -127,5 +128,6 @@
             </div>
         </div>
     </footer>
+    <script src="~/js/navigation.js" asp-append-version="true"></script>
 </body>
 </html>

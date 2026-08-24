@@ -81,4 +81,48 @@ public sealed class BrowserExtensionManifestTests
         Assert.Contains("#salaryInfoAndJobType", script, StringComparison.Ordinal);
         Assert.Contains("#jobDescriptionText", script, StringComparison.Ordinal);
     }
+
+    [Fact]
+    public async Task LinkedInFixture_SelectorsTargetFocusedJobDetailsInsteadOfResultCard()
+    {
+        var fixturePath = Path.Combine(
+            AppContext.BaseDirectory,
+            "Fixtures",
+            "Extension",
+            "linkedin-focused-job.html");
+        var document = await new HtmlParser().ParseDocumentAsync(File.ReadAllText(fixturePath));
+        var scriptPath = Path.Combine(AppContext.BaseDirectory, "BrowserExtension", "popup.js");
+        var script = File.ReadAllText(scriptPath);
+
+        var focusedPanel = document.QuerySelector(".jobs-search__job-details--container");
+        Assert.NotNull(focusedPanel);
+
+        Assert.Equal(
+            "IT Service Desk Analyst",
+            focusedPanel.QuerySelector(".job-details-jobs-unified-top-card__job-title h1")?.TextContent.Trim());
+        Assert.Equal(
+            "Synthetic Legal",
+            focusedPanel.QuerySelector(".job-details-jobs-unified-top-card__company-name a")?.TextContent.Trim());
+        Assert.StartsWith(
+            "Perth, Western Australia, Australia",
+            focusedPanel.QuerySelector(".job-details-jobs-unified-top-card__primary-description-container")?.TextContent.Trim(),
+            StringComparison.Ordinal);
+        Assert.Equal(
+            "Full-time",
+            focusedPanel.QuerySelector(".job-details-jobs-unified-top-card__job-insight")?.TextContent.Trim());
+        Assert.Contains(
+            "Troubleshoot user issues",
+            focusedPanel.QuerySelector("#job-details")?.TextContent,
+            StringComparison.Ordinal);
+        Assert.NotEqual(
+            document.QuerySelector(".job-card-list__title")?.TextContent.Trim(),
+            focusedPanel.QuerySelector(".job-details-jobs-unified-top-card__job-title h1")?.TextContent.Trim());
+
+        Assert.Contains("jobs-search__job-details--container", script, StringComparison.Ordinal);
+        Assert.Contains("job-details-jobs-unified-top-card__job-title", script, StringComparison.Ordinal);
+        Assert.Contains("job-details-jobs-unified-top-card__company-name", script, StringComparison.Ordinal);
+        Assert.Contains("job-details-jobs-unified-top-card__primary-description-container", script, StringComparison.Ordinal);
+        Assert.Contains("jobs-description-content__text", script, StringComparison.Ordinal);
+        Assert.Contains("currentJobId", script, StringComparison.Ordinal);
+    }
 }

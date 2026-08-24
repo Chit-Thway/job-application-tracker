@@ -62,6 +62,10 @@ public sealed class CriticalJourneysTests(BrowserJourneyFixture fixture)
         await AssertAccessiblePageStructureAsync(page);
         Assert.False(await page.EvaluateAsync<bool>("document.documentElement.scrollWidth > innerWidth"));
 
+        var navigation = page.Locator("[data-site-nav]");
+        var toggle = navigation.Locator(".site-nav-toggle");
+        await Expect(toggle).Not.ToBeCheckedAsync();
+        await navigation.Locator(".site-nav-summary").ClickAsync();
         await page.GetByRole(AriaRole.Link, new() { Name = "Applications", Exact = true }).ClickAsync();
         await Expect(page.GetByRole(AriaRole.Heading, new() { Name = "Every opportunity, safe to explore." }))
             .ToBeVisibleAsync();
@@ -73,6 +77,31 @@ public sealed class CriticalJourneysTests(BrowserJourneyFixture fixture)
         await AssertAccessiblePageStructureAsync(page);
     }
 
+
+    [Fact]
+    public async Task MobileNavigation_StartsClosedAndCanBeOpenedAndDismissed()
+    {
+        await using var context = await fixture.CreateContextAsync(width: 390, height: 844);
+        var page = await context.NewPageAsync();
+
+        foreach (var path in new[] { "/account/login", "/demo" })
+        {
+            await page.GotoAsync(path);
+            var navigation = page.Locator("[data-site-nav]");
+            var menu = navigation.Locator(".site-nav-summary");
+            var toggle = navigation.Locator(".site-nav-toggle");
+
+            await Expect(toggle).Not.ToBeCheckedAsync();
+            await Expect(menu).ToBeVisibleAsync();
+
+            await menu.ClickAsync();
+            await Expect(toggle).ToBeCheckedAsync();
+
+            await menu.ClickAsync();
+            await Expect(toggle).Not.ToBeCheckedAsync();
+            await Expect(page.Locator("#theme-toggle")).ToBeVisibleAsync();
+        }
+    }
     private static async Task AssertAccessiblePageStructureAsync(IPage page)
     {
         var violations = await page.EvaluateAsync<string[]>(
