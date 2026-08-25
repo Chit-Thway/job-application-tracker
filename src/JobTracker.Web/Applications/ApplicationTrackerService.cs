@@ -24,6 +24,8 @@ public sealed record ApplicationListItem(
     DateOnly AppliedOn,
     PipelineStage Stage,
     ApplicationOutcome Outcome,
+    string? SourceUrl,
+    string? ApplicationPortalUrl,
     bool IsSavedForever,
     DateTimeOffset? DeletionScheduledAt,
     DateTimeOffset? CreatedAt = null);
@@ -168,6 +170,8 @@ public sealed class ApplicationTrackerService(
                 application.AppliedOn,
                 application.Stage,
                 application.Outcome,
+                application.SourceUrl,
+                application.ApplicationPortalUrl,
                 application.IsSavedForever,
                 application.DeletionScheduledAt,
                 database.StatusHistory

@@ -2350,7 +2350,7 @@ textarea:focus-visible {
 }
 
 .application-results.is-list-view .record-card {
-  grid-template-columns: 2.25rem minmax(14rem, 1.25fr) minmax(24rem, 1fr) auto;
+  grid-template-columns: 2.25rem minmax(14rem, 1.15fr) minmax(24rem, 1.1fr) auto;
   align-items: center;
   gap: 1rem;
   padding-top: 1.15rem;
@@ -2396,7 +2396,7 @@ textarea:focus-visible {
 
 .application-results.is-list-view .record-actions {
   display: grid;
-  min-width: 8.25rem;
+  min-width: 10rem;
   align-self: stretch;
   align-content: space-between;
   justify-items: end;
@@ -2409,6 +2409,10 @@ textarea:focus-visible {
   width: auto;
   margin-left: 0;
   grid-row: 1;
+}
+
+.application-results.is-list-view .application-retention-badge {
+  display: none;
 }
 
 .application-results.is-list-view .record-link-actions {
@@ -2618,6 +2622,19 @@ textarea:focus-visible {
   margin-left: auto;
 }
 
+.record-icon-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin-left: auto;
+}
+
+.record-actions .record-icon-actions form {
+  width: auto;
+  margin: 0;
+}
+
+.record-icon-action,
 .save-bookmark {
   display: grid;
   width: 2.55rem;
@@ -2632,9 +2649,21 @@ textarea:focus-visible {
   transition: color 160ms ease, background 160ms ease, transform 160ms ease;
 }
 
+.record-icon-action {
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.record-icon-action:not(.is-disabled):hover,
 .save-bookmark:hover {
   color: var(--blue-deep);
   transform: translateY(-1px);
+}
+
+.record-icon-action.is-disabled {
+  color: var(--ink-soft);
+  cursor: not-allowed;
+  opacity: 0.42;
 }
 
 .save-bookmark.is-saved {
@@ -2642,6 +2671,7 @@ textarea:focus-visible {
   background: #dff4e9;
 }
 
+.record-icon-action svg,
 .save-bookmark svg {
   width: 1.2rem;
   height: 1.2rem;
