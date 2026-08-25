@@ -52,6 +52,7 @@ public sealed partial class ApplicationWorkflowTests
                 ("CompanyId", companyId.ToString()),
                 ("AppliedOn", "2026-08-04"),
                 ("SourceUrl", "https://example.test/jobs/platform"),
+                ("ApplicationPortalUrl", "https://careers.example.test/candidate/platform"),
                 ("DescriptionText", "About the role\n\nBuild reliable synthetic platforms.\n\nWhat you will do\n\n- Write tests\n- Review changes"),
                 ("Notes", "Follow up next week"),
                 ("IsSavedForever", "false"),
@@ -67,6 +68,8 @@ public sealed partial class ApplicationWorkflowTests
         Assert.Contains("Synthetic Platform Engineer", detailsContent, StringComparison.Ordinal);
         Assert.Contains("Synthetic Meridian Works", detailsContent, StringComparison.Ordinal);
         Assert.Contains("This application is not saved.", detailsContent, StringComparison.Ordinal);
+        Assert.Contains("Application portal", detailsContent, StringComparison.Ordinal);
+        Assert.Contains("Open application portal", detailsContent, StringComparison.Ordinal);
         Assert.Contains("Job description", detailsContent, StringComparison.Ordinal);
         Assert.Contains("job-description-popover", detailsContent, StringComparison.Ordinal);
         Assert.Contains("About the role", detailsContent, StringComparison.Ordinal);
@@ -105,6 +108,7 @@ public sealed partial class ApplicationWorkflowTests
                 ("CompanyId", companyId.ToString()),
                 ("AppliedOn", "2026-08-03"),
                 ("SourceUrl", "https://example.test/jobs/platform-senior"),
+                ("ApplicationPortalUrl", "https://careers.example.test/candidate/platform-senior"),
                 ("Notes", "Updated safe notes"),
                 ("IsSavedForever", "true"),
                 ("__RequestVerificationToken", editToken)));
@@ -115,6 +119,7 @@ public sealed partial class ApplicationWorkflowTests
         Assert.Contains("Synthetic Senior Platform Engineer", updatedContent, StringComparison.Ordinal);
         Assert.Contains("Updated safe notes", updatedContent, StringComparison.Ordinal);
 
+        Assert.Contains("https://careers.example.test/candidate/platform-senior", updatedContent, StringComparison.Ordinal);
         var companyDeletePage = await client.GetAsync($"/companies/{companyId}/delete");
         var companyDeleteToken = ExtractAntiforgeryToken(
             await companyDeletePage.Content.ReadAsStringAsync());
@@ -164,12 +169,14 @@ public sealed partial class ApplicationWorkflowTests
                 ("RoleTitle", ""),
                 ("AppliedOn", "2026-08-04"),
                 ("SourceUrl", "not a URL"),
+                ("ApplicationPortalUrl", "ftp://example.test/candidate"),
                 ("Notes", "Preserve this safe note"),
                 ("__RequestVerificationToken", applicationToken)));
         var invalidContent = await invalidResponse.Content.ReadAsStringAsync();
 
         Assert.Equal(HttpStatusCode.OK, invalidResponse.StatusCode);
         Assert.Contains("The Role title field is required", invalidContent, StringComparison.Ordinal);
+        Assert.Contains("Enter a complete HTTP or HTTPS URL", invalidContent, StringComparison.Ordinal);
         Assert.Contains("Preserve this safe note", invalidContent, StringComparison.Ordinal);
 
         await using var scope = factory.Services.CreateAsyncScope();

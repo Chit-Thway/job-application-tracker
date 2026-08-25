@@ -474,6 +474,7 @@ public sealed class ApplicationsController(
             CompanyId = application.CompanyId,
             AppliedOn = application.AppliedOn,
             SourceUrl = application.SourceUrl,
+            ApplicationPortalUrl = application.ApplicationPortalUrl,
             DescriptionText = application.DescriptionText,
             Notes = application.Notes,
             IsSavedForever = application.IsSavedForever,
@@ -748,6 +749,7 @@ public sealed class ApplicationsController(
         model.RoleTitle,
         model.AppliedOn!.Value,
         model.SourceUrl,
+        model.ApplicationPortalUrl,
         model.DescriptionText,
         model.Notes,
         model.IsSavedForever);

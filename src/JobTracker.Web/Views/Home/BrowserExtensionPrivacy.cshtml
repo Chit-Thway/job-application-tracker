@@ -18,7 +18,7 @@
         <article class="detail-card privacy-intro">
             <p class="mini-label">The short version</p>
             <h2>The extension acts only after you press its capture button.</h2>
-            <p>It reads the active tab's page URL and visible job-advertisement content, then sends that capture over HTTPS to your authenticated private tracker so you can review it. It never saves an application automatically.</p>
+            <p>It reads the active tab's page URL and visible job-advertisement content, then sends that capture over HTTPS to a short-lived encrypted handoff before opening your authenticated private tracker for review. It never saves an application automatically.</p>
         </article>
 
         <div class="privacy-grid">
@@ -26,6 +26,7 @@
                 <p class="mini-label">Information handled</p>
                 <h2>Website content and page address</h2>
                 <p>A capture may include the page URL, role title, employer, location, employment type, salary, job reference, closing date, and visible job description.</p>
+                <p>An optional application-portal URL can be entered manually on the review page. The extension does not extract or infer that URL.</p>
                 <p>The extension also stores the tracker address locally in Chrome so subsequent captures open the same tracker.</p>
             </article>
 
@@ -39,7 +40,7 @@
             <article class="detail-card">
                 <p class="mini-label">Transfer and storage</p>
                 <h2>HTTPS to the private tracker</h2>
-                <p>The capture is handed to the configured HTTPS tracker and posted through its authenticated, anti-forgery-protected review flow. A review draft expires after 24 hours if it is not confirmed.</p>
+                <p>The configured HTTPS tracker validates and encrypts the capture, returns a random single-use handoff token, and never places job content in the browser URL. The handoff expires after 10 minutes and is removed when redeemed or during cleanup; the resulting owner-scoped review draft expires after 24 hours if it is not confirmed.</p>
                 <p>Confirmed applications follow the tracker retention choices described in the main privacy summary.</p>
             </article>
 
@@ -53,7 +54,7 @@
             <article class="detail-card">
                 <p class="mini-label">Permissions</p>
                 <h2>Active tab, scripting, and storage</h2>
-                <p><strong>activeTab</strong> provides temporary access to the tab where the user clicks the extension. <strong>scripting</strong> runs the packaged deterministic page reader for that click. <strong>storage</strong> remembers the configured tracker address locally.</p>
+                <p><strong>activeTab</strong> provides temporary access only to the tab where the user clicks the extension. <strong>scripting</strong> runs the packaged deterministic page reader for that click. <strong>storage</strong> remembers the configured tracker address and holds the pending capture in browser-session memory only while the handoff tab opens.</p>
             </article>
 
             <article class="detail-card">
@@ -70,6 +71,6 @@
             <p>Email <a class="inline-link" href="mailto:redacted@example.invalid">redacted@example.invalid</a> for extension privacy questions, account-wide access, or deletion requests.</p>
         </article>
 
-        <p class="privacy-updated">Effective and last updated 20 August 2026.</p>
+        <p class="privacy-updated">Effective and last updated 25 August 2026.</p>
     </div>
 </section>

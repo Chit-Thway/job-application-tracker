@@ -1,7 +1,8 @@
 {
   "manifest_version": 3,
   "name": "Job Application Tracker Capture",
-  "version": "1.0.1",
+  "version": "1.0.2",
+  "minimum_chrome_version": "102",
   "description": "Capture the active job advertisement and open a private review draft in Job Application Tracker.",
   "homepage_url": "https://chit-thway-job-tracker-b9bpfvb5csccb5hb.australiaeast-01.azurewebsites.net/extension",
   "permissions": [

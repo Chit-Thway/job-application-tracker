@@ -61,7 +61,7 @@ public sealed class ExtractionDraftServiceTests
     }
 
     [Fact]
-    public async Task ConfirmedDraft_ReusesMatchingOwnedCompany()
+    public async Task ConfirmedDraft_ReusesExplicitlySelectedOwnedCompany()
     {
         var options = new DbContextOptionsBuilder<ApplicationDbContext>()
             .UseInMemoryDatabase($"company-extraction-{Guid.NewGuid()}")
@@ -86,6 +86,7 @@ public sealed class ExtractionDraftServiceTests
         {
             CompanyName = " synthetic existing labs ",
             CompanyLocation = "perth, wa",
+            ExistingCompanyId = company.Id,
         };
 
         var completion = await service.CompleteAsync(draftId, input);
@@ -93,6 +94,74 @@ public sealed class ExtractionDraftServiceTests
         Assert.Equal(ExtractionDraftResult.Success, completion.Result);
         Assert.Single(database.Companies);
         Assert.Equal(company.Id, (await database.JobApplications.SingleAsync()).CompanyId);
+    }
+
+    [Fact]
+    public async Task CompanySuggestions_AreMeaningfulAndOwnerScoped()
+    {
+        var options = new DbContextOptionsBuilder<ApplicationDbContext>()
+            .UseInMemoryDatabase($"company-suggestions-{Guid.NewGuid()}")
+            .Options;
+        await using var database = new ApplicationDbContext(options);
+        var owner = User("suggestion-owner");
+        var otherOwner = User("suggestion-other-owner");
+        var accenture = new Company
+        {
+            OwnerId = owner.Id,
+            Name = "Accenture",
+            Location = "Perth",
+        };
+        database.Users.AddRange(owner, otherOwner);
+        database.Companies.AddRange(
+            accenture,
+            new Company { OwnerId = owner.Id, Name = "Air Liquide", Location = "Kwinana" },
+            new Company { OwnerId = otherOwner.Id, Name = "Accenture Australia", Location = "Melbourne" });
+        await database.SaveChangesAsync();
+        var service = Service(
+            database,
+            owner.Id,
+            new MutableTimeProvider(new DateTimeOffset(2026, 8, 24, 3, 0, 0, TimeSpan.Zero)));
+
+        var suggestions = await service.FindCompanySuggestionsAsync("Accenture Australia Pty Ltd");
+
+        var suggestion = Assert.Single(suggestions);
+        Assert.Equal(accenture.Id, suggestion.Id);
+        Assert.Equal(CompanyNameMatchKind.MeaningfulPhrase, suggestion.MatchKind);
+    }
+
+    [Fact]
+    public async Task ConfirmedDraft_RejectsAnotherOwnersSelectedCompany()
+    {
+        var options = new DbContextOptionsBuilder<ApplicationDbContext>()
+            .UseInMemoryDatabase($"company-selection-isolation-{Guid.NewGuid()}")
+            .Options;
+        await using var database = new ApplicationDbContext(options);
+        var owner = User("selection-owner");
+        var otherOwner = User("selection-other-owner");
+        var otherCompany = new Company
+        {
+            OwnerId = otherOwner.Id,
+            Name = "Accenture",
+            Location = "Melbourne",
+        };
+        database.Users.AddRange(owner, otherOwner);
+        database.Companies.Add(otherCompany);
+        await database.SaveChangesAsync();
+        var service = Service(
+            database,
+            owner.Id,
+            new MutableTimeProvider(new DateTimeOffset(2026, 8, 24, 3, 0, 0, TimeSpan.Zero)));
+        var draftId = await service.CreatePastedTextDraftAsync(
+            "Job Title: Graduate Analyst\nCompany: Accenture",
+            new DateOnly(2026, 8, 24));
+
+        var completion = await service.CompleteAsync(
+            draftId,
+            ValidInput() with { ExistingCompanyId = otherCompany.Id });
+
+        Assert.Equal(ExtractionDraftResult.InvalidCompanySelection, completion.Result);
+        Assert.Empty(database.JobApplications);
+        Assert.Single(database.ExtractionDrafts);
     }
 
     [Fact]
@@ -132,9 +201,11 @@ public sealed class ExtractionDraftServiceTests
         "Reviewed Test Engineer",
         "Synthetic Review Company",
         "Perth, WA",
+        null,
         new DateOnly(2026, 8, 4),
         "Hybrid",
         "https://example.test/jobs/reviewed",
+        null,
         "Synthetic Careers",
         "REF-1",
         "$100,000",

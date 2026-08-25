@@ -54,12 +54,45 @@
                         <div class="field">
                             <label asp-for="CompanyName"></label><input asp-for="CompanyName" autocomplete="organization" /><span asp-validation-for="CompanyName" class="field-error"></span>
                             @if (Model.EvidenceFor(nameof(Model.CompanyName)) is not null) { <small class="evidence-note">Evidence: @Model.EvidenceFor(nameof(Model.CompanyName))</small> }
-                            <small class="field-help">A matching company is reused; otherwise it is created when you confirm.</small>
+                            <small class="field-help">A new company is created unless you explicitly choose an existing match below.</small>
                         </div>
                         <div class="field">
                             <label asp-for="CompanyLocation"></label><input asp-for="CompanyLocation" autocomplete="address-level2" /><span asp-validation-for="CompanyLocation" class="field-error"></span>
                             @if (Model.EvidenceFor(nameof(Model.CompanyLocation)) is not null) { <small class="evidence-note">Evidence: @Model.EvidenceFor(nameof(Model.CompanyLocation))</small> }
                         </div>
+                        @if (Model.CompanySuggestions.Count > 0)
+                        {
+                            <fieldset class="company-reuse-notice form-span-2">
+                                <legend>Same company detected</legend>
+                                <p>We found an existing company with the same or a closely matching name. Choose where this application belongs.</p>
+                                <div class="company-reuse-options">
+                                    <label>
+                                        <input type="radio"
+                                               name="ExistingCompanyId"
+                                               value=""
+                                               checked="@(Model.ExistingCompanyId is null)" />
+                                        <span>
+                                            <strong>Keep extracted company</strong>
+                                            <small>Create a separate company using the reviewed name and location.</small>
+                                        </span>
+                                    </label>
+                                    @foreach (var company in Model.CompanySuggestions)
+                                    {
+                                        <label>
+                                            <input type="radio"
+                                                   name="ExistingCompanyId"
+                                                   value="@company.Id"
+                                                   checked="@(Model.ExistingCompanyId == company.Id)" />
+                                            <span>
+                                                <strong>Use @company.Name</strong>
+                                                <small>@(string.IsNullOrWhiteSpace(company.Location) ? "No location recorded" : company.Location)</small>
+                                            </span>
+                                        </label>
+                                    }
+                                </div>
+                                <span asp-validation-for="ExistingCompanyId" class="field-error"></span>
+                            </fieldset>
+                        }
                         <div class="field">
                             <label asp-for="AppliedOn"></label><input asp-for="AppliedOn" type="date" /><span asp-validation-for="AppliedOn" class="field-error"></span>
                             @if (Model.EvidenceFor(nameof(Model.AppliedOn)) is not null) { <small class="evidence-note">Evidence: @Model.EvidenceFor(nameof(Model.AppliedOn))</small> } else { <small class="field-help">Defaults to today when the posting does not state it.</small> }
@@ -71,6 +104,10 @@
                         <div class="field form-span-2">
                             <label asp-for="SourceUrl"></label><input asp-for="SourceUrl" type="url" inputmode="url" placeholder="https://…" /><span asp-validation-for="SourceUrl" class="field-error"></span>
                             @if (Model.EvidenceFor(nameof(Model.SourceUrl)) is not null) { <small class="evidence-note">Evidence: @Model.EvidenceFor(nameof(Model.SourceUrl))</small> }
+                        </div>
+                        <div class="field form-span-2">
+                            <label asp-for="ApplicationPortalUrl"></label><input asp-for="ApplicationPortalUrl" type="url" inputmode="url" placeholder="https://…" /><span asp-validation-for="ApplicationPortalUrl" class="field-error"></span>
+                            <small class="field-help">Optional and manual. Add the employer's candidate portal where you check this application's progress.</small>
                         </div>
                     </div>
                 </section>

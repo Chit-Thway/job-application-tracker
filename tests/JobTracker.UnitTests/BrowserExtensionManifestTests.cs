@@ -18,6 +18,7 @@ public sealed class BrowserExtensionManifestTests
             .ToArray();
 
         Assert.Equal(3, root.GetProperty("manifest_version").GetInt32());
+        Assert.Equal("102", root.GetProperty("minimum_chrome_version").GetString());
         Assert.Equal(new[] { "activeTab", "scripting", "storage" }, permissions);
         Assert.False(root.TryGetProperty("host_permissions", out _));
         Assert.False(root.TryGetProperty("content_scripts", out _));
@@ -39,6 +40,25 @@ public sealed class BrowserExtensionManifestTests
         Assert.DoesNotContain("XMLHttpRequest", script, StringComparison.Ordinal);
         Assert.DoesNotContain("innerHTML", script, StringComparison.Ordinal);
     }
+
+    [Fact]
+    public void CaptureTransport_UsesSessionBackedCleanHandoffInsteadOfPayloadUrl()
+    {
+        var popupPath = Path.Combine(AppContext.BaseDirectory, "BrowserExtension", "popup.js");
+        var handoffPath = Path.Combine(AppContext.BaseDirectory, "BrowserExtension", "handoff.js");
+        var popup = File.ReadAllText(popupPath);
+        var handoff = File.ReadAllText(handoffPath);
+
+        Assert.Contains("chrome.storage.session.set", popup, StringComparison.Ordinal);
+        Assert.Contains("handoff.html?id=", popup, StringComparison.Ordinal);
+        Assert.DoesNotContain("#capture=", popup, StringComparison.Ordinal);
+        Assert.DoesNotContain("toBase64Url", popup, StringComparison.Ordinal);
+        Assert.Contains("chrome.storage.session.remove", handoff, StringComparison.Ordinal);
+        Assert.Contains("/applications/import/extension/handoff", handoff, StringComparison.Ordinal);
+        Assert.Contains("form.submit()", handoff, StringComparison.Ordinal);
+        Assert.DoesNotContain("fetch(", handoff, StringComparison.Ordinal);
+    }
+
 
     [Fact]
     public async Task IndeedFixture_SelectorsTargetSelectedJobPanel()

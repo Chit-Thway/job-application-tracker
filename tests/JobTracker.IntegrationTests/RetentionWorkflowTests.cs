@@ -108,6 +108,10 @@ public sealed partial class ApplicationWorkflowTests
         Assert.Contains("3 months, then a full 14-day warning", settingsContent, StringComparison.Ordinal);
         Assert.Contains("Save retention settings", settingsContent, StringComparison.Ordinal);
         Assert.Contains("Retention service", settingsContent, StringComparison.Ordinal);
+        Assert.Contains("Privacy Policy", settingsContent, StringComparison.Ordinal);
+        Assert.Contains("Cookie Consent", settingsContent, StringComparison.Ordinal);
+        Assert.Contains("Terms of Service", settingsContent, StringComparison.Ordinal);
+        Assert.Contains("strictly necessary cookies", settingsContent, StringComparison.Ordinal);
 
         var actionCentre = await client.GetAsync("/actions");
         var actionContent = await actionCentre.Content.ReadAsStringAsync();

@@ -209,6 +209,7 @@ builder.Services
 builder.Services.AddScoped<ExtractionDraftService>();
 builder.Services.AddScoped<JobPostingUrlImportService>();
 builder.Services.AddScoped<BrowserExtensionImportService>();
+builder.Services.AddScoped<ExtensionCaptureHandoffService>();
 builder.Services.AddHealthChecks()
     .AddCheck(
         "self",

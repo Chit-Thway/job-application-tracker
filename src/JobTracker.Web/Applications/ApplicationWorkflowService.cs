@@ -248,6 +248,7 @@ public sealed class ApplicationWorkflowService(
                 application.Stage,
                 application.Outcome,
                 application.SourceUrl,
+                application.ApplicationPortalUrl,
                 application.SourceText,
                 application.DescriptionText,
                 application.ExtractionMetadataJson,

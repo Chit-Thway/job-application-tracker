@@ -26,6 +26,7 @@ Key features:
 - Recognises Schema.org JobPosting data and rendered SEEK and Indeed job fields.
 - Preserves annual, hourly, daily, and weekly pay as reviewable text.
 - Opens an editable, owner-scoped review draft that expires after 24 hours.
+- Lets the user manually add an optional application-portal link during review; the extension does not extract or infer that link.
 - Uses deterministic extraction with no external AI service.
 - Contains no advertising, analytics, background browsing, or broad all-sites permission.
 
@@ -39,7 +40,7 @@ Allow a user to explicitly capture the active tab's job advertisement and open i
 
 - `activeTab`: Grants temporary access only to the tab where the user explicitly clicks the extension so the advertised role can be captured.
 - `scripting`: Runs the packaged deterministic page reader in that active tab after the user presses the capture button. It does not load or execute remote code.
-- `storage`: Remembers the user's configured Job Application Tracker address locally so later captures open the same tracker.
+- `storage`: Remembers the configured tracker address and holds a pending capture in browser-session memory only while the clean handoff tab opens.
 
 ## Data disclosures
 
@@ -59,5 +60,5 @@ All handled data is necessary for the disclosed job-capture feature. It is not s
 3. Review the prominent disclosure explaining that the current page URL and visible job content will be sent to the user's configured private tracker.
 4. Expand **Advanced tracker address** only if a different HTTPS deployment or localhost is needed.
 5. Press **Capture this tab and review**.
-6. The extension reads the active tab only for this click and opens the captured review route in a new tab.
+6. The extension reads the active tab only for this click, posts the capture over HTTPS, and opens a clean tracker URL containing only a short-lived single-use token.
 7. Saving the draft requires an invitation-only Job Application Tracker account; the capture UI and handoff can be inspected without granting broad host permissions.

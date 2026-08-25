@@ -3350,6 +3350,65 @@ textarea:focus-visible {
   font-weight: 700;
 }
 
+.company-reuse-notice {
+  display: grid;
+  gap: 0.7rem;
+  min-width: 0;
+  margin: 0;
+  padding: 1rem;
+  color: #0b5f4d;
+  background: #e7f7f0;
+  border: 1px solid #9fd9c5;
+  border-radius: var(--radius-sm);
+}
+
+.company-reuse-notice legend {
+  padding: 0 0.3rem;
+  font-weight: 900;
+}
+
+.company-reuse-notice p {
+  margin: 0;
+  font-size: 0.86rem;
+  line-height: 1.5;
+}
+
+.company-reuse-options {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.company-reuse-options label {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: 0.7rem;
+  padding: 0.75rem;
+  color: var(--ink);
+  background: var(--surface);
+  border-radius: 0.75rem;
+  cursor: pointer;
+}
+
+.company-reuse-options input {
+  margin-top: 0.2rem;
+}
+
+.company-reuse-options span {
+  display: grid;
+  gap: 0.15rem;
+}
+
+.company-reuse-options small {
+  color: var(--ink-soft);
+}
+
+html[data-theme="dark"] .company-reuse-notice {
+  color: #b9ead8;
+  background: #263d37;
+  border-color: #497466;
+}
+
 .source-details summary {
   cursor: pointer;
   color: var(--blue-deep);
@@ -4680,6 +4739,92 @@ html[data-theme="dark"] .retention-deadline {
 .settings-side {
   display: grid;
   gap: 1.25rem;
+}
+
+.settings-policy-list {
+  display: grid;
+  gap: 0.8rem;
+  margin-top: 1.25rem;
+}
+
+.settings-policy-disclosure {
+  padding: 0;
+  overflow: hidden;
+}
+
+.settings-policy-disclosure > summary {
+  display: grid;
+  grid-template-columns: minmax(10rem, 0.35fr) minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 1rem;
+  padding: 1.2rem 1.35rem;
+  cursor: pointer;
+  list-style: none;
+}
+
+.settings-policy-disclosure > summary::-webkit-details-marker {
+  display: none;
+}
+
+.settings-policy-disclosure > summary::after {
+  content: "+";
+  display: grid;
+  width: 1.9rem;
+  height: 1.9rem;
+  place-items: center;
+  color: var(--blue-deep);
+  background: var(--blue-soft);
+  border-radius: 50%;
+  font-size: 1.15rem;
+  font-weight: 850;
+  line-height: 1;
+}
+
+.settings-policy-disclosure[open] > summary::after {
+  content: "−";
+}
+
+.settings-policy-title {
+  font-size: 1.05rem;
+  font-weight: 850;
+}
+
+.settings-policy-hint {
+  color: var(--ink-soft);
+  font-size: 0.9rem;
+}
+
+.settings-policy-content {
+  max-width: 70rem;
+  margin: 0 1.35rem;
+  padding: 1.25rem 0 1.35rem;
+  border-top: 1px solid var(--line);
+}
+
+.settings-policy-content p {
+  margin: 0 0 0.85rem;
+  color: var(--ink-soft);
+  line-height: 1.7;
+}
+
+.settings-policy-content p:last-child {
+  margin-bottom: 0;
+}
+
+@media (max-width: 52rem) {
+  .settings-policy-disclosure > summary {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 0.35rem 0.8rem;
+  }
+
+  .settings-policy-hint {
+    grid-column: 1;
+  }
+
+  .settings-policy-disclosure > summary::after {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+  }
 }
 
 .retention-steps {

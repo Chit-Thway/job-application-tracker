@@ -37,6 +37,7 @@ public sealed record ApplicationDetails(
     PipelineStage Stage,
     ApplicationOutcome Outcome,
     string? SourceUrl,
+    string? ApplicationPortalUrl,
     string? SourceText,
     string? DescriptionText,
     string? ExtractionMetadataJson,
@@ -49,6 +50,7 @@ public sealed record ApplicationInput(
     string RoleTitle,
     DateOnly AppliedOn,
     string? SourceUrl,
+    string? ApplicationPortalUrl,
     string? DescriptionText,
     string? Notes,
     bool IsSavedForever);
@@ -200,6 +202,7 @@ public sealed class ApplicationTrackerService(
                 application.Stage,
                 application.Outcome,
                 application.SourceUrl,
+                application.ApplicationPortalUrl,
                 application.SourceText,
                 application.DescriptionText,
                 application.ExtractionMetadataJson,
@@ -239,6 +242,7 @@ public sealed class ApplicationTrackerService(
                 RoleTitle = input.RoleTitle.Trim(),
                 AppliedOn = input.AppliedOn,
                 SourceUrl = NullIfWhiteSpace(input.SourceUrl),
+                ApplicationPortalUrl = NullIfWhiteSpace(input.ApplicationPortalUrl),
                 DescriptionText = NullIfWhiteSpace(input.DescriptionText),
                 Notes = NullIfWhiteSpace(input.Notes),
                 IsSavedForever = input.IsSavedForever,
@@ -308,6 +312,7 @@ public sealed class ApplicationTrackerService(
         application.RoleTitle = input.RoleTitle.Trim();
         application.AppliedOn = input.AppliedOn;
         application.SourceUrl = NullIfWhiteSpace(input.SourceUrl);
+        application.ApplicationPortalUrl = NullIfWhiteSpace(input.ApplicationPortalUrl);
         application.DescriptionText = NullIfWhiteSpace(input.DescriptionText);
         application.Notes = NullIfWhiteSpace(input.Notes);
         application.IsSavedForever = input.IsSavedForever;

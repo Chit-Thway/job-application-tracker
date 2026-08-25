@@ -33,9 +33,25 @@
       }
 
       const payload = JSON.stringify(capture);
-      const encoded = toBase64Url(payload);
-      const handoffUrl = `${trackerBaseUrl}/applications/import/extension#capture=${encoded}`;
-      await chrome.tabs.create({ url: handoffUrl });
+      const captureId = crypto.randomUUID();
+      const storageKey = `capture:${captureId}`;
+      await chrome.storage.session.set({
+        [storageKey]: {
+          payload,
+          trackerBaseUrl,
+          createdAt: Date.now(),
+        },
+      });
+
+      try {
+        const handoffUrl = chrome.runtime.getURL(
+          `handoff.html?id=${encodeURIComponent(captureId)}`);
+        await chrome.tabs.create({ url: handoffUrl });
+      } catch (error) {
+        await chrome.storage.session.remove(storageKey);
+        throw error;
+      }
+
       window.close();
     } catch (error) {
       status.textContent = error instanceof Error
@@ -63,19 +79,6 @@
     }
 
     return `${url.origin}${url.pathname.replace(/\/$/, "")}`;
-  }
-
-  function toBase64Url(value) {
-    const bytes = new TextEncoder().encode(value);
-    let binary = "";
-    for (const byte of bytes) {
-      binary += String.fromCharCode(byte);
-    }
-
-    return btoa(binary)
-      .replace(/\+/g, "-")
-      .replace(/\//g, "_")
-      .replace(/=+$/g, "");
   }
 
   function captureJobPage() {

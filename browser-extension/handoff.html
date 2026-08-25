@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sending job capture</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <main>
+    <header>
+      <span class="mark" aria-hidden="true">JT</span>
+      <div>
+        <p class="eyebrow">Job Application Tracker</p>
+        <h1>Opening your review</h1>
+      </div>
+    </header>
+
+    <p id="status" class="intro" role="status" aria-live="polite">
+      Securely transferring this capture to your private tracker…
+    </p>
+
+    <form id="handoff-form" method="post" hidden>
+      <input id="payload-json" name="PayloadJson" type="hidden">
+    </form>
+  </main>
+  <script src="handoff.js"></script>
+</body>
+</html>

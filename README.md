@@ -132,7 +132,7 @@ Install it locally:
 4. Pin **Job Application Tracker Capture** to the toolbar.
 5. Open a job advertisement, click the extension, and choose **Capture and review**.
 
-The store build defaults to the production HTTPS tracker; its advanced popup settings can remember a different address for development. The manifest requests only `activeTab`, `scripting`, and `storage`: there are no broad host permissions, content scripts, background workers, analytics, or remote APIs. The popup prominently discloses that the selected page URL and visible job content are sent to the configured private tracker. The capture is handed to the authenticated tracker through a URL fragment, removed immediately from browser history, validated by the server, and stored only as an owner-scoped 24-hour review draft. See `browser-extension/README.md` and the public `/extension/privacy` route for the install and privacy details.
+The store build defaults to the production HTTPS tracker; its advanced popup settings can remember a different address for development. The manifest requests only `activeTab`, `scripting`, and `storage`: there are no broad host permissions, content scripts, background workers, analytics, or remote APIs. The popup prominently discloses that the selected page URL and visible job content are sent to the configured private tracker. Version 1.0.2 posts the capture through a clean handoff page, stores it encrypted behind a random single-use token for at most 10 minutes, and opens only that short token in the authenticated tracker. Redeeming the token removes the handoff and creates an owner-scoped 24-hour review draft. See `browser-extension/README.md` and the public `/extension/privacy` route for the install and privacy details.
 
 ## Database setup
 

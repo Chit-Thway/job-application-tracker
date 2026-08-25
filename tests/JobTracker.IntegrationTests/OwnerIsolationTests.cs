@@ -96,6 +96,7 @@ public sealed class OwnerIsolationTests
             null,
             null,
             null,
+            null,
             false);
 
         Assert.Null(await applicationService.FindAsync(applicationB.Id));

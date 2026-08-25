@@ -82,7 +82,7 @@
                 </div>
                 <dl class="detail-list compact-detail-list">
                     <div><dt>Company</dt><dd>@if (application.CompanyId is not null) { <a class="text-link" asp-controller="Companies" asp-action="Details" asp-route-id="@application.CompanyId">@application.CompanyName</a> } else { <span>Not selected</span> }</dd></div>
-                    <div><dt>First response</dt><dd>@(workflow.FirstEmployerResponseAt is null ? "Not recorded" : ApplicationTime.Display(workflow.FirstEmployerResponseAt.Value, workflow.TimeZoneId))</dd></div>
+                    <div><dt>Application portal</dt><dd>@if (!string.IsNullOrWhiteSpace(application.ApplicationPortalUrl)) { <a class="text-link" href="@application.ApplicationPortalUrl" target="_blank" rel="noopener noreferrer">Open application portal &nearr;</a> } else { <span>Not provided</span> }</dd></div>
                     <div><dt>Job posting</dt><dd>@if (!string.IsNullOrWhiteSpace(application.SourceUrl)) { <a class="text-link" href="@application.SourceUrl" target="_blank" rel="noreferrer">Open source URL &nearr;</a> } else { <span>Not provided</span> }</dd></div>
                 </dl>
 

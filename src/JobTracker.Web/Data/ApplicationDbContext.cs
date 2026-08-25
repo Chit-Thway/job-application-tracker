@@ -17,6 +17,7 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
     public DbSet<RetentionRun> RetentionRuns => Set<RetentionRun>();
     public DbSet<Invitation> Invitations => Set<Invitation>();
     public DbSet<AdminAuditEntry> AdminAuditEntries => Set<AdminAuditEntry>();
+    public DbSet<ExtensionCaptureHandoff> ExtensionCaptureHandoffs => Set<ExtensionCaptureHandoff>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -66,6 +67,16 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
             entity.HasIndex(entry => entry.ActorUserId);
         });
 
+        builder.Entity<ExtensionCaptureHandoff>(entity =>
+        {
+            entity.HasKey(handoff => handoff.Id);
+            entity.Property(handoff => handoff.TokenHash).HasMaxLength(64).IsRequired();
+            entity.Property(handoff => handoff.ProtectedPayload).HasColumnType("text").IsRequired();
+            entity.Property(handoff => handoff.ConcurrencyStamp).IsConcurrencyToken();
+            entity.HasIndex(handoff => handoff.TokenHash).IsUnique();
+            entity.HasIndex(handoff => handoff.ExpiresAt);
+        });
+
         ConfigureOwnedEntity<Company>(builder);
         ConfigureOwnedEntity<JobApplication>(builder);
         ConfigureOwnedEntity<StatusHistory>(builder);
@@ -87,6 +98,7 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
         {
             entity.Property(application => application.RoleTitle).HasMaxLength(200).IsRequired();
             entity.Property(application => application.SourceUrl).HasMaxLength(2048);
+            entity.Property(application => application.ApplicationPortalUrl).HasMaxLength(2048);
             entity.Property(application => application.DescriptionText).HasColumnType("text");
             entity.Property(application => application.Stage).HasConversion<string>().HasMaxLength(40);
             entity.Property(application => application.Outcome).HasConversion<string>().HasMaxLength(40);

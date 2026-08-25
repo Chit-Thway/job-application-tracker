@@ -12,6 +12,7 @@ public sealed class ApplicationImportsController(
     ExtractionDraftService drafts,
     JobPostingUrlImportService urlImports,
     BrowserExtensionImportService browserExtensionImports,
+    ExtensionCaptureHandoffService extensionCaptureHandoffs,
     TimeProvider timeProvider) : Controller
 {
     [HttpGet("/applications/import/url")]
@@ -74,10 +75,62 @@ public sealed class ApplicationImportsController(
     }
 
     [HttpGet("/applications/import/extension")]
-    public IActionResult ImportExtension()
+    public async Task<IActionResult> ImportExtension(
+        string? token,
+        string? handoffError,
+        CancellationToken cancellationToken)
     {
         SetSection();
-        return View(new BrowserExtensionCaptureInputViewModel());
+
+        if (!string.IsNullOrWhiteSpace(handoffError))
+        {
+            ModelState.AddModelError(
+                string.Empty,
+                "That browser capture could not be accepted. Return to the job page and capture it again.");
+        }
+
+        if (string.IsNullOrWhiteSpace(token))
+        {
+            return View(new BrowserExtensionCaptureInputViewModel());
+        }
+
+        var redeemed = await extensionCaptureHandoffs.RedeemAsync(token, cancellationToken);
+        if (redeemed.Status != ExtensionCaptureHandoffStatus.Success)
+        {
+            ModelState.AddModelError(
+                string.Empty,
+                redeemed.Error
+                    ?? "That browser capture is unavailable. Return to the job page and capture it again.");
+            return View(new BrowserExtensionCaptureInputViewModel());
+        }
+
+        var draftId = await drafts.CreateBrowserExtensionDraftAsync(
+            redeemed.Extraction!,
+            LocalToday(),
+            cancellationToken);
+        return RedirectToAction(nameof(Review), new { id = draftId });
+    }
+
+    [AllowAnonymous]
+    [IgnoreAntiforgeryToken]
+    [HttpPost("/applications/import/extension/handoff")]
+    [EnableRateLimiting("imports")]
+    [RequestSizeLimit(512_000)]
+    public async Task<IActionResult> CreateExtensionHandoff(
+        BrowserExtensionCaptureInputViewModel model,
+        CancellationToken cancellationToken)
+    {
+        if (!ModelState.IsValid)
+        {
+            return RedirectToAction(nameof(ImportExtension), new { handoffError = "invalid" });
+        }
+
+        var created = await extensionCaptureHandoffs.CreateAsync(
+            model.PayloadJson,
+            cancellationToken);
+        return created.Status == ExtensionCaptureHandoffStatus.Success
+            ? RedirectToAction(nameof(ImportExtension), new { token = created.Token })
+            : RedirectToAction(nameof(ImportExtension), new { handoffError = "invalid" });
     }
 
     [HttpPost("/applications/import/extension")]
@@ -112,7 +165,14 @@ public sealed class ApplicationImportsController(
     {
         SetSection();
         var draft = await drafts.FindReviewAsync(id, cancellationToken);
-        return draft is null ? NotFound() : View(ModelFrom(draft));
+        if (draft is null)
+        {
+            return NotFound();
+        }
+
+        var model = ModelFrom(draft);
+        await PopulateCompanySuggestionsAsync(model, cancellationToken);
+        return View(model);
     }
 
     [HttpPost("/applications/import/{id:guid}/review")]
@@ -123,7 +183,8 @@ public sealed class ApplicationImportsController(
     {
         SetSection();
         model.DraftId = id;
-        if (string.IsNullOrWhiteSpace(model.CompanyName)
+        if (model.ExistingCompanyId is null
+            && string.IsNullOrWhiteSpace(model.CompanyName)
             && !string.IsNullOrWhiteSpace(model.CompanyLocation))
         {
             ModelState.AddModelError(
@@ -140,6 +201,7 @@ public sealed class ApplicationImportsController(
             }
 
             CopyReviewContext(existingDraft, model);
+            await PopulateCompanySuggestionsAsync(model, cancellationToken);
             return View(model);
         }
 
@@ -149,9 +211,11 @@ public sealed class ApplicationImportsController(
                 model.RoleTitle,
                 model.CompanyName,
                 model.CompanyLocation,
+                model.ExistingCompanyId,
                 model.AppliedOn!.Value,
                 model.WorkplaceMode,
                 model.SourceUrl,
+                model.ApplicationPortalUrl,
                 model.SourceSite,
                 model.JobReference,
                 model.SalaryText,
@@ -173,6 +237,22 @@ public sealed class ApplicationImportsController(
         {
             TempData["Error"] = "That review draft expired. Paste the job text again to create a fresh review.";
             return RedirectToAction(nameof(PasteText));
+        }
+
+        if (completion.Result == ExtractionDraftResult.InvalidCompanySelection)
+        {
+            ModelState.AddModelError(
+                nameof(model.ExistingCompanyId),
+                "That company is no longer available. Choose another match or keep the extracted company.");
+            var existingDraft = await drafts.FindReviewAsync(id, cancellationToken);
+            if (existingDraft is null)
+            {
+                return NotFound();
+            }
+
+            CopyReviewContext(existingDraft, model);
+            await PopulateCompanySuggestionsAsync(model, cancellationToken);
+            return View(model);
         }
 
         TempData["Success"] = "Reviewed application added.";
@@ -235,6 +315,15 @@ public sealed class ApplicationImportsController(
         model.ExpiresAt = draft.ExpiresAt;
         model.Evidence = draft.Evidence;
         model.Warnings = draft.Warnings;
+    }
+
+    private async Task PopulateCompanySuggestionsAsync(
+        ExtractionReviewViewModel model,
+        CancellationToken cancellationToken)
+    {
+        model.CompanySuggestions = await drafts.FindCompanySuggestionsAsync(
+            model.CompanyName,
+            cancellationToken);
     }
 
     private void SetSection() => ViewData["Section"] = "add";

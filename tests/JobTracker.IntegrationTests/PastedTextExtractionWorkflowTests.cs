@@ -68,6 +68,7 @@ public sealed partial class ApplicationWorkflowTests
                 ("AppliedOn", "2026-08-04"),
                 ("WorkplaceMode", "Hybrid"),
                 ("SourceUrl", "https://example.test/jobs/srl-204"),
+                ("ApplicationPortalUrl", "https://careers.example.test/candidate/srl-204"),
                 ("SourceSite", "Synthetic Careers"),
                 ("JobReference", "SRL-204"),
                 ("SalaryText", "AUD 125,000 plus super"),
@@ -93,6 +94,7 @@ public sealed partial class ApplicationWorkflowTests
 
             Assert.Equal("Senior Platform Engineer", application.RoleTitle);
             Assert.Equal(LabelledPosting, application.SourceText);
+            Assert.Equal("https://careers.example.test/candidate/srl-204", application.ApplicationPortalUrl);
             Assert.Equal("Corrected during review", application.Notes);
             Assert.Equal("Synthetic Review Labs", company.Name);
             Assert.Equal("Perth, WA", company.Location);
@@ -107,6 +109,63 @@ public sealed partial class ApplicationWorkflowTests
         Assert.Contains("Reviewed extraction", detailsContent, StringComparison.Ordinal);
         Assert.Contains("AUD 125,000 plus super", detailsContent, StringComparison.Ordinal);
         Assert.Contains("View original job source text", detailsContent, StringComparison.Ordinal);
+        Assert.Contains("Open application portal", detailsContent, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Review_SuggestsAndExplicitlyReusesAnExistingCompany()
+    {
+        var client = await CreateAuthenticatedClientAsync();
+        var suffix = Guid.NewGuid().ToString("N")[..8];
+        var existingName = $"Accenture {suffix}";
+        var extractedName = $"{existingName} Australia Pty Ltd";
+        await PostCompanyAsync(client, existingName, "Perth");
+        Guid existingCompanyId;
+        await using (var scope = factory.Services.CreateAsyncScope())
+        {
+            var database = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+            existingCompanyId = await database.Companies
+                .Where(company => company.Name == existingName)
+                .Select(company => company.Id)
+                .SingleAsync();
+        }
+
+        var source = $"Job Title: Graduate Analyst\nCompany: {extractedName}\nLocation: Melbourne";
+        var draftLocation = await PostPastedTextAsync(client, source);
+        var review = await client.GetAsync(draftLocation);
+        var reviewContent = await review.Content.ReadAsStringAsync();
+
+        Assert.Equal(HttpStatusCode.OK, review.StatusCode);
+        Assert.Contains("Same company detected", reviewContent, StringComparison.Ordinal);
+        Assert.Contains(existingName, reviewContent, StringComparison.Ordinal);
+        var token = ExtractAntiforgeryToken(reviewContent);
+        var draftId = DraftIdFromLocation(draftLocation);
+
+        var confirm = await client.PostAsync(
+            draftLocation,
+            Form(
+                ("DraftId", draftId.ToString()),
+                ("RoleTitle", "Graduate Analyst"),
+                ("CompanyName", extractedName),
+                ("CompanyLocation", "Melbourne"),
+                ("ExistingCompanyId", existingCompanyId.ToString()),
+                ("AppliedOn", "2026-08-24"),
+                ("IsSavedForever", "false"),
+                ("__RequestVerificationToken", token)));
+
+        Assert.Equal(HttpStatusCode.Redirect, confirm.StatusCode);
+        var applicationLocation = confirm.Headers.Location?.OriginalString;
+        Assert.NotNull(applicationLocation);
+
+        await using (var scope = factory.Services.CreateAsyncScope())
+        {
+            var database = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+            var applicationId = IdFromLocation(applicationLocation);
+            var application = await database.JobApplications.SingleAsync(item => item.Id == applicationId);
+            Assert.Equal(existingCompanyId, application.CompanyId);
+            Assert.False(await database.Companies.AnyAsync(company =>
+                company.Name == extractedName));
+        }
     }
 
     [Fact]

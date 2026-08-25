@@ -23,6 +23,7 @@ public sealed class JobApplication : OwnedEntity
     public PipelineStage Stage { get; set; } = PipelineStage.Applied;
     public ApplicationOutcome Outcome { get; set; } = ApplicationOutcome.Active;
     public string? SourceUrl { get; set; }
+    public string? ApplicationPortalUrl { get; set; }
     public string? SourceText { get; set; }
     public string? DescriptionText { get; set; }
     public string? ExtractionMetadataJson { get; set; }

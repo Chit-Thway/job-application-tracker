@@ -34,6 +34,7 @@ public sealed class ApplicationServiceTests
             "Platform Engineer",
             new DateOnly(2026, 8, 4),
             "https://example.test/jobs/platform",
+            "https://careers.example.test/candidate/home",
             "About the role\n\nBuild reliable synthetic platforms.",
             "Synthetic notes",
             false));
@@ -42,6 +43,7 @@ public sealed class ApplicationServiceTests
         Assert.NotNull(created.Id);
         var application = await database.JobApplications.SingleAsync();
         Assert.False(application.IsSavedForever);
+        Assert.Equal("https://careers.example.test/candidate/home", application.ApplicationPortalUrl);
         Assert.Equal("About the role\n\nBuild reliable synthetic platforms.", application.DescriptionText);
         var history = await database.StatusHistory.SingleAsync();
         Assert.Equal(application.Id, history.JobApplicationId);
@@ -97,6 +99,7 @@ public sealed class ApplicationServiceTests
             first.Id,
             "Support Engineer",
             new DateOnly(2026, 8, 4),
+            null,
             null,
             null,
             null,
@@ -175,6 +178,7 @@ public sealed class ApplicationServiceTests
             null,
             "Old unsaved role",
             new DateOnly(2026, 5, 14),
+            null,
             null,
             null,
             null,

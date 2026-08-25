@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using JobTracker.Web.Data;
+using JobTracker.Web.Extraction;
 
 namespace JobTracker.Web.Models;
 
@@ -76,6 +77,10 @@ public sealed class ExtractionReviewViewModel
     [Display(Name = "Company location")]
     public string? CompanyLocation { get; set; }
 
+    public Guid? ExistingCompanyId { get; set; }
+
+    public IReadOnlyList<CompanyReuseSuggestion> CompanySuggestions { get; set; } = [];
+
     [Required]
     [DataType(DataType.Date)]
     [Display(Name = "Application date")]
@@ -89,6 +94,11 @@ public sealed class ExtractionReviewViewModel
     [Url]
     [Display(Name = "Job posting URL")]
     public string? SourceUrl { get; set; }
+
+    [StringLength(2048)]
+    [HttpUrl]
+    [Display(Name = "Application portal URL")]
+    public string? ApplicationPortalUrl { get; set; }
 
     [StringLength(200)]
     [Display(Name = "Source site")]

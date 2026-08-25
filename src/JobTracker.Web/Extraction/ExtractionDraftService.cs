@@ -17,13 +17,21 @@ public sealed record ExtractionDraftReview(
     IReadOnlyList<string> Warnings,
     DateTimeOffset ExpiresAt);
 
+public sealed record CompanyReuseSuggestion(
+    Guid Id,
+    string Name,
+    string? Location,
+    CompanyNameMatchKind MatchKind);
+
 public sealed record ExtractionReviewInput(
     string RoleTitle,
     string? CompanyName,
     string? CompanyLocation,
+    Guid? ExistingCompanyId,
     DateOnly AppliedOn,
     string? WorkplaceMode,
     string? SourceUrl,
+    string? ApplicationPortalUrl,
     string? SourceSite,
     string? JobReference,
     string? SalaryText,
@@ -50,6 +58,7 @@ public enum ExtractionDraftResult
     Success,
     NotFound,
     Expired,
+    InvalidCompanySelection,
 }
 
 public sealed record ExtractionCompletion(
@@ -185,11 +194,27 @@ public sealed class ExtractionDraftService(
                 return new ExtractionCompletion(ExtractionDraftResult.Expired, null);
             }
 
-            var companyId = await ResolveCompanyAsync(
-                ownerId,
-                input.CompanyName,
-                input.CompanyLocation,
-                cancellationToken);
+            Guid? companyId;
+            if (input.ExistingCompanyId is { } existingCompanyId)
+            {
+                companyId = await database.Companies
+                    .Where(company => company.Id == existingCompanyId && company.OwnerId == ownerId)
+                    .Select(company => (Guid?)company.Id)
+                    .SingleOrDefaultAsync(cancellationToken);
+                if (companyId is null)
+                {
+                    return new ExtractionCompletion(
+                        ExtractionDraftResult.InvalidCompanySelection,
+                        null);
+                }
+            }
+            else
+            {
+                companyId = CreateCompany(
+                    ownerId,
+                    input.CompanyName,
+                    input.CompanyLocation);
+            }
             var preferences = await database.Users
                 .AsNoTracking()
                 .Where(user => user.Id == ownerId)
@@ -214,6 +239,7 @@ public sealed class ExtractionDraftService(
                 RoleTitle = input.RoleTitle.Trim(),
                 AppliedOn = input.AppliedOn,
                 SourceUrl = NullIfWhiteSpace(input.SourceUrl),
+                ApplicationPortalUrl = NullIfWhiteSpace(input.ApplicationPortalUrl),
                 SourceText = draft.SourceText,
                 DescriptionText = NullIfWhiteSpace(input.DescriptionText),
                 ExtractionMetadataJson = JsonSerializer.Serialize(metadata, JsonOptions),
@@ -284,6 +310,36 @@ public sealed class ExtractionDraftService(
         return ExtractionDraftResult.Success;
     }
 
+    public async Task<IReadOnlyList<CompanyReuseSuggestion>> FindCompanySuggestionsAsync(
+        string? extractedCompanyName,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(extractedCompanyName))
+        {
+            return [];
+        }
+
+        var ownerId = RequireOwnerId();
+        var companies = await database.Companies
+            .AsNoTracking()
+            .Where(company => company.OwnerId == ownerId)
+            .Select(company => new { company.Id, company.Name, company.Location })
+            .ToListAsync(cancellationToken);
+
+        return companies
+            .Select(company => new CompanyReuseSuggestion(
+                company.Id,
+                company.Name,
+                company.Location,
+                CompanyNameMatcher.Match(extractedCompanyName, company.Name)))
+            .Where(suggestion => suggestion.MatchKind != CompanyNameMatchKind.None)
+            .OrderByDescending(suggestion => suggestion.MatchKind)
+            .ThenBy(suggestion => suggestion.Name, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(suggestion => suggestion.Location, StringComparer.OrdinalIgnoreCase)
+            .Take(5)
+            .ToList();
+    }
+
     public static ReviewedExtractionMetadata? ReadMetadata(string? json)
     {
         if (string.IsNullOrWhiteSpace(json))
@@ -301,11 +357,10 @@ public sealed class ExtractionDraftService(
         }
     }
 
-    private async Task<Guid?> ResolveCompanyAsync(
+    private Guid? CreateCompany(
         string ownerId,
         string? companyName,
-        string? companyLocation,
-        CancellationToken cancellationToken)
+        string? companyLocation)
     {
         var name = NullIfWhiteSpace(companyName);
         if (name is null)
@@ -313,25 +368,11 @@ public sealed class ExtractionDraftService(
             return null;
         }
 
-        var location = NullIfWhiteSpace(companyLocation);
-        var normalizedName = name.ToLowerInvariant();
-        var normalizedLocation = location?.ToLowerInvariant() ?? string.Empty;
-        var existingId = await database.Companies
-            .Where(company => company.OwnerId == ownerId)
-            .Where(company => company.Name.ToLower() == normalizedName)
-            .Where(company => (company.Location ?? string.Empty).ToLower() == normalizedLocation)
-            .Select(company => (Guid?)company.Id)
-            .FirstOrDefaultAsync(cancellationToken);
-        if (existingId is not null)
-        {
-            return existingId;
-        }
-
         var company = new Company
         {
             OwnerId = ownerId,
             Name = name,
-            Location = location,
+            Location = NullIfWhiteSpace(companyLocation),
         };
         database.Companies.Add(company);
         return company.Id;
