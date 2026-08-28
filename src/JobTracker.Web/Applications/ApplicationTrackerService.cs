@@ -63,6 +63,7 @@ public enum ApplicationWriteResult
     NotFound,
     InvalidCompany,
     InvalidRetentionState,
+    LimitReached,
 }
 
 public sealed record BulkApplicationResult(int MatchedCount, int ChangedCount);
@@ -76,7 +77,8 @@ public sealed record BulkApplicationDeleteItem(
 public sealed class ApplicationTrackerService(
     ApplicationDbContext database,
     ICurrentUserContext currentUser,
-    TimeProvider timeProvider)
+    TimeProvider timeProvider,
+    ApplicationQuotaService quotas)
 {
     public async Task<IReadOnlyList<ApplicationListItem>> SearchAsync(
         ApplicationSearch search,
@@ -237,6 +239,12 @@ public sealed class ApplicationTrackerService(
                 transaction = await database.Database.BeginTransactionAsync(
                     IsolationLevel.Serializable,
                     cancellationToken);
+            }
+
+            var quota = await quotas.CheckCreationAsync(ownerId, cancellationToken);
+            if (!quota.CanCreate)
+            {
+                return (ApplicationWriteResult.LimitReached, null);
             }
 
             var application = new JobApplication

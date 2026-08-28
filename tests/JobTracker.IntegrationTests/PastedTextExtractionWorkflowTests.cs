@@ -55,6 +55,9 @@ public sealed partial class ApplicationWorkflowTests
         Assert.Contains("Platform Engineer", reviewContent, StringComparison.Ordinal);
         Assert.Contains("Synthetic Review Labs", reviewContent, StringComparison.Ordinal);
         Assert.Contains("High confidence", reviewContent, StringComparison.Ordinal);
+        Assert.Contains("data-copy-source", reviewContent, StringComparison.Ordinal);
+        Assert.Contains("Copy the complete original source", reviewContent, StringComparison.Ordinal);
+        Assert.Contains("/js/source-copy.js", reviewContent, StringComparison.Ordinal);
         var token = ExtractAntiforgeryToken(reviewContent);
         var draftId = DraftIdFromLocation(draftLocation);
 

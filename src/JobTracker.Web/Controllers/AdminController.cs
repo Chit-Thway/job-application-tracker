@@ -90,6 +90,20 @@ public sealed class AdminController(
         return RedirectToAction(nameof(Users));
     }
 
+    [HttpPost("/admin/users/{userId}/tier")]
+    public async Task<IActionResult> SetTier(
+        string userId,
+        AccountTier tier,
+        CancellationToken cancellationToken)
+    {
+        SetMessage(await admin.SetTierAsync(
+            ActorUserId(),
+            userId,
+            tier,
+            cancellationToken));
+        return RedirectToAction(nameof(Users));
+    }
+
     [HttpPost("/admin/users/{userId}/remove-admin")]
     public async Task<IActionResult> RemoveAdmin(
         string userId,

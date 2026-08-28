@@ -12,6 +12,8 @@ public sealed class ApplicationUser : IdentityUser
 
     public string TimeZoneId { get; set; } = "Australia/Perth";
 
+    public AccountTier AccountTier { get; set; } = AccountTier.Tier1;
+
     public int RetentionMonths { get; set; } = 3;
 
     public int DeletionGraceDays { get; set; } = 14;

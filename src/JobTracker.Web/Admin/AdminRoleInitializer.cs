@@ -45,6 +45,16 @@ public sealed class AdminRoleInitializer(
             throw new InvalidOperationException("The configured administrator could not be assigned.");
         }
 
-        logger.LogInformation("The configured bootstrap administrator role was assigned.");
+        user.AccountTier = AccountTier.Tier2;
+        var tierResult = await userManager.UpdateAsync(user);
+        if (!tierResult.Succeeded)
+        {
+            await userManager.RemoveFromRoleAsync(user, AdminRole.Name);
+            throw new InvalidOperationException(
+                "The configured administrator tier could not be initialized.");
+        }
+
+        logger.LogInformation(
+            "The configured bootstrap administrator role and Tier 2 access were assigned.");
     }
 }

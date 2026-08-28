@@ -59,6 +59,7 @@ public enum ExtractionDraftResult
     NotFound,
     Expired,
     InvalidCompanySelection,
+    ApplicationLimitReached,
 }
 
 public sealed record ExtractionCompletion(
@@ -69,7 +70,8 @@ public sealed class ExtractionDraftService(
     ApplicationDbContext database,
     ICurrentUserContext currentUser,
     TimeProvider timeProvider,
-    PastedJobTextExtractor extractor)
+    PastedJobTextExtractor extractor,
+    ApplicationQuotaService quotas)
 {
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
     private static readonly TimeSpan DraftLifetime = TimeSpan.FromHours(24);
@@ -192,6 +194,14 @@ public sealed class ExtractionDraftService(
                 }
 
                 return new ExtractionCompletion(ExtractionDraftResult.Expired, null);
+            }
+
+            var quota = await quotas.CheckCreationAsync(ownerId, cancellationToken);
+            if (!quota.CanCreate)
+            {
+                return new ExtractionCompletion(
+                    ExtractionDraftResult.ApplicationLimitReached,
+                    null);
             }
 
             Guid? companyId;

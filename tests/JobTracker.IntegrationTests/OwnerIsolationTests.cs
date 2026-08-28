@@ -87,7 +87,8 @@ public sealed class OwnerIsolationTests
         var applicationService = new ApplicationTrackerService(
             database,
             currentUser,
-            TimeProvider.System);
+            TimeProvider.System,
+            new ApplicationQuotaService(database));
         var companyService = new CompanyTrackerService(database, currentUser);
         var input = new ApplicationInput(
             companyB.Id,

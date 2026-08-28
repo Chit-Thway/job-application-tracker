@@ -85,6 +85,12 @@ public sealed class ApplicationsController(
             return View(await PopulateCompaniesAsync(model, cancellationToken));
         }
 
+        if (result.Result == ApplicationWriteResult.LimitReached)
+        {
+            ModelState.AddModelError(string.Empty, ApplicationQuotaService.LimitReachedMessage);
+            return View(await PopulateCompaniesAsync(model, cancellationToken));
+        }
+
         TempData["Success"] = "Application added.";
         return RedirectToAction(nameof(Details), new { id = result.Id });
     }

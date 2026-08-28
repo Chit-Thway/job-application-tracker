@@ -32,9 +32,24 @@
             <aside class="source-card" aria-labelledby="original-text-title">
                 <div class="source-card-heading">
                     <div><p class="mini-label">Original source</p><h2 id="original-text-title">@Model.OriginalSourceLabel</h2></div>
-                    <span>Read only</span>
+                    <div class="source-card-actions">
+                        <span>Read only</span>
+                        <button class="source-copy-button"
+                                type="button"
+                                data-copy-source
+                                data-copy-target="original-source-text"
+                                data-copy-status="original-source-copy-status"
+                                aria-label="Copy the complete original source"
+                                title="Copy original source">
+                            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                                <path d="M8 7.5V5.75A2.75 2.75 0 0 1 10.75 3h7.5A2.75 2.75 0 0 1 21 5.75v7.5A2.75 2.75 0 0 1 18.25 16H16.5" />
+                                <rect x="3" y="8" width="13" height="13" rx="2.75" />
+                            </svg>
+                        </button>
+                        <span id="original-source-copy-status" class="visually-hidden" role="status" aria-live="polite"></span>
+                    </div>
                 </div>
-                <pre>@Model.SourceText</pre>
+                <pre id="original-source-text">@Model.SourceText</pre>
             </aside>
 
             <form method="post" class="editor-card review-editor">
@@ -143,3 +158,4 @@
         <form id="cancel-import" method="post" asp-action="Cancel" asp-route-id="@Model.DraftId"></form>
     </div>
 </section>
+<script src="~/js/source-copy.js" asp-append-version="true"></script>

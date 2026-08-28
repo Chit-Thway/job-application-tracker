@@ -1,3 +1,4 @@
+using JobTracker.Web.Applications;
 using JobTracker.Web.Extraction;
 using JobTracker.Web.Models;
 using Microsoft.AspNetCore.Authorization;
@@ -244,6 +245,20 @@ public sealed class ApplicationImportsController(
             ModelState.AddModelError(
                 nameof(model.ExistingCompanyId),
                 "That company is no longer available. Choose another match or keep the extracted company.");
+            var existingDraft = await drafts.FindReviewAsync(id, cancellationToken);
+            if (existingDraft is null)
+            {
+                return NotFound();
+            }
+
+            CopyReviewContext(existingDraft, model);
+            await PopulateCompanySuggestionsAsync(model, cancellationToken);
+            return View(model);
+        }
+
+        if (completion.Result == ExtractionDraftResult.ApplicationLimitReached)
+        {
+            ModelState.AddModelError(string.Empty, ApplicationQuotaService.LimitReachedMessage);
             var existingDraft = await drafts.FindReviewAsync(id, cancellationToken);
             if (existingDraft is null)
             {

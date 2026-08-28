@@ -77,6 +77,43 @@ public sealed class CriticalJourneysTests(BrowserJourneyFixture fixture)
         await AssertAccessiblePageStructureAsync(page);
     }
 
+    [Fact]
+    public async Task ReviewOriginalSource_CopyButtonCopiesTheCompleteText()
+    {
+        await using var context = await fixture.CreateContextAsync();
+        var page = await context.NewPageAsync();
+        await page.AddInitScriptAsync(
+            """
+            Object.defineProperty(navigator, "clipboard", {
+                configurable: true,
+                value: {
+                    writeText: async text => { window.__copiedSource = text; }
+                }
+            });
+            """);
+        const string source =
+            "Job title: Clipboard Engineer\nCompany: Synthetic Copy Labs\n\nPreserve every line exactly.";
+
+        await SignInAsync(page);
+        await page.GotoAsync("/applications/import/text");
+        await page.GetByLabel("Job description or posting text").FillAsync(source);
+        await page.GetByRole(AriaRole.Button, new() { Name = "Extract a review draft" }).ClickAsync();
+        await page.WaitForLoadStateAsync(LoadState.NetworkIdle);
+
+        var copy = page.GetByRole(
+            AriaRole.Button,
+            new() { Name = "Copy the complete original source" });
+        await Expect(copy).ToBeVisibleAsync();
+        await Expect(copy).ToHaveAttributeAsync("data-copy-ready", "true");
+        await copy.ClickAsync();
+
+        await Expect(page.GetByRole(AriaRole.Status))
+            .ToContainTextAsync("Original source copied to the clipboard.");
+        var displayedSource = await page.Locator("#original-source-text").TextContentAsync();
+        Assert.Equal(displayedSource, await page.EvaluateAsync<string>("window.__copiedSource"));
+        Assert.Contains("Preserve every line exactly.", displayedSource, StringComparison.Ordinal);
+    }
+
 
     [Fact]
     public async Task MobileNavigation_StartsClosedAndCanBeOpenedAndDismissed()
@@ -134,5 +171,14 @@ public sealed class CriticalJourneysTests(BrowserJourneyFixture fixture)
             """);
 
         Assert.Empty(violations);
+    }
+
+    private static async Task SignInAsync(IPage page)
+    {
+        await page.GotoAsync("/account/login");
+        await page.GetByLabel("Email").FillAsync(BrowserJourneyFixture.Email);
+        await page.GetByLabel("Password", new() { Exact = true })
+            .FillAsync(BrowserJourneyFixture.Password);
+        await page.GetByRole(AriaRole.Button, new() { Name = "Sign in" }).ClickAsync();
     }
 }

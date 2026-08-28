@@ -8,6 +8,45 @@ namespace JobTracker.IntegrationTests;
 public sealed class ApplicationServiceTests
 {
     [Fact]
+    public async Task TierOneStopsAtTenApplications_WhileTierTwoIsUnlimited()
+    {
+        var options = new DbContextOptionsBuilder<ApplicationDbContext>()
+            .UseInMemoryDatabase($"application-quota-{Guid.NewGuid()}")
+            .Options;
+        await using var database = new ApplicationDbContext(options);
+        var user = User("quota-owner");
+        database.Users.Add(user);
+        database.JobApplications.AddRange(Enumerable.Range(1, 10).Select(index =>
+            new JobApplication
+            {
+                OwnerId = user.Id,
+                RoleTitle = $"Existing role {index}",
+                AppliedOn = new DateOnly(2026, 8, index),
+            }));
+        await database.SaveChangesAsync();
+        var service = new ApplicationTrackerService(
+            database,
+            new FixedCurrentUser(user.Id),
+            TimeProvider.System,
+            new ApplicationQuotaService(database));
+
+        var limited = await service.CreateAsync(Input("Blocked Tier 1 role"));
+
+        Assert.Equal(ApplicationWriteResult.LimitReached, limited.Result);
+        Assert.Null(limited.Id);
+        Assert.Equal(10, await database.JobApplications.CountAsync());
+        Assert.Empty(database.StatusHistory);
+
+        user.AccountTier = AccountTier.Tier2;
+        await database.SaveChangesAsync();
+        var unlimited = await service.CreateAsync(Input("Allowed Tier 2 role"));
+
+        Assert.Equal(ApplicationWriteResult.Success, unlimited.Result);
+        Assert.Equal(11, await database.JobApplications.CountAsync());
+        Assert.Single(database.StatusHistory);
+    }
+
+    [Fact]
     public async Task Create_WritesInitialHistory_AndSavedStateCanChange()
     {
         var options = new DbContextOptionsBuilder<ApplicationDbContext>()
@@ -27,7 +66,8 @@ public sealed class ApplicationServiceTests
         var service = new ApplicationTrackerService(
             database,
             new FixedCurrentUser(user.Id),
-            TimeProvider.System);
+            TimeProvider.System,
+            new ApplicationQuotaService(database));
 
         var created = await service.CreateAsync(new ApplicationInput(
             company.Id,
@@ -77,7 +117,11 @@ public sealed class ApplicationServiceTests
         await database.SaveChangesAsync();
         var currentUser = new FixedCurrentUser(user.Id);
         var companies = new CompanyTrackerService(database, currentUser);
-        var applications = new ApplicationTrackerService(database, currentUser, TimeProvider.System);
+        var applications = new ApplicationTrackerService(
+            database,
+            currentUser,
+            TimeProvider.System,
+            new ApplicationQuotaService(database));
 
         var first = await companies.CreateAsync(new CompanyInput(
             "Synthetic Northstar",
@@ -139,7 +183,8 @@ public sealed class ApplicationServiceTests
         var service = new ApplicationTrackerService(
             database,
             new FixedCurrentUser(user.Id),
-            TimeProvider.System);
+            TimeProvider.System,
+            new ApplicationQuotaService(database));
 
         var results = await service.SearchAsync(new ApplicationSearch(
             "atlas",
@@ -172,7 +217,8 @@ public sealed class ApplicationServiceTests
         var service = new ApplicationTrackerService(
             database,
             new FixedCurrentUser(user.Id),
-            new FixedTimeProvider(now));
+            new FixedTimeProvider(now),
+            new ApplicationQuotaService(database));
 
         var created = await service.CreateAsync(new ApplicationInput(
             null,
@@ -231,6 +277,16 @@ public sealed class ApplicationServiceTests
         DisplayName = "Synthetic Test User",
         TimeZoneId = "Australia/Perth",
     };
+
+    private static ApplicationInput Input(string roleTitle) => new(
+        null,
+        roleTitle,
+        new DateOnly(2026, 8, 28),
+        null,
+        null,
+        null,
+        null,
+        false);
 
     private sealed class FixedCurrentUser(string userId) : ICurrentUserContext
     {

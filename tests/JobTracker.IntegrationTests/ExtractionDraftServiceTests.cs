@@ -9,6 +9,39 @@ namespace JobTracker.IntegrationTests;
 public sealed class ExtractionDraftServiceTests
 {
     [Fact]
+    public async Task TierOneLimit_PreservesReviewDraftWithoutCreatingCompanyOrApplication()
+    {
+        var options = new DbContextOptionsBuilder<ApplicationDbContext>()
+            .UseInMemoryDatabase($"limited-extraction-{Guid.NewGuid()}")
+            .Options;
+        await using var database = new ApplicationDbContext(options);
+        var user = User("limited-extraction-owner");
+        database.Users.Add(user);
+        database.JobApplications.AddRange(Enumerable.Range(1, 10).Select(index =>
+            new JobApplication
+            {
+                OwnerId = user.Id,
+                RoleTitle = $"Existing role {index}",
+                AppliedOn = new DateOnly(2026, 8, index),
+            }));
+        await database.SaveChangesAsync();
+        var time = new MutableTimeProvider(
+            new DateTimeOffset(2026, 8, 28, 3, 0, 0, TimeSpan.Zero));
+        var service = Service(database, user.Id, time);
+        var draftId = await service.CreatePastedTextDraftAsync(
+            "Job Title: Limited Engineer\nCompany: Synthetic Limit Labs",
+            new DateOnly(2026, 8, 28));
+
+        var completion = await service.CompleteAsync(draftId, ValidInput());
+
+        Assert.Equal(ExtractionDraftResult.ApplicationLimitReached, completion.Result);
+        Assert.Null(completion.ApplicationId);
+        Assert.Equal(10, await database.JobApplications.CountAsync());
+        Assert.Empty(database.Companies);
+        Assert.True(await database.ExtractionDrafts.AnyAsync(draft => draft.Id == draftId));
+    }
+
+    [Fact]
     public async Task ExpiredDraft_CannotCreateAnApplication()
     {
         var options = new DbContextOptionsBuilder<ApplicationDbContext>()
@@ -195,7 +228,12 @@ public sealed class ExtractionDraftServiceTests
         ApplicationDbContext database,
         string userId,
         TimeProvider timeProvider) =>
-        new(database, new FixedCurrentUser(userId), timeProvider, new PastedJobTextExtractor());
+        new(
+            database,
+            new FixedCurrentUser(userId),
+            timeProvider,
+            new PastedJobTextExtractor(),
+            new ApplicationQuotaService(database));
 
     private static ExtractionReviewInput ValidInput() => new(
         "Reviewed Test Engineer",

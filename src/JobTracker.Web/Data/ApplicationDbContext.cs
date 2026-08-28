@@ -27,8 +27,15 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
         {
             entity.Property(user => user.DisplayName).HasMaxLength(120).IsRequired();
             entity.Property(user => user.TimeZoneId).HasMaxLength(100).IsRequired();
+            entity.Property(user => user.AccountTier)
+                .HasConversion<int>()
+                .HasDefaultValue(AccountTier.Tier1)
+                .HasSentinel((AccountTier)0);
             entity.ToTable(table =>
             {
+                table.HasCheckConstraint(
+                    "CK_AspNetUsers_AccountTier",
+                    "\"AccountTier\" IN (1, 2)");
                 table.HasCheckConstraint(
                     "CK_AspNetUsers_RetentionMonths",
                     "\"RetentionMonths\" IN (1, 2, 3)");

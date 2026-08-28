@@ -79,6 +79,49 @@ public sealed partial class AdminManagementTests
     }
 
     [Fact]
+    public async Task Administrator_CanReviewAccountMetadataAndAuditTierChanges()
+    {
+        var administrator = await CreateUserAsync(admin: true);
+        var user = await CreateUserAsync(
+            admin: false,
+            phoneNumber: "+61400000001");
+        await using var scope = factory.Services.CreateAsyncScope();
+        var service = scope.ServiceProvider.GetRequiredService<AdminManagementService>();
+        var database = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+        database.JobApplications.AddRange(
+            new JobApplication
+            {
+                OwnerId = user.Id,
+                RoleTitle = "First private role",
+                AppliedOn = new DateOnly(2026, 8, 27),
+            },
+            new JobApplication
+            {
+                OwnerId = user.Id,
+                RoleTitle = "Second private role",
+                AppliedOn = new DateOnly(2026, 8, 28),
+            });
+        await database.SaveChangesAsync();
+
+        var accounts = await service.GetUsersAsync("400000001");
+        var account = Assert.Single(accounts.Users);
+        var upgraded = await service.SetTierAsync(
+            administrator.Id,
+            user.Id,
+            AccountTier.Tier2);
+
+        Assert.Equal("+61400000001", account.PhoneNumber);
+        Assert.Equal(2, account.ApplicationCount);
+        Assert.Equal(AccountTier.Tier1, account.AccountTier);
+        Assert.True(upgraded.Succeeded);
+        Assert.Equal(AccountTier.Tier2, (await database.Users.FindAsync(user.Id))!.AccountTier);
+        Assert.Contains(await database.AdminAuditEntries.ToListAsync(), entry =>
+            entry.ActorUserId == administrator.Id
+            && entry.TargetUserId == user.Id
+            && entry.Action == "Account tier changed");
+    }
+
+    [Fact]
     public async Task EmailedInvitation_IsBoundToItsIntendedRecipient()
     {
         var administrator = await CreateUserAsync(admin: true);
@@ -142,7 +185,8 @@ public sealed partial class AdminManagementTests
 
     private async Task<ApplicationUser> CreateUserAsync(
         bool admin,
-        bool confirmed = true)
+        bool confirmed = true,
+        string? phoneNumber = null)
     {
         var email = $"admin-test-{Guid.NewGuid():N}@example.test";
         await using var scope = factory.Services.CreateAsyncScope();
@@ -153,6 +197,7 @@ public sealed partial class AdminManagementTests
             UserName = email,
             Email = email,
             EmailConfirmed = confirmed,
+            PhoneNumber = phoneNumber,
             DisplayName = admin ? "Administrator Test" : "User Test",
             TimeZoneId = "Australia/Perth",
             CreatedAt = DateTimeOffset.UtcNow,

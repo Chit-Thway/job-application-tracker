@@ -26,7 +26,8 @@ public sealed class BulkApplicationServiceTests
         var service = new ApplicationTrackerService(
             database,
             new FixedCurrentUser(owner.Id),
-            new FixedTimeProvider(now));
+            new FixedTimeProvider(now),
+            new ApplicationQuotaService(database));
 
         var stageResult = await service.BulkChangeStageAsync(
             [first.Id, second.Id, privateOther.Id],

@@ -23,6 +23,7 @@ public sealed class BrowserTestApplicationFactory : WebApplicationFactory<Progra
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Testing");
+        builder.UseStaticWebAssets();
         builder.ConfigureServices(services =>
         {
             services.RemoveAll<IDataProtectionProvider>();

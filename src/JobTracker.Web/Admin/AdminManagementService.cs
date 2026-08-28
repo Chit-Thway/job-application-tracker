@@ -1,3 +1,4 @@
+using JobTracker.Web.Applications;
 using JobTracker.Web.Data;
 using JobTracker.Web.Identity;
 using Microsoft.AspNetCore.Identity;
@@ -39,6 +40,7 @@ public sealed class AdminManagementService(
             users.Count,
             users.Count(user => user.EmailConfirmed),
             admins.Count,
+            users.Count(user => user.AccountTier == AccountTier.Tier2),
             availableInvitations,
             activity.Select(item => new AdminAuditRow(
                 item.OccurredAt,
@@ -60,24 +62,88 @@ public sealed class AdminManagementService(
         {
             users = users.Where(user =>
                 (user.Email?.Contains(normalizedQuery, StringComparison.OrdinalIgnoreCase) ?? false)
+                || (user.PhoneNumber?.Contains(normalizedQuery, StringComparison.OrdinalIgnoreCase) ?? false)
                 || user.DisplayName.Contains(normalizedQuery, StringComparison.OrdinalIgnoreCase))
                 .ToList();
         }
         var admins = await userManager.GetUsersInRoleAsync(AdminRole.Name);
         var adminIds = admins.Select(user => user.Id).ToHashSet(StringComparer.Ordinal);
         var now = timeProvider.GetUtcNow();
+        var visibleUserIds = users.Select(user => user.Id).ToArray();
+        var applicationCounts = await database.JobApplications
+            .AsNoTracking()
+            .Where(application => visibleUserIds.Contains(application.OwnerId))
+            .GroupBy(application => application.OwnerId)
+            .Select(group => new { OwnerId = group.Key, Count = group.Count() })
+            .ToDictionaryAsync(item => item.OwnerId, item => item.Count, cancellationToken);
 
         return new AdminUsersViewModel(
             normalizedQuery,
             users.Select(user => new AdminUserRow(
                 user.Id,
                 user.Email ?? string.Empty,
+                user.PhoneNumber,
                 user.DisplayName,
                 user.CreatedAt,
                 user.LastLoginAt,
                 user.EmailConfirmed,
+                user.AccountTier,
+                applicationCounts.GetValueOrDefault(user.Id),
                 adminIds.Contains(user.Id),
                 user.LockoutEnd > now)).ToList());
+    }
+
+    public async Task<AdminOperationResult> SetTierAsync(
+        string actorUserId,
+        string targetUserId,
+        AccountTier tier,
+        CancellationToken cancellationToken = default)
+    {
+        if (!Enum.IsDefined(tier))
+        {
+            return new(false, "Choose Tier 1 or Tier 2.");
+        }
+
+        var target = await userManager.FindByIdAsync(targetUserId);
+        if (target is null)
+        {
+            return new(false, "The selected account no longer exists.");
+        }
+
+        if (target.AccountTier == tier)
+        {
+            return new(true, $"That account is already {DisplayTier(tier)}.");
+        }
+
+        var previousTier = target.AccountTier;
+        target.AccountTier = tier;
+        var result = await userManager.UpdateAsync(target);
+        if (!result.Succeeded)
+        {
+            return new(false, "The account tier could not be changed.");
+        }
+
+        await RecordAsync(
+            actorUserId,
+            "Account tier changed",
+            $"Account tier changed from {DisplayTier(previousTier)} to {DisplayTier(tier)}.",
+            target.Id,
+            cancellationToken: cancellationToken);
+
+        if (tier == AccountTier.Tier1)
+        {
+            var applicationCount = await database.JobApplications.CountAsync(
+                application => application.OwnerId == target.Id,
+                cancellationToken);
+            if (applicationCount >= ApplicationQuotaService.TierOneApplicationLimit)
+            {
+                return new(
+                    true,
+                    "Tier 1 assigned. Existing applications were retained; new applications are blocked until the account holds fewer than 10.");
+            }
+        }
+
+        return new(true, $"{DisplayTier(tier)} assigned.");
     }
 
     public async Task<AdminInvitationsViewModel> GetInvitationsAsync(
@@ -296,4 +362,11 @@ public sealed class AdminManagementService(
         });
         await database.SaveChangesAsync(cancellationToken);
     }
+
+    private static string DisplayTier(AccountTier tier) => tier switch
+    {
+        AccountTier.Tier1 => "Tier 1",
+        AccountTier.Tier2 => "Tier 2",
+        _ => "Unsupported tier",
+    };
 }
