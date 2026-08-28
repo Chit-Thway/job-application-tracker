@@ -14,6 +14,24 @@ public sealed class ApplicationUser : IdentityUser
 
     public AccountTier AccountTier { get; set; } = AccountTier.Tier1;
 
+    public Guid? EmailVerificationChallengeId { get; set; }
+
+    public string? EmailVerificationCodeHash { get; set; }
+
+    public DateTimeOffset? EmailVerificationCodeExpiresAt { get; set; }
+
+    public DateTimeOffset? EmailVerificationCodeLastSentAt { get; set; }
+
+    public int EmailVerificationFailedAttempts { get; set; }
+
+    public DateTimeOffset? TermsAcceptedAt { get; set; }
+
+    public string? TermsVersion { get; set; }
+
+    public DateTimeOffset? PrivacyAcknowledgedAt { get; set; }
+
+    public string? PrivacyVersion { get; set; }
+
     public int RetentionMonths { get; set; } = 3;
 
     public int DeletionGraceDays { get; set; } = 14;

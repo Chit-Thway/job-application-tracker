@@ -1,0 +1,56 @@
+@model EmailVerificationViewModel
+@{
+    ViewData["Title"] = "Verify email";
+}
+
+<section class="account-page">
+    <div class="account-card verification-card">
+        <p class="eyebrow">Email verification</p>
+        <h1>Enter your six-digit code.</h1>
+        <p class="account-lead">We sent a verification code to <strong>@Model.Email</strong>.</p>
+
+        <form method="post" asp-action="VerifyEmail" class="account-form">
+            <input asp-for="ChallengeId" type="hidden" />
+            <div asp-validation-summary="ModelOnly" class="validation-summary" role="alert"></div>
+            <div class="field verification-code-field">
+                <label asp-for="Code"></label>
+                <input asp-for="Code"
+                       inputmode="numeric"
+                       autocomplete="one-time-code"
+                       pattern="[0-9]{6}"
+                       maxlength="6"
+                       placeholder="000000"
+                       autofocus />
+                <span asp-validation-for="Code" class="field-error"></span>
+                @if (Model.CodeExpiresAt is not null)
+                {
+                    <small class="field-help">The current code expires 10 minutes after it was sent.</small>
+                }
+                else
+                {
+                    <small class="field-help">The previous code is unavailable. Request a new one below.</small>
+                }
+            </div>
+
+            <button class="button button-primary" type="submit">Verify email</button>
+        </form>
+
+        <form method="post"
+              asp-action="ResendVerificationCode"
+              asp-route-challengeId="@Model.ChallengeId"
+              class="verification-resend-panel"
+              data-verification-resend
+              data-resend-seconds="@Model.ResendAvailableInSeconds">
+            <p>Didn't receive the message? Check your spam folder or request a new code.</p>
+            <button class="button button-secondary" type="submit" data-resend-button disabled="@(Model.ResendAvailableInSeconds > 0)">
+                <span data-resend-label>Resend code</span>
+            </button>
+        </form>
+
+        <div class="account-links">
+            <a asp-action="Login">Return to sign in</a>
+            <a asp-action="Register">Use a different email</a>
+        </div>
+    </div>
+</section>
+<script src="~/js/email-verification.js" asp-append-version="true"></script>

@@ -6,9 +6,9 @@
 
 <section class="account-page">
     <div class="account-card">
-        <p class="eyebrow">Invitation only</p>
+        <p class="eyebrow">Open registration</p>
         <h1>Create your account.</h1>
-        <p class="account-lead">Use the private one-time code you received. You will verify your email before signing in.</p>
+        <p class="account-lead">Create a private Tier 1 workspace, then verify your email with a six-digit code.</p>
 
         <form method="post" asp-action="Register" class="account-form">
             <div asp-validation-summary="ModelOnly" class="validation-summary" role="alert"></div>
@@ -22,8 +22,15 @@
             <div class="field">
                 <label asp-for="Email"></label>
                 <input asp-for="Email" autocomplete="email" />
-                <small class="field-help">Use an email address you can access. You must verify it before signing in.</small>
+                <small class="field-help">Your verification code and account-security messages are sent here.</small>
                 <span asp-validation-for="Email" class="field-error"></span>
+            </div>
+
+            <div class="field">
+                <label asp-for="PhoneNumber"></label>
+                <input asp-for="PhoneNumber" type="tel" inputmode="tel" autocomplete="tel" placeholder="+61 4xx xxx xxx" />
+                <small class="field-help">Used for account administration and support only. Verification codes are sent by email.</small>
+                <span asp-validation-for="PhoneNumber" class="field-error"></span>
             </div>
 
             <div class="field">
@@ -38,11 +45,14 @@
                 <span asp-validation-for="ConfirmPassword" class="field-error"></span>
             </div>
 
-            <div class="field">
-                <label asp-for="InvitationCode"></label>
-                <input asp-for="InvitationCode" autocomplete="off" spellcheck="false" />
-                <span asp-validation-for="InvitationCode" class="field-error"></span>
-            </div>
+            <label class="check-field policy-agreement">
+                <input asp-for="AcceptPolicies" />
+                <span>
+                    I agree to the <a asp-controller="Home" asp-action="Terms" target="_blank" rel="noopener">Terms of Service</a>
+                    and acknowledge the <a asp-controller="Home" asp-action="Privacy" target="_blank" rel="noopener">Privacy Policy</a>.
+                </span>
+            </label>
+            <span asp-validation-for="AcceptPolicies" class="field-error"></span>
 
             <button class="button button-primary" type="submit">Create account</button>
         </form>
@@ -51,6 +61,6 @@
             <a asp-action="Login">Already have an account?</a>
         </div>
 
-        <p class="account-note">Each invitation expires, can be revoked, and works only once.</p>
+        <p class="account-note">Tier 1 includes up to 10 stored applications. An administrator can upgrade an account to unlimited Tier 2.</p>
     </div>
 </section>

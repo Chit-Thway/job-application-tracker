@@ -6,6 +6,7 @@ public sealed record DevelopmentMailMessage(
     string Recipient,
     string Subject,
     string ActionUrl,
+    string? OneTimeCode,
     DateTimeOffset SentAt);
 
 public sealed class DevelopmentMailStore

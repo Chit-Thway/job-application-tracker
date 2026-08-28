@@ -1,11 +1,10 @@
-using System.Text;
 using JobTracker.Web.Admin;
 using JobTracker.Web.Data;
+using JobTracker.Web.Identity;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
-using Microsoft.AspNetCore.WebUtilities;
 
 namespace JobTracker.Web.Controllers;
 
@@ -30,55 +29,6 @@ public sealed class AdminController(
     {
         ViewData["Section"] = "admin";
         return View(await admin.GetUsersAsync(query, cancellationToken));
-    }
-
-    [HttpGet("/admin/invitations")]
-    public async Task<IActionResult> Invitations(CancellationToken cancellationToken)
-    {
-        ViewData["Section"] = "admin";
-        return View(await admin.GetInvitationsAsync(cancellationToken: cancellationToken));
-    }
-
-    [HttpPost("/admin/invitations")]
-    [EnableRateLimiting("account")]
-    public async Task<IActionResult> CreateInvitation(
-        [Bind(Prefix = "Input")] CreateAdminInvitationInput input,
-        CancellationToken cancellationToken)
-    {
-        if (!ModelState.IsValid)
-        {
-            ViewData["Section"] = "admin";
-            return View(
-                "Invitations",
-                await admin.GetInvitationsAsync(input, cancellationToken));
-        }
-
-        try
-        {
-            SetMessage(await admin.CreateInvitationAsync(
-                ActorUserId(),
-                input,
-                cancellationToken));
-        }
-        catch (Exception exception)
-        {
-            logger.LogError(exception, "Administrator invitation delivery failed.");
-            TempData["Error"] = "The invitation could not be delivered. Its code was revoked; try again later.";
-        }
-
-        return RedirectToAction(nameof(Invitations));
-    }
-
-    [HttpPost("/admin/invitations/{invitationId:guid}/revoke")]
-    public async Task<IActionResult> RevokeInvitation(
-        Guid invitationId,
-        CancellationToken cancellationToken)
-    {
-        SetMessage(await admin.RevokeInvitationAsync(
-            ActorUserId(),
-            invitationId,
-            cancellationToken));
-        return RedirectToAction(nameof(Invitations));
     }
 
     [HttpPost("/admin/users/{userId}/promote")]
@@ -150,16 +100,12 @@ public sealed class AdminController(
             SetMessage(await admin.ResendVerificationAsync(
                 ActorUserId(),
                 userId,
-                async user =>
-                {
-                    var token = await userManager.GenerateEmailConfirmationTokenAsync(user);
-                    return Url.Action(
-                        "ConfirmEmail",
+                challengeId => Url.Action(
+                        "VerifyEmail",
                         "Account",
-                        new { userId = user.Id, code = EncodeToken(token) },
+                        new { challengeId },
                         Request.Scheme) ?? throw new InvalidOperationException(
-                            "Could not create verification URL.");
-                },
+                            "Could not create verification URL."),
                 cancellationToken));
         }
         catch (Exception exception)
@@ -177,6 +123,4 @@ public sealed class AdminController(
     private void SetMessage(AdminOperationResult result) =>
         TempData[result.Succeeded ? "Success" : "Error"] = result.Message;
 
-    private static string EncodeToken(string token) =>
-        WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(token));
 }

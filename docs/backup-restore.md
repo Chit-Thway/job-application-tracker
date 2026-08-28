@@ -33,7 +33,7 @@ Restore only into a newly created, disposable non-production project. Never poin
 4. Apply or reconcile the repository EF migration history only according to the reviewed migration state. Do not use `migration repair` without first proving why the recorded and actual schemas differ.
 5. Point a local tracker process at the disposable restored target and verify:
    - `/health/ready` is Healthy;
-   - expected user, company, application, history, contact, task, appointment, invitation, and retention-run counts match the source rehearsal snapshot;
+   - expected user, company, application, history, contact, task, appointment, administrative-audit, and retention-run counts match the source rehearsal snapshot;
    - a verified test user can sign in and open owned records;
    - another test owner cannot access them;
    - Saved and deletion-scheduled states are unchanged;

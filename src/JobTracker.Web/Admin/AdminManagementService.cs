@@ -9,8 +9,7 @@ namespace JobTracker.Web.Admin;
 public sealed class AdminManagementService(
     ApplicationDbContext database,
     UserManager<ApplicationUser> userManager,
-    InvitationService invitationService,
-    IAccountEmailSender emailSender,
+    EmailVerificationService emailVerification,
     TimeProvider timeProvider)
 {
     public async Task<AdminDashboardViewModel> GetDashboardAsync(
@@ -19,9 +18,6 @@ public sealed class AdminManagementService(
         var now = timeProvider.GetUtcNow();
         var users = await database.Users.AsNoTracking().ToListAsync(cancellationToken);
         var admins = await userManager.GetUsersInRoleAsync(AdminRole.Name);
-        var availableInvitations = await database.Invitations.CountAsync(
-            item => item.UsedAt == null && item.RevokedAt == null && item.ExpiresAt > now,
-            cancellationToken);
         var activity = await database.AdminAuditEntries
             .AsNoTracking()
             .OrderByDescending(item => item.OccurredAt)
@@ -41,7 +37,6 @@ public sealed class AdminManagementService(
             users.Count(user => user.EmailConfirmed),
             admins.Count,
             users.Count(user => user.AccountTier == AccountTier.Tier2),
-            availableInvitations,
             activity.Select(item => new AdminAuditRow(
                 item.OccurredAt,
                 actors.GetValueOrDefault(item.ActorUserId, "Administrator"),
@@ -144,77 +139,6 @@ public sealed class AdminManagementService(
         }
 
         return new(true, $"{DisplayTier(tier)} assigned.");
-    }
-
-    public async Task<AdminInvitationsViewModel> GetInvitationsAsync(
-        CreateAdminInvitationInput? input = null,
-        CancellationToken cancellationToken = default)
-    {
-        var summaries = await invitationService.ListAsync(cancellationToken);
-        return new AdminInvitationsViewModel(
-            input ?? new CreateAdminInvitationInput(),
-            summaries.Select(item => new AdminInvitationRow(
-                item.Id,
-                item.RecipientEmail ?? "Private code",
-                item.CreatedAt,
-                item.ExpiresAt,
-                item.UsedAt,
-                item.Status)).ToList());
-    }
-
-    public async Task<AdminOperationResult> CreateInvitationAsync(
-        string actorUserId,
-        CreateAdminInvitationInput input,
-        CancellationToken cancellationToken = default)
-    {
-        var recipient = input.Email.Trim();
-        var existingUser = await userManager.FindByEmailAsync(recipient);
-        if (existingUser is not null)
-        {
-            return new(false, "That email address already has an account.");
-        }
-
-        var invitation = await invitationService.CreateForRecipientAsync(
-            input.ValidForDays,
-            recipient,
-            actorUserId,
-            cancellationToken);
-        try
-        {
-            await emailSender.SendInvitationAsync(recipient, invitation.Code, invitation.ExpiresAt);
-        }
-        catch
-        {
-            await invitationService.RevokeAsync(invitation.Id, cancellationToken);
-            throw;
-        }
-
-        await RecordAsync(
-            actorUserId,
-            "Invitation sent",
-            $"Invitation sent to {recipient}.",
-            invitationId: invitation.Id,
-            cancellationToken: cancellationToken);
-        return new(true, "Invitation sent.");
-    }
-
-    public async Task<AdminOperationResult> RevokeInvitationAsync(
-        string actorUserId,
-        Guid invitationId,
-        CancellationToken cancellationToken = default)
-    {
-        if (!await invitationService.RevokeAsync(invitationId, cancellationToken))
-        {
-            return new(false, "That invitation is no longer available to revoke.");
-        }
-
-        await RecordAsync(
-            actorUserId,
-            "Invitation revoked",
-            "An unused invitation was revoked.",
-            invitationId: invitationId,
-            cancellationToken: cancellationToken);
-        return new(true, "Invitation revoked.");
     }
 
     public async Task<AdminOperationResult> PromoteAsync(
@@ -323,7 +247,7 @@ public sealed class AdminManagementService(
     public async Task<AdminOperationResult> ResendVerificationAsync(
         string actorUserId,
         string targetUserId,
-        Func<ApplicationUser, Task<string>> verificationUrlFactory,
+        Func<Guid, string> verificationUrlFactory,
         CancellationToken cancellationToken = default)
     {
         var target = await userManager.FindByIdAsync(targetUserId);
@@ -337,10 +261,17 @@ public sealed class AdminManagementService(
             return new(false, "That email address is already verified.");
         }
 
-        var url = await verificationUrlFactory(target);
-        await emailSender.SendVerificationAsync(target, url);
-        await RecordAsync(actorUserId, "Verification resent", "A new verification message was sent.", target.Id, cancellationToken: cancellationToken);
-        return new(true, "Verification message sent.");
+        var issue = await emailVerification.IssueAsync(
+            target,
+            verificationUrlFactory,
+            cancellationToken);
+        if (!issue.Succeeded)
+        {
+            return new(false, issue.Message);
+        }
+
+        await RecordAsync(actorUserId, "Verification resent", "A new email verification code was sent.", target.Id, cancellationToken: cancellationToken);
+        return new(true, "Verification code sent.");
     }
 
     private async Task RecordAsync(
@@ -348,7 +279,6 @@ public sealed class AdminManagementService(
         string action,
         string details,
         string? targetUserId = null,
-        Guid? invitationId = null,
         CancellationToken cancellationToken = default)
     {
         database.AdminAuditEntries.Add(new AdminAuditEntry
@@ -357,7 +287,6 @@ public sealed class AdminManagementService(
             Action = action,
             Details = details,
             TargetUserId = targetUserId,
-            InvitationId = invitationId,
             OccurredAt = timeProvider.GetUtcNow(),
         });
         await database.SaveChangesAsync(cancellationToken);

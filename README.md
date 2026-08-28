@@ -58,9 +58,12 @@ Then open [https://localhost:7239](https://localhost:7239).
 | Route | Current behavior |
 |---|---|
 | `/` | Public product landing page |
-| `/privacy` | Plain-language privacy and retention summary |
+| `/privacy` | Public business-style Privacy Policy |
+| `/terms` | Public Terms of Service |
+| `/cookies` | Public Cookie Policy and browser-storage controls |
 | `/account/login` | Private account sign-in |
-| `/account/register` | Account creation with a private one-time invitation |
+| `/account/register` | Open Tier 1 account creation with phone and policy acceptance |
+| `/account/verify-email` | Six-digit email verification with a 30-second resend cooldown |
 | `/account/forgot-password` | Password-reset request |
 | `/account/resend-verification` | Email-verification resend |
 | `/dev/mail` | Local-only verification/reset message sink |
@@ -84,7 +87,7 @@ Then open [https://localhost:7239](https://localhost:7239).
 | `/health/ready` | Database-readiness probe with minimal JSON status |
 | `/health` | Compatibility alias for database readiness |
 
-The registration page is public, but account creation requires an unexpired, unused, unrevoked invitation code.
+Registration is open. New users begin on Tier 1 with a maximum of ten stored applications and verify their email with a six-digit code before signing in. Administrators can upgrade an account to unlimited Tier 2.
 
 ## Public synthetic demo
 
@@ -145,7 +148,7 @@ dotnet tool restore
 dotnet ef database update --project src/JobTracker.Web
 ```
 
-The migrations create ASP.NET Core Identity tables, owner-aware private data tables, and one-time invitations. Composite foreign keys include the owner identifier to reject cross-owner relationships at the database boundary.
+The migrations create ASP.NET Core Identity tables, hashed email-verification state, policy-acceptance records, account tiers, and owner-aware private data tables. Composite foreign keys include the owner identifier to reject cross-owner relationships at the database boundary.
 
 ## Automatic retention cleanup
 
@@ -169,7 +172,7 @@ dotnet user-secrets set "BootstrapAccount:Password" $trackerPlainPassword --proj
 Remove-Variable trackerAccountPassword, trackerPlainPassword -ErrorAction SilentlyContinue
 ```
 
-Start the application, open `/dev/mail` on localhost, and use the verification link. The local message sink is available only in Development and keeps messages in memory.
+Start the application, open `/dev/mail` on localhost, and use the displayed six-digit verification code. The local message sink is available only in Development and keeps messages in memory.
 
 After the account is verified, remove the temporary bootstrap settings:
 
@@ -179,32 +182,11 @@ dotnet user-secrets remove "BootstrapAccount:DisplayName" --project src/JobTrack
 dotnet user-secrets remove "BootstrapAccount:Password" --project src/JobTracker.Web
 ```
 
-## One-time invitations
+## Open registration and email verification
 
-After the initial account exists, create additional accounts through private one-time invitations. Stop the running web application, then create a code from the repository root:
+Anyone can create a Tier 1 account at `/account/register` by supplying a name, email address, phone number, strong password, and policy agreement. Verification codes contain six digits, expire after ten minutes, allow five failed attempts, and can be resent only after a server-enforced 30-second delay. Only a password hash and verification-code hash are stored; readable passwords and codes are never stored or logged.
 
-```powershell
-dotnet run --project src/JobTracker.Web -- invitations create --days 7
-dotnet run --project src/JobTracker.Web -- invitations create --days 7 --email recipient@example.com
-```
-
-The lifetime can be from 1 to 30 days. With `--email`, the configured provider sends the branded registration message without printing the readable code. Without it, the code is printed once and must be delivered privately. Do not paste a readable code into GitHub, logs, or chat. The database stores only its SHA-256 fingerprint, so the readable code cannot be recovered later.
-
-List invitation IDs and states without revealing their codes:
-
-```powershell
-dotnet run --project src/JobTracker.Web -- invitations list
-```
-
-Revoke an available invitation by ID:
-
-```powershell
-dotnet run --project src/JobTracker.Web -- invitations revoke 00000000-0000-0000-0000-000000000000
-```
-
-Start the web application normally, open `/account/register`, and enter the code. Account creation and code consumption occur in one protected database transaction. The code cannot be reused, and the new account remains blocked from private pages until its email is verified through the local `/dev/mail` message.
-
-Production invitation commands are disabled by default. An operator must temporarily set `InvitationCommands:Enabled=true` and append `--confirm-production` to the command; either control by itself is insufficient. Keep this setting off during normal web operation and follow `docs/operations.md` for the production procedure.
+Account administrators can review identity metadata and application counts, resend a verification code, lock access, and change Tier 1/Tier 2 status without opening private tracker content. Invitation commands, invitation records, and invitation administration routes no longer exist.
 
 ## Quality checks
 

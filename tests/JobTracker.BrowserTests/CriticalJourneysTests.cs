@@ -1,4 +1,7 @@
 using Microsoft.Playwright;
+using JobTracker.Web.Identity;
+using Microsoft.Extensions.DependencyInjection;
+using System.Text.RegularExpressions;
 using static Microsoft.Playwright.Assertions;
 
 namespace JobTracker.BrowserTests;
@@ -59,6 +62,9 @@ public sealed class CriticalJourneysTests(BrowserJourneyFixture fixture)
         await page.GotoAsync("/demo");
         await Expect(page.GetByText("Synthetic, read-only demonstration."))
             .ToBeVisibleAsync();
+        await Expect(page.GetByText("Essential cookies only", new() { Exact = true })).ToBeVisibleAsync();
+        await page.GetByRole(AriaRole.Button, new() { Name = "Use essential cookies" }).ClickAsync();
+        await Expect(page.GetByText("Essential cookies only", new() { Exact = true })).ToBeHiddenAsync();
         await AssertAccessiblePageStructureAsync(page);
         Assert.False(await page.EvaluateAsync<bool>("document.documentElement.scrollWidth > innerWidth"));
 
@@ -75,6 +81,44 @@ public sealed class CriticalJourneysTests(BrowserJourneyFixture fixture)
         await Expect(page.GetByText("Read-only synthetic record", new() { Exact = true })).ToBeVisibleAsync();
         Assert.Equal(0, await page.Locator("button[type='submit']").CountAsync());
         await AssertAccessiblePageStructureAsync(page);
+    }
+
+    [Fact]
+    public async Task OpenRegistration_EmailCodeJourneyCreatesVerifiedTierOneAccount()
+    {
+        await using var context = await fixture.CreateContextAsync();
+        var page = await context.NewPageAsync();
+        var email = $"browser-signup-{Guid.NewGuid():N}@example.test";
+
+        await page.GotoAsync("/account/register");
+        await page.GetByLabel("Your name").FillAsync("Browser Signup User");
+        await page.GetByLabel("Email").FillAsync(email);
+        await page.GetByLabel("Phone number").FillAsync("+61 400 987 654");
+        await page.GetByLabel("Password", new() { Exact = true }).FillAsync(BrowserJourneyFixture.Password);
+        await page.GetByLabel("Confirm password").FillAsync(BrowserJourneyFixture.Password);
+        await page.GetByLabel("I agree to the Terms of Service and acknowledge the Privacy Policy").CheckAsync();
+        await page.GetByRole(AriaRole.Button, new() { Name = "Create account" }).ClickAsync();
+
+        await Expect(page.GetByRole(AriaRole.Heading, new() { Name = "Enter your six-digit code." }))
+            .ToBeVisibleAsync();
+        await Expect(page.GetByText(email, new() { Exact = true })).ToBeVisibleAsync();
+        var resend = page.GetByRole(AriaRole.Button, new() { NameRegex = new Regex("Resend code in [0-9]+s") });
+        await Expect(resend).ToBeDisabledAsync();
+
+        var message = fixture.Factory.Services
+            .GetRequiredService<DevelopmentMailStore>()
+            .Messages
+            .First(item => string.Equals(item.Recipient, email, StringComparison.OrdinalIgnoreCase));
+        await page.GetByLabel("Verification code").FillAsync(message.OneTimeCode!);
+        await page.GetByRole(AriaRole.Button, new() { Name = "Verify email" }).ClickAsync();
+
+        await Expect(page.GetByRole(AriaRole.Heading, new() { Name = "Email verified" })).ToBeVisibleAsync();
+        await page.GetByRole(AriaRole.Link, new() { Name = "Go to sign in" }).ClickAsync();
+        await page.GetByLabel("Email").FillAsync(email);
+        await page.GetByLabel("Password", new() { Exact = true }).FillAsync(BrowserJourneyFixture.Password);
+        await page.GetByRole(AriaRole.Button, new() { Name = "Sign in" }).ClickAsync();
+        await Expect(page.GetByRole(AriaRole.Heading, new() { Name = "Your job search, in one useful view." }))
+            .ToBeVisibleAsync();
     }
 
     [Fact]

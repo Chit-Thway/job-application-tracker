@@ -10,42 +10,30 @@ public sealed record AccountEmailContent(
 
 public static class AccountEmailTemplates
 {
-    public static AccountEmailContent Invitation(
-        string invitationCode,
+    public static AccountEmailContent VerificationCode(
+        string verificationCode,
+        string verificationUrl,
         DateTimeOffset expiresAt,
         string publicBaseUrl,
         string supportAddress)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(invitationCode);
+        ArgumentException.ThrowIfNullOrWhiteSpace(verificationCode);
         var expiresText = expiresAt
             .ToUniversalTime()
             .ToString("d MMM yyyy 'at' HH:mm 'UTC'", CultureInfo.InvariantCulture);
 
         return Create(
-            "Your Job Application Tracker invitation",
-            "You have been invited",
-            "Create a private Job Application Tracker account using the one-time code below.",
-            "Open registration",
-            BuildAccountUrl(publicBaseUrl, "account/register"),
+            "Your Job Application Tracker verification code",
+            "Verify your email",
+            "Enter the six-digit code below to finish setting up your Job Application Tracker account.",
+            "Enter verification code",
+            verificationUrl,
             publicBaseUrl,
             supportAddress,
-            "This invitation works once and expires " + expiresText + ".",
-            invitationCode,
-            "One-time invitation code");
+            "This code expires " + expiresText + ". If you did not create this account, you can safely ignore this message.",
+            verificationCode,
+            "Email verification code");
     }
-
-    public static AccountEmailContent Verification(
-        string actionUrl,
-        string publicBaseUrl,
-        string supportAddress) => Create(
-        "Verify your Job Application Tracker account",
-        "Confirm your email",
-        "Verify your email address to finish setting up your private job-search workspace.",
-        "Verify email",
-        actionUrl,
-        publicBaseUrl,
-        supportAddress,
-        "If you did not create this account, you can safely ignore this message.");
 
     public static AccountEmailContent PasswordReset(
         string actionUrl,

@@ -16,10 +16,10 @@
                 <span class="verification-required-icon" aria-hidden="true">!</span>
                 <div>
                     <h2>Email verification required</h2>
-                    <p>Your password is correct, but you must verify your email address before you can sign in.</p>
+                    <p>Your password is correct, but you must enter the six-digit code sent to your email before signing in.</p>
                     <form method="post" asp-action="ResendVerification" class="verification-resend-form">
                         <input type="hidden" name="Email" value="@Model.Email" />
-                        <button class="button verification-resend-button" type="submit">Resend verification email</button>
+                        <button class="button verification-resend-button" type="submit">Send a new verification code</button>
                     </form>
                 </div>
             </aside>
@@ -50,11 +50,11 @@
         </form>
 
         <div class="account-links">
-            <a asp-action="Register">Create an invited account</a>
+            <a asp-action="Register">Create an account</a>
             <a asp-action="ForgotPassword">Forgot your password?</a>
-            <a asp-action="ResendVerification">Resend verification</a>
+            <a asp-action="ResendVerification">Resend verification code</a>
         </div>
 
-        <p class="account-note">New accounts require a private, one-time invitation code.</p>
+        <p class="account-note">Registration is open. New accounts start on Tier 1 with space for 10 applications.</p>
     </div>
 </section>

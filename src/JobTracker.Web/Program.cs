@@ -163,9 +163,7 @@ builder.Services.AddSingleton<DemoCatalog>();
 builder.Services.AddScoped<AdminRoleInitializer>();
 builder.Services.AddScoped<AdminManagementService>();
 builder.Services.AddScoped<DevelopmentAccountBootstrapper>();
-builder.Services.AddScoped<InvitationService>();
-builder.Services.AddScoped<InvitationRegistrationService>();
-builder.Services.AddScoped<InvitationCommandRunner>();
+builder.Services.AddScoped<EmailVerificationService>();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUserContext, HttpCurrentUserContext>();
 builder.Services.AddScoped<OwnedApplicationService>();
@@ -222,19 +220,6 @@ builder.Services.AddHealthChecks()
         tags: ["ready"]);
 
 var app = builder.Build();
-
-await using (var commandScope = app.Services.CreateAsyncScope())
-{
-    var commandExitCode = await commandScope.ServiceProvider
-        .GetRequiredService<InvitationCommandRunner>()
-        .TryRunAsync(args);
-
-    if (commandExitCode is not null)
-    {
-        Environment.ExitCode = commandExitCode.Value;
-        return;
-    }
-}
 
 if (app.Environment.IsDevelopment())
 {

@@ -30,32 +30,15 @@ This runbook covers setup and ongoing operation. Azure resource creation and fir
 7. Create the initial Development owner using the README's user-secret bootstrap steps, verify it through `/dev/mail`, then remove all three bootstrap secrets.
 8. Run the complete quality gate from the README and start the application. `/health/live` and `/health/ready` must both return HTTP 200 with `Healthy` JSON.
 
-## Controlled users
+## Account registration and tiers
 
-Stop the web process before running invitation commands so the CLI owns the process cleanly.
+Registration is public at `/account/register`. New accounts start on Tier 1 and cannot sign in until the six-digit email code is verified. Codes expire after ten minutes, allow five failed attempts, and have a server-enforced 30-second resend delay. Administrators can resend a code from the account page, but the same cooldown applies.
 
-```powershell
-dotnet run --project src/JobTracker.Web -- invitations create --days 7
-dotnet run --project src/JobTracker.Web -- invitations create --days 7 --email recipient@example.com
-dotnet run --project src/JobTracker.Web -- invitations list
-dotnet run --project src/JobTracker.Web -- invitations revoke <invitation-id>
-```
-
-Without `--email`, codes are shown once and must be delivered privately. With `--email`, the configured provider sends a branded invitation and the readable code is not printed. The database stores only a SHA-256 fingerprint. Never place readable codes in GitHub, logs, screenshots, or support messages.
-
-Outside Development, invitation commands require two deliberate controls: the temporary setting `InvitationCommands:Enabled=true` and the explicit `--confirm-production` argument. There is no browser-accessible invitation administration endpoint. Run the published application from a controlled operator shell with its normal production connection configuration:
-
-```powershell
-$env:InvitationCommands__Enabled = "true"
-dotnet JobTracker.Web.dll invitations create --days 7 --confirm-production
-Remove-Item Env:InvitationCommands__Enabled
-```
-
-Use the same final argument for `list` and `revoke`. Remove the temporary setting immediately after the command, do not leave an invitation command running beside the web process, and never copy the production connection string or readable code into shell history. The Azure-specific operator invocation will be finalized with the deployment in Milestone 11.
+Use `/admin/users` to review identity metadata, lock or unlock an account, or assign Tier 1/Tier 2. Admin tools do not expose private applications. The former invitation commands and invitation administration page have been removed.
 
 ## Email
 
-Development uses an in-memory message sink at `/dev/mail`; it disappears on restart and is unavailable outside Development. Production uses Azure Communication Services Email through the App Service managed identity. Configure the HTTPS endpoint, exact MailFrom address, public application URL, and support address with App Service settings, grant the web app identity email-sending access, and test invitation, verification, and password-reset messages from an external mailbox. Never log recipients, invitation codes, tokens, or complete action URLs.
+Development uses an in-memory message sink at `/dev/mail`; it disappears on restart and is unavailable outside Development. Production uses Azure Communication Services Email through the App Service managed identity. Configure the HTTPS endpoint, exact MailFrom address, public application URL, and support address with App Service settings, grant the web app identity email-sending access, and test email verification codes and password-reset messages from an external mailbox. Never log recipients, readable verification codes, tokens, or complete action URLs.
 
 Azure Communication Services Email is an outbound delivery service, not an inbox. The application logs only the Azure operation ID. To retain message and recipient delivery evidence, configure Azure Monitor diagnostic settings for Email Send Mail and Email Status Update logs and choose a Log Analytics workspace or storage destination. Logging begins only after the diagnostic setting is enabled and can add Azure ingestion/storage charges.
 
@@ -79,7 +62,7 @@ The Supabase Cron job should run hourly at minute 17. The verification SQL repor
 
 ## Incident response
 
-1. **Contain:** disable the affected deployment or feature, revoke available invitations, and preserve privacy-safe logs and timestamps.
+1. **Contain:** disable the affected deployment or feature, lock affected accounts when appropriate, and preserve privacy-safe logs and timestamps.
 2. **Rotate:** rotate database, email, deployment, and other possibly exposed credentials. Invalidate sessions/Data Protection keys when the incident requires it, understanding that users will be signed out and outstanding action links can become invalid.
 3. **Assess:** use request IDs and database ownership boundaries; do not export unrelated private job data.
 4. **Recover:** deploy a reviewed commit, apply only reviewed migrations, or restore using `docs/backup-restore.md`.

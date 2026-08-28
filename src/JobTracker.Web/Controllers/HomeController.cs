@@ -27,6 +27,20 @@ public class HomeController(
         return View();
     }
 
+    [HttpGet("/terms")]
+    public IActionResult Terms()
+    {
+        SetPage("terms");
+        return View();
+    }
+
+    [HttpGet("/cookies")]
+    public IActionResult Cookies()
+    {
+        SetPage("cookies");
+        return View();
+    }
+
     [HttpGet("/extension")]
     public IActionResult BrowserExtension()
     {

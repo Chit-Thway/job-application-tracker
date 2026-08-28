@@ -10,8 +10,6 @@ public sealed class AdminAuditEntry
 
     public string? TargetUserId { get; set; }
 
-    public Guid? InvitationId { get; set; }
-
     public DateTimeOffset OccurredAt { get; set; }
 
     public string Details { get; set; } = string.Empty;

@@ -15,7 +15,6 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
     public DbSet<TaskItem> Tasks => Set<TaskItem>();
     public DbSet<Appointment> Appointments => Set<Appointment>();
     public DbSet<RetentionRun> RetentionRuns => Set<RetentionRun>();
-    public DbSet<Invitation> Invitations => Set<Invitation>();
     public DbSet<AdminAuditEntry> AdminAuditEntries => Set<AdminAuditEntry>();
     public DbSet<ExtensionCaptureHandoff> ExtensionCaptureHandoffs => Set<ExtensionCaptureHandoff>();
 
@@ -27,10 +26,15 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
         {
             entity.Property(user => user.DisplayName).HasMaxLength(120).IsRequired();
             entity.Property(user => user.TimeZoneId).HasMaxLength(100).IsRequired();
+            entity.Property(user => user.PhoneNumber).HasMaxLength(32);
             entity.Property(user => user.AccountTier)
                 .HasConversion<int>()
                 .HasDefaultValue(AccountTier.Tier1)
                 .HasSentinel((AccountTier)0);
+            entity.Property(user => user.EmailVerificationCodeHash).HasMaxLength(512);
+            entity.Property(user => user.TermsVersion).HasMaxLength(20);
+            entity.Property(user => user.PrivacyVersion).HasMaxLength(20);
+            entity.HasIndex(user => user.EmailVerificationChallengeId).IsUnique();
             entity.ToTable(table =>
             {
                 table.HasCheckConstraint(
@@ -42,25 +46,10 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
                 table.HasCheckConstraint(
                     "CK_AspNetUsers_DeletionGraceDays",
                     "\"DeletionGraceDays\" IN (3, 5, 10, 14)");
+                table.HasCheckConstraint(
+                    "CK_AspNetUsers_EmailVerificationFailedAttempts",
+                    "\"EmailVerificationFailedAttempts\" BETWEEN 0 AND 5");
             });
-        });
-
-        builder.Entity<Invitation>(entity =>
-        {
-            entity.HasKey(invitation => invitation.Id);
-            entity.Property(invitation => invitation.CodeHash).HasMaxLength(64).IsRequired();
-            entity.Property(invitation => invitation.ConcurrencyStamp).IsConcurrencyToken();
-            entity.Property(invitation => invitation.UsedByUserId).HasMaxLength(450);
-            entity.Property(invitation => invitation.CreatedByUserId).HasMaxLength(450);
-            entity.Property(invitation => invitation.RecipientEmail).HasMaxLength(320);
-            entity.Property(invitation => invitation.RecipientEmailNormalized).HasMaxLength(320);
-            entity.HasIndex(invitation => invitation.CodeHash).IsUnique();
-            entity.HasIndex(invitation => invitation.ExpiresAt);
-            entity.HasIndex(invitation => invitation.RecipientEmailNormalized);
-            entity.HasOne(invitation => invitation.UsedByUser)
-                .WithMany()
-                .HasForeignKey(invitation => invitation.UsedByUserId)
-                .OnDelete(DeleteBehavior.Restrict);
         });
 
         builder.Entity<AdminAuditEntry>(entity =>

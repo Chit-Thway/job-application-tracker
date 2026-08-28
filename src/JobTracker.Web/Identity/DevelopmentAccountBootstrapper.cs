@@ -1,14 +1,12 @@
 using JobTracker.Web.Data;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.AspNetCore.WebUtilities;
-using System.Text;
 
 namespace JobTracker.Web.Identity;
 
 public sealed class DevelopmentAccountBootstrapper(
     IConfiguration configuration,
     UserManager<ApplicationUser> userManager,
-    IAccountEmailSender emailSender)
+    EmailVerificationService emailVerification)
 {
     public async Task InitializeAsync()
     {
@@ -45,10 +43,9 @@ public sealed class DevelopmentAccountBootstrapper(
 
         if (!user.EmailConfirmed)
         {
-            var token = await userManager.GenerateEmailConfirmationTokenAsync(user);
-            var encodedToken = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(token));
-            var verificationUrl = $"/account/confirm-email?userId={Uri.EscapeDataString(user.Id)}&code={Uri.EscapeDataString(encodedToken)}";
-            await emailSender.SendVerificationAsync(user, verificationUrl);
+            await emailVerification.IssueAsync(
+                user,
+                challengeId => $"/account/verify-email?challengeId={challengeId:D}");
         }
     }
 }

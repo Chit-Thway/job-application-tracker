@@ -12,23 +12,17 @@ public sealed class AzureCommunicationAccountEmailSender(
 {
     private readonly AccountEmailOptions settings = options.Value;
 
-    public Task SendInvitationAsync(
-        string recipientAddress,
-        string invitationCode,
+    public Task SendVerificationCodeAsync(
+        ApplicationUser user,
+        string verificationCode,
+        string verificationUrl,
         DateTimeOffset expiresAt) =>
         SendAsync(
-            recipientAddress,
-            AccountEmailTemplates.Invitation(
-                invitationCode,
-                expiresAt,
-                settings.PublicBaseUrl,
-                settings.SupportAddress));
-
-    public Task SendVerificationAsync(ApplicationUser user, string verificationUrl) =>
-        SendAsync(
             RequiredEmail(user),
-            AccountEmailTemplates.Verification(
+            AccountEmailTemplates.VerificationCode(
+                verificationCode,
                 verificationUrl,
+                expiresAt,
                 settings.PublicBaseUrl,
                 settings.SupportAddress));
 

@@ -2,8 +2,8 @@ using System.Net;
 using System.Text.RegularExpressions;
 using JobTracker.Web.Data;
 using JobTracker.Web.Identity;
-using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -21,365 +21,260 @@ public sealed partial class AuthenticationJourneyTests
     }
 
     [Fact]
-    public async Task LoginAndInvitationRegistrationPages_ArePubliclyAvailable()
+    public async Task LoginRegistrationAndLegalPages_ArePublicAndDescribeOpenRegistration()
     {
         var client = CreateClient();
 
-        var loginResponse = await client.GetAsync("/account/login");
-        var loginContent = await loginResponse.Content.ReadAsStringAsync();
-        var registrationResponse = await client.GetAsync("/account/register");
-        var registrationContent = await registrationResponse.Content.ReadAsStringAsync();
+        var login = await client.GetStringAsync("/account/login");
+        var registration = await client.GetStringAsync("/account/register");
+        var privacy = await client.GetStringAsync("/privacy");
+        var terms = await client.GetStringAsync("/terms");
+        var cookies = await client.GetStringAsync("/cookies");
 
-        Assert.Equal(HttpStatusCode.OK, loginResponse.StatusCode);
-        Assert.Contains("Welcome back.", loginContent, StringComparison.Ordinal);
-        Assert.Contains("one-time invitation code", loginContent, StringComparison.Ordinal);
-        Assert.Equal(HttpStatusCode.OK, registrationResponse.StatusCode);
-        Assert.Contains("Create your account.", registrationContent, StringComparison.Ordinal);
-        Assert.Contains("Invitation code", registrationContent, StringComparison.Ordinal);
+        Assert.Contains("Welcome back.", login, StringComparison.Ordinal);
+        Assert.Contains("Registration is open", login, StringComparison.Ordinal);
+        Assert.Contains("Open registration", registration, StringComparison.Ordinal);
+        Assert.Contains("Phone number", registration, StringComparison.Ordinal);
+        Assert.DoesNotContain("Invitation code", registration, StringComparison.Ordinal);
+        Assert.Contains("How Job Application Tracker handles personal information", privacy, StringComparison.Ordinal);
+        Assert.Contains("The agreement for using Job Application Tracker", terms, StringComparison.Ordinal);
+        Assert.Contains("Only essential security cookies are used", cookies, StringComparison.Ordinal);
     }
 
     [Fact]
-    public async Task InvitationCommands_RequireProductionSettingAndExplicitConfirmation()
+    public async Task OpenRegistration_CreatesTierOneAccountAndEmailCodeVerifiesIt()
     {
-        await using (var disabledScope = factory.Services.CreateAsyncScope())
-        {
-            var disabledRunner = disabledScope.ServiceProvider
-                .GetRequiredService<InvitationCommandRunner>();
-
-            Assert.Equal(
-                1,
-                await disabledRunner.TryRunAsync(
-                    ["invitations", "list", "--confirm-production"]));
-        }
-
-        using var enabledFactory = factory.WithWebHostBuilder(builder =>
-            builder.UseSetting("InvitationCommands:Enabled", "true"));
-        await using var enabledScope = enabledFactory.Services.CreateAsyncScope();
-        var enabledRunner = enabledScope.ServiceProvider
-            .GetRequiredService<InvitationCommandRunner>();
-
-        Assert.Equal(1, await enabledRunner.TryRunAsync(["invitations", "list"]));
-        Assert.Equal(
-            0,
-            await enabledRunner.TryRunAsync(
-                ["invitations", "list", "--confirm-production"]));
-    }
-
-    [Fact]
-    public async Task InvitationCommand_WithEmail_SendsRegistrationMessageWithoutPrintingCodePath()
-    {
-        var recipient = $"invite-{Guid.NewGuid():N}@example.test";
-        using var enabledFactory = factory.WithWebHostBuilder(builder =>
-        {
-            builder.UseSetting("InvitationCommands:Enabled", "true");
-            builder.UseSetting("Email:PublicBaseUrl", "https://tracker.example.test");
-        });
-
-        await using var scope = enabledFactory.Services.CreateAsyncScope();
-        var runner = scope.ServiceProvider.GetRequiredService<InvitationCommandRunner>();
-
-        Assert.Equal(
-            0,
-            await runner.TryRunAsync(
-                [
-                    "invitations",
-                    "create",
-                    "--days",
-                    "7",
-                    "--email",
-                    recipient,
-                    "--confirm-production",
-                ]));
-
-        var message = enabledFactory.Services
-            .GetRequiredService<DevelopmentMailStore>()
-            .Messages
-            .First(item => string.Equals(
-                item.Recipient,
-                recipient,
-                StringComparison.OrdinalIgnoreCase));
-        Assert.StartsWith("Your Job Application Tracker invitation", message.Subject);
-        Assert.Equal("https://tracker.example.test/account/register", message.ActionUrl);
-    }
-
-    [Fact]
-    public async Task ValidInvitation_CreatesUnverifiedAccount_VerifiesAndCannotBeReused()
-    {
-        var invitation = await CreateInvitationAsync();
-        var email = $"invited-{Guid.NewGuid():N}@example.test";
+        var email = $"open-{Guid.NewGuid():N}@example.test";
         var client = CreateClient();
 
-        var registrationResponse = await PostRegistrationAsync(
-            client,
-            invitation.Code,
-            email,
-            TestPassword);
-        var registrationContent = await registrationResponse.Content.ReadAsStringAsync();
+        var registration = await RegisterAsync(client, email, acceptPolicies: true);
+        Assert.Equal(HttpStatusCode.Redirect, registration.StatusCode);
+        var verificationPath = Assert.IsType<Uri>(registration.Headers.Location).OriginalString;
+        Assert.StartsWith("/account/verify-email?challengeId=", verificationPath, StringComparison.Ordinal);
 
-        Assert.Equal(HttpStatusCode.OK, registrationResponse.StatusCode);
-        Assert.Contains("Your account was created", registrationContent, StringComparison.Ordinal);
+        var message = FindMessage(email, "Your Job Application Tracker verification code");
+        Assert.Matches("^[0-9]{6}$", Assert.IsType<string>(message.OneTimeCode));
 
-        string userId;
         await using (var scope = factory.Services.CreateAsyncScope())
         {
-            var manager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
             var database = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-            var user = await manager.FindByEmailAsync(email);
-            Assert.NotNull(user);
+            var user = await database.Users.SingleAsync(candidate => candidate.Email == email);
             Assert.False(user.EmailConfirmed);
-            userId = user.Id;
-
-            var storedInvitation = await database.Invitations
-                .SingleAsync(item => item.Id == invitation.Id);
-            Assert.NotNull(storedInvitation.UsedAt);
-            Assert.Equal(user.Id, storedInvitation.UsedByUserId);
-            Assert.Equal(64, storedInvitation.CodeHash.Length);
-            Assert.DoesNotContain(invitation.Code, storedInvitation.CodeHash, StringComparison.Ordinal);
+            Assert.Equal("+61 400 123 456", user.PhoneNumber);
+            Assert.Equal(AccountTier.Tier1, user.AccountTier);
+            Assert.Equal(LegalDocumentVersions.Terms, user.TermsVersion);
+            Assert.Equal(LegalDocumentVersions.Privacy, user.PrivacyVersion);
+            Assert.NotNull(user.TermsAcceptedAt);
+            Assert.NotNull(user.PrivacyAcknowledgedAt);
+            Assert.NotNull(user.EmailVerificationCodeHash);
+            Assert.DoesNotContain(message.OneTimeCode!, user.EmailVerificationCodeHash, StringComparison.Ordinal);
         }
 
-        var message = FindMessage(email, "Verify");
-        var confirmResponse = await client.GetAsync(message.ActionUrl);
-        Assert.Equal(HttpStatusCode.OK, confirmResponse.StatusCode);
+        var verificationPage = await client.GetAsync(verificationPath);
+        var verificationContent = await verificationPage.Content.ReadAsStringAsync();
+        Assert.Contains(email, verificationContent, StringComparison.Ordinal);
+        Assert.Contains("data-resend-seconds=\"30\"", verificationContent, StringComparison.Ordinal);
+        Assert.Contains("/js/email-verification.js", verificationContent, StringComparison.Ordinal);
 
-        await using (var scope = factory.Services.CreateAsyncScope())
-        {
-            var manager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
-            var user = await manager.FindByIdAsync(userId);
-            Assert.NotNull(user);
-            Assert.True(user.EmailConfirmed);
-        }
+        var verifyResponse = await client.PostAsync(
+            "/account/verify-email",
+            Form(
+                ("ChallengeId", ChallengeIdFrom(verificationPath).ToString()),
+                ("Code", message.OneTimeCode!),
+                ("__RequestVerificationToken", ExtractAntiforgeryToken(verificationContent))));
+        var verifiedContent = await verifyResponse.Content.ReadAsStringAsync();
+
+        Assert.Equal(HttpStatusCode.OK, verifyResponse.StatusCode);
+        Assert.Contains("Email verified", verifiedContent, StringComparison.Ordinal);
 
         var loginResponse = await PostLoginAsync(client, email, TestPassword);
         Assert.Equal(HttpStatusCode.Redirect, loginResponse.StatusCode);
-
-        var secondEmail = $"reuse-{Guid.NewGuid():N}@example.test";
-        var secondClient = CreateClient();
-        var reuseResponse = await PostRegistrationAsync(
-            secondClient,
-            invitation.Code,
-            secondEmail,
-            TestPassword);
-        var reuseContent = await reuseResponse.Content.ReadAsStringAsync();
-
-        Assert.Equal(HttpStatusCode.OK, reuseResponse.StatusCode);
-        Assert.Contains("Registration could not be completed", reuseContent, StringComparison.Ordinal);
-
-        await using (var scope = factory.Services.CreateAsyncScope())
-        {
-            var manager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
-            Assert.Null(await manager.FindByEmailAsync(secondEmail));
-        }
+        Assert.Equal("/dashboard", loginResponse.Headers.Location?.OriginalString);
     }
 
     [Fact]
-    public async Task MalformedEmail_IsRejectedWithoutUsingTheInvitation()
+    public async Task Registration_RequiresPolicyAgreementAndValidPhone()
     {
-        var invitation = await CreateInvitationAsync();
+        var email = $"policy-{Guid.NewGuid():N}@example.test";
         var client = CreateClient();
 
-        var response = await PostRegistrationAsync(
-            client,
-            invitation.Code,
-            "not-an-email-address",
-            TestPassword);
-        var content = await response.Content.ReadAsStringAsync();
-
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        Assert.Contains("not a valid e-mail address", content, StringComparison.OrdinalIgnoreCase);
-
-        await using var scope = factory.Services.CreateAsyncScope();
-        var database = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-        var storedInvitation = await database.Invitations
-            .SingleAsync(item => item.Id == invitation.Id);
-        Assert.Null(storedInvitation.UsedAt);
-        Assert.Null(storedInvitation.UsedByUserId);
-    }
-
-    [Fact]
-    public async Task InvalidExpiredAndRevokedInvitations_AreRejectedWithoutCreatingAccounts()
-    {
-        var now = DateTimeOffset.UtcNow;
-        var expiredCode = InvitationCode.Create();
-        var revokedCode = InvitationCode.Create();
-
-        await using (var scope = factory.Services.CreateAsyncScope())
-        {
-            var database = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-            database.Invitations.AddRange(
-                new Invitation
-                {
-                    CodeHash = InvitationCode.Hash(expiredCode),
-                    CreatedAt = now.AddDays(-3),
-                    ExpiresAt = now.AddDays(-2),
-                },
-                new Invitation
-                {
-                    CodeHash = InvitationCode.Hash(revokedCode),
-                    CreatedAt = now,
-                    ExpiresAt = now.AddDays(2),
-                    RevokedAt = now,
-                });
-            await database.SaveChangesAsync();
-        }
-
-        var rejectedCodes = new[] { InvitationCode.Create(), expiredCode, revokedCode };
-        foreach (var code in rejectedCodes)
-        {
-            var email = $"rejected-{Guid.NewGuid():N}@example.test";
-            var client = CreateClient();
-            var response = await PostRegistrationAsync(client, code, email, TestPassword);
-            var content = await response.Content.ReadAsStringAsync();
-
-            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-            Assert.Contains("Registration could not be completed", content, StringComparison.Ordinal);
-
-            await using var scope = factory.Services.CreateAsyncScope();
-            var manager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
-            Assert.Null(await manager.FindByEmailAsync(email));
-        }
-    }
-
-    [Fact]
-    public async Task InvitationConcurrencyStamp_IsConfiguredAndAvailableCodeCanBeRevoked()
-    {
-        var invitation = await CreateInvitationAsync();
-
-        await using var scope = factory.Services.CreateAsyncScope();
-        var database = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-        var concurrencyProperty = database.Model
-            .FindEntityType(typeof(Invitation))!
-            .FindProperty(nameof(Invitation.ConcurrencyStamp));
-        Assert.NotNull(concurrencyProperty);
-        Assert.True(concurrencyProperty.IsConcurrencyToken);
-
-        var service = scope.ServiceProvider.GetRequiredService<InvitationService>();
-        Assert.True(await service.RevokeAsync(invitation.Id));
-        Assert.False(await service.RevokeAsync(invitation.Id));
-
-        var summary = Assert.Single(
-            await service.ListAsync(),
-            item => item.Id == invitation.Id);
-        Assert.Equal("Revoked", summary.Status);
-    }
-
-    [Fact]
-    public async Task TwoInvitationClaims_WithTheSameOriginalStamp_CannotBothBeSaved()
-    {
-        var invitation = await CreateInvitationAsync();
-        await using var firstScope = factory.Services.CreateAsyncScope();
-        await using var secondScope = factory.Services.CreateAsyncScope();
-        var firstDatabase = firstScope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-        var secondDatabase = secondScope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-        var firstClaim = await firstDatabase.Invitations.SingleAsync(item => item.Id == invitation.Id);
-        var secondClaim = await secondDatabase.Invitations.SingleAsync(item => item.Id == invitation.Id);
-
-        firstClaim.UsedAt = DateTimeOffset.UtcNow;
-        firstClaim.ConcurrencyStamp = Guid.NewGuid();
-        await firstDatabase.SaveChangesAsync();
-
-        secondClaim.UsedAt = DateTimeOffset.UtcNow;
-        secondClaim.ConcurrencyStamp = Guid.NewGuid();
-        await Assert.ThrowsAsync<DbUpdateConcurrencyException>(
-            () => secondDatabase.SaveChangesAsync());
-    }
-
-    [Fact]
-    public async Task UnverifiedUserCannotSignIn_ButVerifiedUserCanSignInAndOut()
-    {
-        var email = $"verified-{Guid.NewGuid():N}@example.test";
-        var user = await CreateUserAsync(email, emailConfirmed: false);
-        var client = CreateClient();
-
-        var unverifiedResponse = await PostLoginAsync(client, email, TestPassword);
-        var unverifiedContent = await unverifiedResponse.Content.ReadAsStringAsync();
-
-        Assert.Equal(HttpStatusCode.OK, unverifiedResponse.StatusCode);
-        Assert.Contains("Email verification required", unverifiedContent, StringComparison.Ordinal);
-        Assert.Contains("Your password is correct", unverifiedContent, StringComparison.Ordinal);
-        Assert.Contains("Resend verification email", unverifiedContent, StringComparison.Ordinal);
-        Assert.DoesNotContain("Unable to sign in", unverifiedContent, StringComparison.Ordinal);
-
-        await ConfirmUserAsync(user.Id);
-
-        var verifiedResponse = await PostLoginAsync(client, email, TestPassword);
-        Assert.Equal(HttpStatusCode.Redirect, verifiedResponse.StatusCode);
-        Assert.Equal("/dashboard", verifiedResponse.Headers.Location?.OriginalString);
-
-        var privatePage = await client.GetAsync("/dashboard");
-        var privateContent = await privatePage.Content.ReadAsStringAsync();
-        Assert.Equal(HttpStatusCode.OK, privatePage.StatusCode);
-        Assert.Contains("Three-month dashboard", privateContent, StringComparison.Ordinal);
-        Assert.Contains("Your job search", privateContent, StringComparison.Ordinal);
-
-        var logoutToken = ExtractAntiforgeryToken(privateContent);
-        var logoutResponse = await client.PostAsync(
-            "/account/logout",
-            Form(("__RequestVerificationToken", logoutToken)));
-        Assert.Equal(HttpStatusCode.Redirect, logoutResponse.StatusCode);
-
-        var afterLogout = await client.GetAsync("/dashboard");
-        Assert.Equal(HttpStatusCode.Redirect, afterLogout.StatusCode);
-    }
-
-    [Fact]
-    public async Task UnverifiedUserWithWrongPassword_ReceivesOnlyGenericSignInError()
-    {
-        var email = $"unverified-wrong-password-{Guid.NewGuid():N}@example.test";
-        await CreateUserAsync(email, emailConfirmed: false);
-        var client = CreateClient();
-
-        var response = await PostLoginAsync(client, email, "Definitely-not-the-password-123!");
-        var content = await response.Content.ReadAsStringAsync();
-
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        Assert.Contains("Unable to sign in", content, StringComparison.Ordinal);
-        Assert.DoesNotContain("Email verification required", content, StringComparison.Ordinal);
-        Assert.DoesNotContain("Your password is correct", content, StringComparison.Ordinal);
-    }
-
-    [Fact]
-    public async Task ForgotPassword_UsesSameResponseForUnknownAccount()
-    {
-        var client = CreateClient();
-        var page = await client.GetAsync("/account/forgot-password");
+        var page = await client.GetAsync("/account/register");
         var token = ExtractAntiforgeryToken(await page.Content.ReadAsStringAsync());
-
         var response = await client.PostAsync(
-            "/account/forgot-password",
+            "/account/register",
             Form(
-                ("Email", $"missing-{Guid.NewGuid():N}@example.test"),
+                ("DisplayName", "Policy Test User"),
+                ("Email", email),
+                ("PhoneNumber", "invalid"),
+                ("Password", TestPassword),
+                ("ConfirmPassword", TestPassword),
+                ("AcceptPolicies", "false"),
                 ("__RequestVerificationToken", token)));
         var content = await response.Content.ReadAsStringAsync();
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        Assert.Contains("If a verified account matches", content, StringComparison.Ordinal);
+        Assert.Contains("must agree to the Terms of Service", content, StringComparison.Ordinal);
+        Assert.Contains("Enter a valid phone number", content, StringComparison.Ordinal);
+
+        await using var scope = factory.Services.CreateAsyncScope();
+        var users = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+        Assert.Null(await users.FindByEmailAsync(email));
     }
 
     [Fact]
-    public async Task VerificationMessage_ConfirmsAccountAndAllowsLogin()
+    public async Task VerificationResend_EnforcesThirtySecondCooldown()
     {
-        var email = $"confirm-{Guid.NewGuid():N}@example.test";
+        var email = $"cooldown-{Guid.NewGuid():N}@example.test";
+        var client = CreateClient();
+        var registration = await RegisterAsync(client, email, acceptPolicies: true);
+        var verificationPath = Assert.IsType<Uri>(registration.Headers.Location).OriginalString;
+        var challengeId = ChallengeIdFrom(verificationPath);
+        var originalCount = MessageCount(email);
+
+        var page = await client.GetAsync(verificationPath);
+        var token = ExtractAntiforgeryToken(await page.Content.ReadAsStringAsync());
+        var resend = await client.PostAsync(
+            $"/account/verify-email/resend?challengeId={challengeId:D}",
+            Form(("__RequestVerificationToken", token)));
+
+        Assert.Equal(HttpStatusCode.Redirect, resend.StatusCode);
+        Assert.Equal(originalCount, MessageCount(email));
+
+        var resultPage = await client.GetStringAsync(resend.Headers.Location!.OriginalString);
+        Assert.Contains("You can request another code in", resultPage, StringComparison.Ordinal);
+
+        await using (var scope = factory.Services.CreateAsyncScope())
+        {
+            var database = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+            var user = await database.Users.SingleAsync(candidate => candidate.Email == email);
+            user.EmailVerificationCodeLastSentAt = DateTimeOffset.UtcNow.AddSeconds(-31);
+            await database.SaveChangesAsync();
+        }
+
+        var allowedResend = await client.PostAsync(
+            $"/account/verify-email/resend?challengeId={challengeId:D}",
+            Form(("__RequestVerificationToken", ExtractAntiforgeryToken(resultPage))));
+        Assert.Equal(HttpStatusCode.Redirect, allowedResend.StatusCode);
+        Assert.Equal(originalCount + 1, MessageCount(email));
+    }
+
+    [Fact]
+    public async Task ExpiredVerificationCode_IsRejected()
+    {
+        var email = $"expired-{Guid.NewGuid():N}@example.test";
+        var client = CreateClient();
+        var registration = await RegisterAsync(client, email, acceptPolicies: true);
+        var verificationPath = Assert.IsType<Uri>(registration.Headers.Location).OriginalString;
+        var challengeId = ChallengeIdFrom(verificationPath);
+        var code = FindMessage(email, "Your Job Application Tracker verification code").OneTimeCode!;
+
+        await using (var scope = factory.Services.CreateAsyncScope())
+        {
+            var database = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+            var user = await database.Users.SingleAsync(candidate => candidate.Email == email);
+            user.EmailVerificationCodeExpiresAt = DateTimeOffset.UtcNow.AddSeconds(-1);
+            await database.SaveChangesAsync();
+        }
+
+        var page = await client.GetStringAsync(verificationPath);
+        var response = await client.PostAsync(
+            "/account/verify-email",
+            Form(
+                ("ChallengeId", challengeId.ToString()),
+                ("Code", code),
+                ("__RequestVerificationToken", ExtractAntiforgeryToken(page))));
+
+        Assert.Contains("That code has expired", await response.Content.ReadAsStringAsync(), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task FiveIncorrectCodes_InvalidateTheCurrentCode()
+    {
+        var email = $"attempts-{Guid.NewGuid():N}@example.test";
+        var client = CreateClient();
+        var registration = await RegisterAsync(client, email, acceptPolicies: true);
+        var verificationPath = Assert.IsType<Uri>(registration.Headers.Location).OriginalString;
+        var challengeId = ChallengeIdFrom(verificationPath);
+        var correctCode = FindMessage(email, "Your Job Application Tracker verification code").OneTimeCode!;
+
+        var pageContent = await client.GetStringAsync(verificationPath);
+        for (var attempt = 0; attempt < EmailVerificationService.MaxFailedAttempts; attempt++)
+        {
+            var response = await client.PostAsync(
+                "/account/verify-email",
+                Form(
+                    ("ChallengeId", challengeId.ToString()),
+                    ("Code", "999999"),
+                    ("__RequestVerificationToken", ExtractAntiforgeryToken(pageContent))));
+            pageContent = await response.Content.ReadAsStringAsync();
+        }
+
+        Assert.Contains("Too many incorrect attempts", pageContent, StringComparison.Ordinal);
+
+        var finalResponse = await client.PostAsync(
+            "/account/verify-email",
+            Form(
+                ("ChallengeId", challengeId.ToString()),
+                ("Code", correctCode),
+                ("__RequestVerificationToken", ExtractAntiforgeryToken(pageContent))));
+        Assert.Contains(
+            "That code has expired",
+            await finalResponse.Content.ReadAsStringAsync(),
+            StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task UnverifiedUserCannotSignIn_AndUnknownResendUsesGenericResponse()
+    {
+        var email = $"unverified-{Guid.NewGuid():N}@example.test";
         await CreateUserAsync(email, emailConfirmed: false);
         var client = CreateClient();
 
-        var resendPage = await client.GetAsync("/account/resend-verification");
-        var resendToken = ExtractAntiforgeryToken(await resendPage.Content.ReadAsStringAsync());
-        var resendResponse = await client.PostAsync(
+        var unverifiedResponse = await PostLoginAsync(client, email, TestPassword);
+        var unverifiedContent = await unverifiedResponse.Content.ReadAsStringAsync();
+        Assert.Contains("Email verification required", unverifiedContent, StringComparison.Ordinal);
+        Assert.Contains("Send a new verification code", unverifiedContent, StringComparison.Ordinal);
+
+        var resendPage = await client.GetStringAsync("/account/resend-verification");
+        var response = await client.PostAsync(
+            "/account/resend-verification",
+            Form(
+                ("Email", $"missing-{Guid.NewGuid():N}@example.test"),
+                ("__RequestVerificationToken", ExtractAntiforgeryToken(resendPage))));
+        var content = await response.Content.ReadAsStringAsync();
+        Assert.Contains("If an unverified account matches", content, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task ExistingUnverifiedUser_CanRequestAndUseEmailCode()
+    {
+        var email = $"existing-{Guid.NewGuid():N}@example.test";
+        await CreateUserAsync(email, emailConfirmed: false);
+        var client = CreateClient();
+
+        var resendPage = await client.GetStringAsync("/account/resend-verification");
+        var resend = await client.PostAsync(
             "/account/resend-verification",
             Form(
                 ("Email", email),
-                ("__RequestVerificationToken", resendToken)));
+                ("__RequestVerificationToken", ExtractAntiforgeryToken(resendPage))));
+        Assert.Contains(
+            "If an unverified account matches",
+            await resend.Content.ReadAsStringAsync(),
+            StringComparison.Ordinal);
 
-        Assert.Equal(HttpStatusCode.OK, resendResponse.StatusCode);
-        var message = FindMessage(email, "Verify");
+        var message = FindMessage(email, "Your Job Application Tracker verification code");
+        var verificationUri = new Uri(message.ActionUrl);
+        var challengeId = ChallengeIdFrom(verificationUri.PathAndQuery);
+        var verificationPage = await client.GetStringAsync(verificationUri.PathAndQuery);
+        var verified = await client.PostAsync(
+            "/account/verify-email",
+            Form(
+                ("ChallengeId", challengeId.ToString()),
+                ("Code", message.OneTimeCode!),
+                ("__RequestVerificationToken", ExtractAntiforgeryToken(verificationPage))));
 
-        var confirmResponse = await client.GetAsync(message.ActionUrl);
-        var confirmContent = await confirmResponse.Content.ReadAsStringAsync();
-        Assert.Equal(HttpStatusCode.OK, confirmResponse.StatusCode);
-        Assert.Contains("Email verified", confirmContent, StringComparison.Ordinal);
-
-        var loginResponse = await PostLoginAsync(client, email, TestPassword);
-        Assert.Equal(HttpStatusCode.Redirect, loginResponse.StatusCode);
+        Assert.Contains("Email verified", await verified.Content.ReadAsStringAsync(), StringComparison.Ordinal);
     }
 
     [Fact]
@@ -389,23 +284,19 @@ public sealed partial class AuthenticationJourneyTests
         await CreateUserAsync(email, emailConfirmed: true);
         var client = CreateClient();
 
-        var forgotPage = await client.GetAsync("/account/forgot-password");
-        var forgotToken = ExtractAntiforgeryToken(await forgotPage.Content.ReadAsStringAsync());
+        var forgotPage = await client.GetStringAsync("/account/forgot-password");
         var forgotResponse = await client.PostAsync(
             "/account/forgot-password",
             Form(
                 ("Email", email),
-                ("__RequestVerificationToken", forgotToken)));
+                ("__RequestVerificationToken", ExtractAntiforgeryToken(forgotPage))));
         Assert.Equal(HttpStatusCode.OK, forgotResponse.StatusCode);
 
         var message = FindMessage(email, "Reset");
-        var resetPage = await client.GetAsync(message.ActionUrl);
-        var resetContent = await resetPage.Content.ReadAsStringAsync();
-        var resetToken = ExtractAntiforgeryToken(resetContent);
         var resetUri = new Uri(message.ActionUrl);
-        var query = Microsoft.AspNetCore.WebUtilities.QueryHelpers.ParseQuery(resetUri.Query);
-        var newPassword = "A-New-Strong-Password-739!";
-
+        var resetPage = await client.GetStringAsync(resetUri.PathAndQuery);
+        var query = QueryHelpers.ParseQuery(resetUri.Query);
+        const string newPassword = "A-New-Strong-Password-739!";
         var resetResponse = await client.PostAsync(
             "/account/reset-password",
             Form(
@@ -413,14 +304,10 @@ public sealed partial class AuthenticationJourneyTests
                 ("Code", query["code"].ToString()),
                 ("Password", newPassword),
                 ("ConfirmPassword", newPassword),
-                ("__RequestVerificationToken", resetToken)));
-        var resultContent = await resetResponse.Content.ReadAsStringAsync();
+                ("__RequestVerificationToken", ExtractAntiforgeryToken(resetPage))));
 
-        Assert.Equal(HttpStatusCode.OK, resetResponse.StatusCode);
-        Assert.Contains("Password changed", resultContent, StringComparison.Ordinal);
-
-        var loginResponse = await PostLoginAsync(client, email, newPassword);
-        Assert.Equal(HttpStatusCode.Redirect, loginResponse.StatusCode);
+        Assert.Contains("Password changed", await resetResponse.Content.ReadAsStringAsync(), StringComparison.Ordinal);
+        Assert.Equal(HttpStatusCode.Redirect, (await PostLoginAsync(client, email, newPassword)).StatusCode);
     }
 
     private async Task<ApplicationUser> CreateUserAsync(string email, bool emailConfirmed)
@@ -435,71 +322,57 @@ public sealed partial class AuthenticationJourneyTests
             DisplayName = "Synthetic Test User",
             TimeZoneId = "Australia/Perth",
         };
-
         var result = await manager.CreateAsync(user, TestPassword);
         Assert.True(result.Succeeded, string.Join(", ", result.Errors.Select(error => error.Code)));
         return user;
     }
 
-    private async Task<CreatedInvitation> CreateInvitationAsync()
+    private async Task<HttpResponseMessage> RegisterAsync(
+        HttpClient client,
+        string email,
+        bool acceptPolicies)
     {
-        await using var scope = factory.Services.CreateAsyncScope();
-        var invitations = scope.ServiceProvider.GetRequiredService<InvitationService>();
-        return await invitations.CreateAsync(validForDays: 7);
+        var page = await client.GetStringAsync("/account/register");
+        return await client.PostAsync(
+            "/account/register",
+            Form(
+                ("DisplayName", "Open Registration User"),
+                ("Email", email),
+                ("PhoneNumber", "+61 400 123 456"),
+                ("Password", TestPassword),
+                ("ConfirmPassword", TestPassword),
+                ("AcceptPolicies", acceptPolicies ? "true" : "false"),
+                ("__RequestVerificationToken", ExtractAntiforgeryToken(page))));
     }
 
-    private async Task ConfirmUserAsync(string userId)
-    {
-        await using var scope = factory.Services.CreateAsyncScope();
-        var manager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
-        var user = await manager.FindByIdAsync(userId);
-        Assert.NotNull(user);
-        var token = await manager.GenerateEmailConfirmationTokenAsync(user);
-        var result = await manager.ConfirmEmailAsync(user, token);
-        Assert.True(result.Succeeded);
-    }
-
-    private DevelopmentMailMessage FindMessage(string recipient, string subjectPrefix)
-    {
-        var store = factory.Services.GetRequiredService<DevelopmentMailStore>();
-        return store.Messages.First(message =>
-            string.Equals(message.Recipient, recipient, StringComparison.OrdinalIgnoreCase)
-            && message.Subject.StartsWith(subjectPrefix, StringComparison.Ordinal));
-    }
-
-    private static async Task<HttpResponseMessage> PostLoginAsync(
+    private async Task<HttpResponseMessage> PostLoginAsync(
         HttpClient client,
         string email,
         string password)
     {
-        var page = await client.GetAsync("/account/login");
-        var token = ExtractAntiforgeryToken(await page.Content.ReadAsStringAsync());
+        var page = await client.GetStringAsync("/account/login");
         return await client.PostAsync(
             "/account/login",
             Form(
                 ("Email", email),
                 ("Password", password),
                 ("RememberMe", "false"),
-                ("__RequestVerificationToken", token)));
+                ("__RequestVerificationToken", ExtractAntiforgeryToken(page))));
     }
 
-    private static async Task<HttpResponseMessage> PostRegistrationAsync(
-        HttpClient client,
-        string invitationCode,
-        string email,
-        string password)
+    private DevelopmentMailMessage FindMessage(string recipient, string subjectPrefix) =>
+        factory.Services.GetRequiredService<DevelopmentMailStore>().Messages.First(message =>
+            string.Equals(message.Recipient, recipient, StringComparison.OrdinalIgnoreCase)
+            && message.Subject.StartsWith(subjectPrefix, StringComparison.Ordinal));
+
+    private int MessageCount(string recipient) =>
+        factory.Services.GetRequiredService<DevelopmentMailStore>().Messages.Count(message =>
+            string.Equals(message.Recipient, recipient, StringComparison.OrdinalIgnoreCase));
+
+    private static Guid ChallengeIdFrom(string pathAndQuery)
     {
-        var page = await client.GetAsync("/account/register");
-        var token = ExtractAntiforgeryToken(await page.Content.ReadAsStringAsync());
-        return await client.PostAsync(
-            "/account/register",
-            Form(
-                ("DisplayName", "Invited Test User"),
-                ("Email", email),
-                ("Password", password),
-                ("ConfirmPassword", password),
-                ("InvitationCode", invitationCode),
-                ("__RequestVerificationToken", token)));
+        var query = QueryHelpers.ParseQuery(new Uri("https://localhost" + pathAndQuery).Query);
+        return Guid.Parse(query["challengeId"].ToString());
     }
 
     private HttpClient CreateClient() =>

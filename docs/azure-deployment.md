@@ -52,7 +52,7 @@ App Service settings are environment configuration, not source-controlled values
 | `Email__SupportAddress` | Support mailbox displayed as a `mailto:` link in account messages |
 | `AllowedHosts` | The assigned host, for example `chit-thway-job-tracker.azurewebsites.net` |
 
-Never put the database password, invitation code, email token, publish profile, or Azure access key in GitHub text, workflow YAML, logs, screenshots, or support messages.
+Never put the database password, email verification code, email token, publish profile, or Azure access key in GitHub text, workflow YAML, logs, screenshots, or support messages.
 
 ## GitHub production environment
 
@@ -70,7 +70,7 @@ The identity represented by these values should be federated only to this reposi
 1. Open the Azure HTTPS address and confirm the public landing page and `/demo` load without authentication.
 2. Confirm `/health/live` and `/health/ready` return HTTP 200 with minimal Healthy JSON.
 3. Confirm signed-out visitors are redirected away from private routes and cannot mutate `/demo`.
-4. Create a single production invitation from a controlled operator shell with `--email`, register the mailbox using the delivered one-time code, receive the real verification email, verify it, and sign in.
+4. Register a production test mailbox through the public signup page, receive the real six-digit verification email, verify it, confirm the account starts on Tier 1, and sign in.
 5. Request a password reset and confirm the real message completes the reset without leaking a token into logs.
 6. Exercise application creation, Saved state, status history, dashboard, owner isolation, and retention scheduling.
 7. Restart the web app and confirm existing sign-in behavior, database access, health, and email still work.

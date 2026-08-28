@@ -34,19 +34,26 @@ public sealed class FoundationApplicationTests : IClassFixture<JobTrackerWebAppl
     }
 
     [Fact]
-    public async Task PrivacyRoute_IsPublicAndExplainsPrivateDataBoundaries()
+    public async Task LegalRoutes_ArePublicAndExplainBusinessDataBoundaries()
     {
         var client = CreateClient();
 
-        var response = await client.GetAsync("/privacy");
-        var content = await response.Content.ReadAsStringAsync();
+        var privacyResponse = await client.GetAsync("/privacy");
+        var privacy = await privacyResponse.Content.ReadAsStringAsync();
+        var terms = await client.GetStringAsync("/terms");
+        var cookies = await client.GetStringAsync("/cookies");
+        var cookieScript = await client.GetStringAsync("/js/cookie-consent.js");
 
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        Assert.Contains("Your search data", content, StringComparison.Ordinal);
-        Assert.Contains("Private records are never part of the public demo", content, StringComparison.Ordinal);
-        Assert.Contains("does not send it to an external AI service", content, StringComparison.Ordinal);
-        Assert.Contains("extension privacy notice", content, StringComparison.Ordinal);
-        Assert.DoesNotContain("Milestone", content, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal(HttpStatusCode.OK, privacyResponse.StatusCode);
+        Assert.Contains("Information we collect", privacy, StringComparison.Ordinal);
+        Assert.Contains("phone number", privacy, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("do not sell personal information", privacy, StringComparison.Ordinal);
+        Assert.Contains("Account tiers", terms, StringComparison.Ordinal);
+        Assert.Contains("Tier 1 accounts may store up to 10", terms, StringComparison.Ordinal);
+        Assert.Contains("JobTracker.Auth", cookies, StringComparison.Ordinal);
+        Assert.Contains("no optional tracking cookies", cookies, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("job-tracker-cookie-choice-v1", cookieScript, StringComparison.Ordinal);
+        Assert.DoesNotContain("Milestone", privacy, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
@@ -215,6 +222,7 @@ public sealed class FoundationApplicationTests : IClassFixture<JobTrackerWebAppl
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Contains("class=\"site-nav-toggle\"", content, StringComparison.Ordinal);
         Assert.Contains("href=\"/account/login\">Sign in</a>", content, StringComparison.Ordinal);
+        Assert.Contains("href=\"/account/register\">Create account</a>", content, StringComparison.Ordinal);
     }
 
     [Fact]

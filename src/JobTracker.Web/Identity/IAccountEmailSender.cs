@@ -4,12 +4,11 @@ namespace JobTracker.Web.Identity;
 
 public interface IAccountEmailSender
 {
-    Task SendInvitationAsync(
-        string recipientAddress,
-        string invitationCode,
+    Task SendVerificationCodeAsync(
+        ApplicationUser user,
+        string verificationCode,
+        string verificationUrl,
         DateTimeOffset expiresAt);
-
-    Task SendVerificationAsync(ApplicationUser user, string verificationUrl);
 
     Task SendPasswordResetAsync(ApplicationUser user, string resetUrl);
 }

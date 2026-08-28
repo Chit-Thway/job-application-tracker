@@ -1,74 +1,74 @@
 @{
-    ViewData["Title"] = "Privacy";
+    ViewData["Title"] = "Privacy Policy";
 }
 
-<section class="workspace-hero privacy-hero">
-    <div class="shell workspace-heading">
-        <div>
-            <p class="eyebrow">Privacy summary</p>
-            <h1>Your search data<br />stays yours.</h1>
-            <p>A plain-language explanation of what the tracker stores, why it stores it, and when it is removed.</p>
-        </div>
-        <a class="button button-primary" asp-controller="Demo" asp-action="Index">Explore the synthetic demo</a>
+<section class="policy-hero">
+    <div class="shell policy-heading">
+        <p class="eyebrow">Privacy Policy</p>
+        <h1>How Job Application Tracker handles personal information.</h1>
+        <p>Effective 28 August 2026 · Version @LegalDocumentVersions.Privacy</p>
     </div>
 </section>
 
-<section class="workspace-content privacy-workspace">
-    <div class="shell privacy-layout">
-        <article class="detail-card privacy-intro">
-            <p class="mini-label">The short version</p>
-            <h2>Private records are never part of the public demo.</h2>
-            <p>
-                The tracker uses your information only to provide the application-tracking features you choose to use.
-                It does not sell personal information, display private records publicly, or use job descriptions to train an AI model.
-            </p>
+<section class="policy-page">
+    <div class="shell policy-layout">
+        <aside class="policy-summary" aria-label="Policy summary">
+            <strong>At a glance</strong>
+            <p>Private tracker records are not public, personal information is not sold, and no advertising or external AI service receives your job-search content.</p>
+            <a href="mailto:redacted@example.invalid">Privacy contact</a>
+        </aside>
+
+        <article class="policy-document">
+            <section>
+                <h2>1. Who operates the service</h2>
+                <p>Job Application Tracker is operated by Chit-Thway from Perth, Western Australia. Questions, access requests, correction requests, or deletion requests can be sent to <a href="mailto:redacted@example.invalid">redacted@example.invalid</a>.</p>
+            </section>
+            <section>
+                <h2>2. Information we collect</h2>
+                <p>Account information includes your name, email address, phone number, password hash, account tier, verification and security status, policy acceptance records, timezone, creation time, and last sign-in time.</p>
+                <p>Tracker information may include applications, employers, job descriptions, captured source text, links, status history, contacts, interactions, tasks, appointments, notes, and retention preferences that you enter, import, or approve.</p>
+                <p>Security and operational records may include sign-in failures, administrative audit entries, health and retention-run timestamps, request metadata, and short error codes. Passwords, verification codes, password-reset tokens, and complete private tracker content are not written to application logs.</p>
+            </section>
+            <section>
+                <h2>3. Why we use it</h2>
+                <ul>
+                    <li>To create, verify, secure, and support your account.</li>
+                    <li>To provide the application-tracking, reminders, retention, import, and browser-capture features you request.</li>
+                    <li>To enforce account tiers, prevent abuse, diagnose faults, and protect users and the service.</li>
+                    <li>To send transactional messages such as email verification codes and password-reset links.</li>
+                </ul>
+                <p>Your phone number is account and support metadata. It is not used to deliver verification codes and is not used for marketing.</p>
+            </section>
+            <section>
+                <h2>4. Service providers and disclosures</h2>
+                <p>The service uses Microsoft Azure for application hosting and transactional email, and Supabase-hosted PostgreSQL for database storage. These providers process information only as needed to operate the service. Information may also be disclosed when reasonably necessary to comply with law, protect rights or safety, investigate abuse, or complete a service transfer with appropriate safeguards.</p>
+                <p>We do not sell personal information, run behavioural advertising, or provide private tracker records to data brokers. Deterministic extraction rules run within the application; job descriptions are not sent to an external AI model.</p>
+            </section>
+            <section>
+                <h2>5. Browser extension and public demo</h2>
+                <p>The optional extension reads a job page only after you explicitly activate it and sends the captured content to your tracker for review. Read the separate <a asp-action="BrowserExtensionPrivacy">browser extension privacy notice</a> for its precise permissions and data flow.</p>
+                <p>The public demo uses separately constructed synthetic records and does not query private account data.</p>
+            </section>
+            <section>
+                <h2>6. Retention and deletion</h2>
+                <p>Account information is retained while your account is active and for a reasonable period needed for security, backup, dispute, and legal purposes after closure. Individual tracker records remain until you delete them or they become eligible under your configured retention settings. Connected workflow records are removed when their parent application is deleted.</p>
+                <p>Backups and provider logs may retain limited copies for a short operational period before scheduled deletion or overwrite. Administrative audit entries may be retained to protect account and service integrity.</p>
+            </section>
+            <section>
+                <h2>7. Your choices</h2>
+                <p>You can review and edit most tracker records directly. You may request access to your account information, correction, account closure, or deletion by contacting the privacy address above. Some records may be retained when reasonably required for security, fraud prevention, legal obligations, or resolving disputes.</p>
+                <p>You can understand essential cookies and local browser storage through the <a asp-action="Cookies">Cookie Policy</a>.</p>
+            </section>
+            <section>
+                <h2>8. Security and international processing</h2>
+                <p>Safeguards include password hashing, email verification, rate limits, account lockout, encrypted HTTPS transport, owner-scoped data access, administrative audit trails, and no-store headers on authenticated pages. No internet service can guarantee absolute security.</p>
+                <p>Infrastructure providers may process data in Australia or other regions where they operate. Provider safeguards and access controls are used to reduce the risks of cross-border processing.</p>
+            </section>
+            <section>
+                <h2>9. Children and policy changes</h2>
+                <p>The service is intended for people managing their own employment search and is not directed to children under 16. If information was provided by a child without appropriate authority, contact us for review.</p>
+                <p>This policy may be updated as the service or legal requirements change. The effective date and version will be updated, and material changes may be communicated in the service or by email.</p>
+            </section>
         </article>
-
-        <div class="privacy-grid">
-            <article class="detail-card">
-                <p class="mini-label">Information stored</p>
-                <h2>Your account and tracker records</h2>
-                <p>Your verified email, display name, password hash, and configured timezone support your private account.</p>
-                <p>Applications may contain companies, job descriptions, source text, status history, contacts, interactions, tasks, appointments, and notes that you enter or approve.</p>
-            </article>
-
-            <article class="detail-card">
-                <p class="mini-label">Purpose</p>
-                <h2>Only the workflow you requested</h2>
-                <p>Account email is used for verification, password reset, and security-related messages—not marketing.</p>
-                <p>Imported job content is processed by deterministic extraction rules. The application does not send it to an external AI service.</p>
-                <p>The optional browser extension reads a job page only after an explicit click. Its dedicated disclosure is available in the <a class="inline-link" asp-action="BrowserExtensionPrivacy">extension privacy notice</a>.</p>
-            </article>
-
-            <article class="detail-card">
-                <p class="mini-label">Retention</p>
-                <h2>Saved means kept; unsaved means temporary</h2>
-                <p>Saved applications remain until you delete or unsave them. You can choose whether unsaved applications reach retention eligibility after one, two, or three calendar months, followed by a visible 3-, 5-, 10-, or 14-day deletion schedule.</p>
-                <p>Deleting an application also removes its connected private workflow records.</p>
-            </article>
-
-            <article class="detail-card">
-                <p class="mini-label">Service providers</p>
-                <h2>Infrastructure, not advertising</h2>
-                <p>The deployed service uses a web host, a Supabase-hosted PostgreSQL database, and a transactional email provider. These services process only the information needed to operate the tracker.</p>
-                <p>The public synthetic demo is constructed separately and never queries private application tables.</p>
-            </article>
-
-            <article class="detail-card">
-                <p class="mini-label">Your choices</p>
-                <h2>Review, correct, save, or delete</h2>
-                <p>You can edit and delete individual records throughout the tracker. Saving cancels a pending automatic deletion schedule; unsaving an old record begins a fresh grace period.</p>
-                <p>For account-wide access or deletion, contact the person who issued your invitation.</p>
-            </article>
-
-            <article class="detail-card">
-                <p class="mini-label">Security</p>
-                <h2>Verification and owner isolation</h2>
-                <p>Registration requires an unused invitation and verification of the supplied email address. Passwords are stored as secure hashes, not readable text.</p>
-                <p>Private database queries are scoped to the signed-in owner, and authenticated pages are marked not to be cached.</p>
-            </article>
-        </div>
-
-        <p class="privacy-updated">Last updated 20 August 2026.</p>
     </div>
 </section>

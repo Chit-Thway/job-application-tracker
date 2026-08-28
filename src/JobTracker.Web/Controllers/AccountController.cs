@@ -15,8 +15,9 @@ public sealed class AccountController(
     UserManager<ApplicationUser> userManager,
     SignInManager<ApplicationUser> signInManager,
     IAccountEmailSender emailSender,
-    InvitationRegistrationService invitationRegistration,
-    TimeProvider timeProvider) : Controller
+    EmailVerificationService emailVerification,
+    TimeProvider timeProvider,
+    ILogger<AccountController> logger) : Controller
 {
     [HttpGet("/account/register")]
     public IActionResult Register()
@@ -38,46 +39,49 @@ public sealed class AccountController(
             return View(model);
         }
 
-        var result = await invitationRegistration.RegisterAsync(
-            model.InvitationCode,
-            model.DisplayName,
-            model.Email,
-            model.Password,
-            HttpContext.RequestAborted);
-
-        if (!result.Succeeded || result.User is null)
+        var now = timeProvider.GetUtcNow();
+        var email = model.Email.Trim();
+        var user = new ApplicationUser
         {
-            var passwordErrors = result.IdentityErrors
-                .Where(error => error.Code.StartsWith("Password", StringComparison.Ordinal))
-                .ToList();
-
-            foreach (var error in passwordErrors)
-            {
-                ModelState.AddModelError(nameof(model.Password), error.Description);
-            }
-
-            if (passwordErrors.Count == 0)
-            {
-                ModelState.AddModelError(
-                    string.Empty,
-                    "Registration could not be completed. Check your invitation code and details.");
-            }
-
+            UserName = email,
+            Email = email,
+            PhoneNumber = model.PhoneNumber.Trim(),
+            DisplayName = model.DisplayName.Trim(),
+            TimeZoneId = "Australia/Perth",
+            AccountTier = AccountTier.Tier1,
+            CreatedAt = now,
+            TermsAcceptedAt = now,
+            TermsVersion = LegalDocumentVersions.Terms,
+            PrivacyAcknowledgedAt = now,
+            PrivacyVersion = LegalDocumentVersions.Privacy,
+        };
+        var result = await userManager.CreateAsync(user, model.Password);
+        if (!result.Succeeded)
+        {
+            AddRegistrationErrors(model, result.Errors);
             return View(model);
         }
 
-        var token = await userManager.GenerateEmailConfirmationTokenAsync(result.User);
-        var verificationUrl = Url.Action(
-            nameof(ConfirmEmail),
-            "Account",
-            new { userId = result.User.Id, code = EncodeToken(token) },
-            Request.Scheme) ?? throw new InvalidOperationException("Could not create verification URL.");
-        await emailSender.SendVerificationAsync(result.User, verificationUrl);
+        try
+        {
+            var issue = await emailVerification.IssueAsync(
+                user,
+                VerificationUrl,
+                HttpContext.RequestAborted);
+            if (issue.Succeeded && issue.ChallengeId is Guid challengeId)
+            {
+                return RedirectToAction(nameof(VerifyEmail), new { challengeId });
+            }
+        }
+        catch (Exception exception)
+        {
+            logger.LogError(exception, "Registration verification-code delivery failed.");
+        }
 
         return View("AccountResult", new AccountResultViewModel(
-            "Check your messages",
-            "Your account was created. Open the verification message before signing in.",
-            true));
+            "Account created",
+            "Your account was created, but the verification code could not be delivered. Use resend verification to try again.",
+            false));
     }
 
     [HttpGet("/account/login")]
@@ -184,45 +188,99 @@ public sealed class AccountController(
         var user = await userManager.FindByEmailAsync(model.Email);
         if (user is not null && !await userManager.IsEmailConfirmedAsync(user))
         {
-            var token = await userManager.GenerateEmailConfirmationTokenAsync(user);
-            var verificationUrl = Url.Action(
-                nameof(ConfirmEmail),
-                "Account",
-                new { userId = user.Id, code = EncodeToken(token) },
-                Request.Scheme) ?? throw new InvalidOperationException("Could not create verification URL.");
-            await emailSender.SendVerificationAsync(user, verificationUrl);
+            try
+            {
+                await emailVerification.IssueAsync(
+                    user,
+                    VerificationUrl,
+                    HttpContext.RequestAborted);
+            }
+            catch (Exception exception)
+            {
+                logger.LogError(exception, "Verification-code resend delivery failed.");
+            }
         }
 
         return View("AccountResult", new AccountResultViewModel(
             "Check your messages",
-            "If an unverified account matches that email address, a new verification message has been sent.",
+            "If an unverified account matches that email address and is eligible for a resend, a new six-digit code has been sent.",
             true));
     }
 
-    [HttpGet("/account/confirm-email")]
-    public async Task<IActionResult> ConfirmEmail(string? userId, string? code)
+    [HttpGet("/account/verify-email")]
+    public async Task<IActionResult> VerifyEmail(
+        Guid challengeId,
+        CancellationToken cancellationToken)
     {
-        if (string.IsNullOrWhiteSpace(userId) || string.IsNullOrWhiteSpace(code))
+        var model = await BuildVerificationModelAsync(challengeId, cancellationToken);
+        if (model is null)
         {
-            return InvalidLink("That verification link is incomplete.");
+            return InvalidLink("That verification request is invalid, completed, or expired.");
         }
 
-        var user = await userManager.FindByIdAsync(userId);
-        if (user is null || !TryDecodeToken(code, out var token))
+        return View(model);
+    }
+
+    [HttpPost("/account/verify-email")]
+    [EnableRateLimiting("account")]
+    public async Task<IActionResult> VerifyEmail(
+        EmailVerificationViewModel model,
+        CancellationToken cancellationToken)
+    {
+        if (!ModelState.IsValid)
         {
-            return InvalidLink("That verification link is invalid or has expired.");
+            return await VerificationViewOrInvalidAsync(model, cancellationToken);
         }
 
-        var result = await userManager.ConfirmEmailAsync(user, token);
+        var result = await emailVerification.VerifyAsync(
+            model.ChallengeId,
+            model.Code,
+            cancellationToken);
         if (!result.Succeeded)
         {
-            return InvalidLink("That verification link is invalid or has expired.");
+            ModelState.AddModelError(nameof(model.Code), result.Message);
+            return await VerificationViewOrInvalidAsync(model, cancellationToken);
         }
 
         return View("AccountResult", new AccountResultViewModel(
             "Email verified",
             "Your account is verified. You can now sign in.",
             true));
+    }
+
+    [HttpPost("/account/verify-email/resend")]
+    [EnableRateLimiting("account")]
+    public async Task<IActionResult> ResendVerificationCode(
+        Guid challengeId,
+        CancellationToken cancellationToken)
+    {
+        var pending = await emailVerification.FindPendingAsync(challengeId, cancellationToken);
+        if (pending is null)
+        {
+            return InvalidLink("That verification request is no longer available.");
+        }
+
+        var user = await userManager.FindByEmailAsync(pending.Email);
+        if (user is null)
+        {
+            return InvalidLink("That verification request is no longer available.");
+        }
+
+        try
+        {
+            var result = await emailVerification.IssueAsync(
+                user,
+                VerificationUrl,
+                cancellationToken);
+            TempData[result.Succeeded ? "Success" : "Error"] = result.Message;
+        }
+        catch (Exception exception)
+        {
+            logger.LogError(exception, "Verification-code resend delivery failed.");
+            TempData["Error"] = "The code could not be delivered. Try again shortly.";
+        }
+
+        return RedirectToAction(nameof(VerifyEmail), new { challengeId });
     }
 
     [HttpGet("/account/reset-password")]
@@ -286,6 +344,65 @@ public sealed class AccountController(
 
     private string SafeReturnUrl(string? returnUrl) =>
         Url.IsLocalUrl(returnUrl) ? returnUrl : Url.Action("Dashboard", "Home")!;
+
+    private string VerificationUrl(Guid challengeId) =>
+        Url.Action(
+            nameof(VerifyEmail),
+            "Account",
+            new { challengeId },
+            Request.Scheme) ?? throw new InvalidOperationException(
+            "Could not create the email-verification URL.");
+
+    private async Task<EmailVerificationViewModel?> BuildVerificationModelAsync(
+        Guid challengeId,
+        CancellationToken cancellationToken)
+    {
+        var pending = await emailVerification.FindPendingAsync(challengeId, cancellationToken);
+        return pending is null
+            ? null
+            : new EmailVerificationViewModel
+            {
+                ChallengeId = pending.ChallengeId,
+                Email = pending.Email,
+                CodeExpiresAt = pending.CodeExpiresAt,
+                ResendAvailableInSeconds = pending.ResendAvailableInSeconds,
+            };
+    }
+
+    private async Task<IActionResult> VerificationViewOrInvalidAsync(
+        EmailVerificationViewModel model,
+        CancellationToken cancellationToken)
+    {
+        var refreshed = await BuildVerificationModelAsync(model.ChallengeId, cancellationToken);
+        if (refreshed is null)
+        {
+            return InvalidLink("That verification request is no longer available.");
+        }
+
+        refreshed.Code = model.Code;
+        return View(nameof(VerifyEmail), refreshed);
+    }
+
+    private void AddRegistrationErrors(
+        RegisterViewModel model,
+        IEnumerable<IdentityError> errors)
+    {
+        foreach (var error in errors)
+        {
+            if (error.Code.StartsWith("Password", StringComparison.Ordinal))
+            {
+                ModelState.AddModelError(nameof(model.Password), error.Description);
+            }
+            else if (error.Code is "DuplicateEmail" or "DuplicateUserName" or "InvalidEmail" or "InvalidUserName")
+            {
+                ModelState.AddModelError(nameof(model.Email), error.Description);
+            }
+            else
+            {
+                ModelState.AddModelError(string.Empty, error.Description);
+            }
+        }
+    }
 
     private static string EncodeToken(string token) =>
         WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(token));

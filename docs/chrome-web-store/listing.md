@@ -17,7 +17,7 @@
 
 Capture the job advertisement already open in your active browser tab and bring it into Job Application Tracker as an editable private review draft.
 
-Job Application Tracker Capture helps invitation-only tracker users avoid repetitive copying from job boards. After you click the extension, it reads the active tab's visible job details and opens the capture inside your authenticated tracker. Nothing is saved as an application until you review and confirm it.
+Job Application Tracker Capture helps registered tracker users avoid repetitive copying from job boards. After you click the extension, it reads the active tab's visible job details and opens the capture inside your authenticated tracker. Nothing is saved as an application until you review and confirm it.
 
 Key features:
 
@@ -30,7 +30,7 @@ Key features:
 - Uses deterministic extraction with no external AI service.
 - Contains no advertising, analytics, background browsing, or broad all-sites permission.
 
-An invitation-only Job Application Tracker account is required to complete and save a capture.
+A verified Job Application Tracker account is required to complete and save a capture.
 
 ## Single purpose
 
@@ -61,4 +61,4 @@ All handled data is necessary for the disclosed job-capture feature. It is not s
 4. Expand **Advanced tracker address** only if a different HTTPS deployment or localhost is needed.
 5. Press **Capture this tab and review**.
 6. The extension reads the active tab only for this click, posts the capture over HTTPS, and opens a clean tracker URL containing only a short-lived single-use token.
-7. Saving the draft requires an invitation-only Job Application Tracker account; the capture UI and handoff can be inspected without granting broad host permissions.
+7. Saving the draft requires a verified Job Application Tracker account; the capture UI and handoff can be inspected without granting broad host permissions.

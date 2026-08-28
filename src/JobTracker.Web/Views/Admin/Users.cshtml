@@ -68,7 +68,7 @@
                         @if (!account.EmailConfirmed)
                         {
                             <form method="post" asp-controller="Admin" asp-action="ResendVerification" asp-route-userId="@account.Id">
-                                <button class="button button-secondary button-small" type="submit">Resend verification</button>
+                                <button class="button button-secondary button-small" type="submit">Send verification code</button>
                             </form>
                         }
                         @if (account.IsLocked)

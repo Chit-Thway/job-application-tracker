@@ -4,31 +4,20 @@ namespace JobTracker.Web.Identity;
 
 public sealed class DevelopmentAccountEmailSender(
     DevelopmentMailStore store,
-    IHostEnvironment environment,
-    IConfiguration configuration) : IAccountEmailSender
+    IHostEnvironment environment) : IAccountEmailSender
 {
-    public Task SendInvitationAsync(
-        string recipientAddress,
-        string invitationCode,
+    public Task SendVerificationCodeAsync(
+        ApplicationUser user,
+        string verificationCode,
+        string verificationUrl,
         DateTimeOffset expiresAt)
-    {
-        EnsureDevelopment();
-        var registrationUrl = BuildAccountUrl("account/register");
-        store.Add(new DevelopmentMailMessage(
-            recipientAddress,
-            "Your Job Application Tracker invitation",
-            registrationUrl,
-            DateTimeOffset.UtcNow));
-        return Task.CompletedTask;
-    }
-
-    public Task SendVerificationAsync(ApplicationUser user, string verificationUrl)
     {
         EnsureDevelopment();
         store.Add(new DevelopmentMailMessage(
             user.Email ?? string.Empty,
-            "Verify your Job Application Tracker account",
+            "Your Job Application Tracker verification code",
             verificationUrl,
+            verificationCode,
             DateTimeOffset.UtcNow));
         return Task.CompletedTask;
     }
@@ -40,6 +29,7 @@ public sealed class DevelopmentAccountEmailSender(
             user.Email ?? string.Empty,
             "Reset your Job Application Tracker password",
             resetUrl,
+            null,
             DateTimeOffset.UtcNow));
         return Task.CompletedTask;
     }
@@ -51,14 +41,5 @@ public sealed class DevelopmentAccountEmailSender(
             throw new InvalidOperationException(
                 "The development email sink cannot be used outside development or tests.");
         }
-    }
-
-    private string BuildAccountUrl(string path)
-    {
-        var configuredBaseUrl = configuration["Email:PublicBaseUrl"];
-        var baseUrl = string.IsNullOrWhiteSpace(configuredBaseUrl)
-            ? "http://localhost:5261/"
-            : configuredBaseUrl.TrimEnd('/') + "/";
-        return new Uri(new Uri(baseUrl, UriKind.Absolute), path).AbsoluteUri;
     }
 }

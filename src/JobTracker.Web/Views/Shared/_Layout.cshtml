@@ -73,7 +73,8 @@
                     }
                     else
                     {
-                        <a class="@NavClass("login", action: true)" aria-current="@AriaCurrent("login")" asp-controller="Account" asp-action="Login">Sign in</a>
+                        <a class="nav-link" asp-controller="Account" asp-action="Login">Sign in</a>
+                        <a class="@NavClass("register", action: true)" aria-current="@AriaCurrent("register")" asp-controller="Account" asp-action="Register">Create account</a>
                     }
                 </nav>
             </div>
@@ -115,6 +116,8 @@
         @RenderBody()
     </main>
 
+    <partial name="_CookieNotice" />
+
     <footer class="site-footer">
         <div class="shell footer-inner">
             <div>
@@ -122,12 +125,16 @@
                 <p>Built for a calmer, more deliberate job search.</p>
             </div>
             <div class="footer-status">
-                <a asp-controller="Home" asp-action="Privacy">Privacy</a>
-                <span aria-hidden="true">&middot;</span>
+                <nav aria-label="Legal information">
+                    <a asp-controller="Home" asp-action="Privacy">Privacy</a>
+                    <a asp-controller="Home" asp-action="Terms">Terms</a>
+                    <a asp-controller="Home" asp-action="Cookies">Cookies</a>
+                </nav>
                 <span><span class="status-dot" aria-hidden="true"></span> Private tracker &middot; Synthetic public demo</span>
             </div>
         </div>
     </footer>
     <script src="~/js/navigation.js" asp-append-version="true"></script>
+    <script src="~/js/cookie-consent.js" asp-append-version="true"></script>
 </body>
 </html>

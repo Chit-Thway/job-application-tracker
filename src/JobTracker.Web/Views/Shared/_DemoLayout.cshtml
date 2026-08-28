@@ -78,6 +78,8 @@
         @RenderBody()
     </main>
 
+    <partial name="_CookieNotice" />
+
     <footer class="site-footer">
         <div class="shell footer-inner">
             <div>
@@ -85,12 +87,16 @@
                 <p>Portfolio demo built entirely from deterministic synthetic records.</p>
             </div>
             <div class="footer-status">
-                <a asp-controller="Home" asp-action="Privacy">Privacy</a>
-                <span aria-hidden="true">&middot;</span>
+                <nav aria-label="Legal information">
+                    <a asp-controller="Home" asp-action="Privacy">Privacy</a>
+                    <a asp-controller="Home" asp-action="Terms">Terms</a>
+                    <a asp-controller="Home" asp-action="Cookies">Cookies</a>
+                </nav>
                 <span><span class="status-dot" aria-hidden="true"></span> Synthetic data &middot; Read only</span>
             </div>
         </div>
     </footer>
     <script src="~/js/navigation.js" asp-append-version="true"></script>
+    <script src="~/js/cookie-consent.js" asp-append-version="true"></script>
 </body>
 </html>

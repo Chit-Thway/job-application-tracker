@@ -27,16 +27,16 @@
                 }
                 else
                 {
-                    <a class="button button-primary" asp-controller="Demo" asp-action="Index">
-                        Explore the live demo
+                    <a class="button button-primary" asp-controller="Account" asp-action="Register">
+                        Create your account
                         <span aria-hidden="true">→</span>
                     </a>
-                    <a class="button button-secondary" asp-controller="Account" asp-action="Login">Private sign in</a>
+                    <a class="button button-secondary" asp-controller="Demo" asp-action="Index">Explore the live demo</a>
                 }
             </div>
             <p class="foundation-caption">
                 <span aria-hidden="true">●</span>
-                Private accounts are invitation-only. The public demo contains synthetic data only.
+                Open registration · Tier 1 includes 10 applications · The public demo contains synthetic data only.
             </p>
         </div>
 
@@ -128,13 +128,13 @@
             <p class="eyebrow">Private by design</p>
             <h2 id="privacy-title">Your real search stays separate.</h2>
             <p>
-                Accounts require a one-time invitation and verified email. Private records are owner-isolated, while
+                Accounts use six-digit email verification. Private records are owner-isolated, while
                 the public portfolio demo is generated entirely from fictional data.
             </p>
             <p><a class="foundation-link" asp-controller="Home" asp-action="Privacy">Read the privacy summary <span aria-hidden="true">→</span></a></p>
         </div>
         <ul class="check-list">
-            <li><span aria-hidden="true">✓</span> Invitation-only registration and verified email</li>
+            <li><span aria-hidden="true">✓</span> Open registration with secure email-code verification</li>
             <li><span aria-hidden="true">✓</span> Owner-isolated applications and connected records</li>
             <li><span aria-hidden="true">✓</span> Configurable retention timing and transparent deletion dates</li>
             <li><span aria-hidden="true">✓</span> Synthetic public demo that never reads private tables</li>

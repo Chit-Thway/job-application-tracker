@@ -34,6 +34,14 @@ public sealed class RegisterViewModel
     public string Email { get; set; } = string.Empty;
 
     [Required]
+    [MaxLength(32)]
+    [Display(Name = "Phone number")]
+    [RegularExpression(
+        @"^\+?[0-9][0-9 ()-]{7,30}$",
+        ErrorMessage = "Enter a valid phone number, including the country code when applicable.")]
+    public string PhoneNumber { get; set; } = string.Empty;
+
+    [Required]
     [DataType(DataType.Password)]
     [StringLength(128, MinimumLength = 12)]
     public string Password { get; set; } = string.Empty;
@@ -44,11 +52,29 @@ public sealed class RegisterViewModel
     [Display(Name = "Confirm password")]
     public string ConfirmPassword { get; set; } = string.Empty;
 
+    [Range(typeof(bool), "true", "true", ErrorMessage = "You must agree to the Terms of Service and acknowledge the Privacy Policy.")]
+    [Display(Name = "I agree to the Terms of Service and acknowledge the Privacy Policy")]
+    public bool AcceptPolicies { get; set; }
+}
+
+public sealed class EmailVerificationViewModel
+{
     [Required]
-    [DataType(DataType.Password)]
-    [MaxLength(100)]
-    [Display(Name = "Invitation code")]
-    public string InvitationCode { get; set; } = string.Empty;
+    public Guid ChallengeId { get; set; }
+
+    [Required]
+    [Display(Name = "Verification code")]
+    [RegularExpression(@"^[0-9]{6}$", ErrorMessage = "Enter the six-digit code from your email.")]
+    public string Code { get; set; } = string.Empty;
+
+    [BindNever]
+    public string Email { get; set; } = string.Empty;
+
+    [BindNever]
+    public int ResendAvailableInSeconds { get; set; }
+
+    [BindNever]
+    public DateTimeOffset? CodeExpiresAt { get; set; }
 }
 
 public sealed class EmailActionViewModel

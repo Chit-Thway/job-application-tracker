@@ -122,65 +122,28 @@ public sealed partial class AdminManagementTests
     }
 
     [Fact]
-    public async Task EmailedInvitation_IsBoundToItsIntendedRecipient()
-    {
-        var administrator = await CreateUserAsync(admin: true);
-        var intendedEmail = $"intended-{Guid.NewGuid():N}@example.test";
-        await using var scope = factory.Services.CreateAsyncScope();
-        var invitations = scope.ServiceProvider.GetRequiredService<InvitationService>();
-        var registrations = scope.ServiceProvider.GetRequiredService<InvitationRegistrationService>();
-        var invitation = await invitations.CreateForRecipientAsync(
-            7,
-            intendedEmail,
-            administrator.Id);
-
-        var wrongRecipient = await registrations.RegisterAsync(
-            invitation.Code,
-            "Wrong Recipient",
-            $"wrong-{Guid.NewGuid():N}@example.test",
-            TestPassword);
-        var intendedRecipient = await registrations.RegisterAsync(
-            invitation.Code,
-            "Intended Recipient",
-            intendedEmail,
-            TestPassword);
-
-        Assert.False(wrongRecipient.Succeeded);
-        Assert.True(intendedRecipient.Succeeded);
-    }
-
-    [Fact]
-    public async Task AdminInvitation_SendsMessageAndVerificationResendIsAudited()
+    public async Task AdminVerificationResend_SendsCodeAndIsAudited()
     {
         var administrator = await CreateUserAsync(admin: true);
         var unverified = await CreateUserAsync(admin: false, confirmed: false);
-        var invitationEmail = $"qa-{Guid.NewGuid():N}@example.test";
         await using var scope = factory.Services.CreateAsyncScope();
         var service = scope.ServiceProvider.GetRequiredService<AdminManagementService>();
         var database = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
 
-        var invitationResult = await service.CreateInvitationAsync(
-            administrator.Id,
-            new CreateAdminInvitationInput
-            {
-                Email = invitationEmail,
-                ValidForDays = 7,
-            });
         var verificationResult = await service.ResendVerificationAsync(
             administrator.Id,
             unverified.Id,
-            _ => Task.FromResult("https://tracker.example.test/account/confirm-email?code=safe"));
+            challengeId => $"https://tracker.example.test/account/verify-email?challengeId={challengeId:D}");
 
         var messages = factory.Services
             .GetRequiredService<DevelopmentMailStore>()
             .Messages;
-        Assert.True(invitationResult.Succeeded);
         Assert.True(verificationResult.Succeeded);
-        Assert.Contains(messages, item => item.Recipient == invitationEmail);
-        Assert.Contains(messages, item => item.Recipient == unverified.Email);
-        Assert.Equal(2, await database.AdminAuditEntries.CountAsync(item =>
+        var message = Assert.Single(messages, item => item.Recipient == unverified.Email);
+        Assert.Matches("^[0-9]{6}$", message.OneTimeCode);
+        Assert.Equal(1, await database.AdminAuditEntries.CountAsync(item =>
             item.ActorUserId == administrator.Id
-            && (item.Action == "Invitation sent" || item.Action == "Verification resent")));
+            && item.Action == "Verification resent"));
     }
 
     private async Task<ApplicationUser> CreateUserAsync(
