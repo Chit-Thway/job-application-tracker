@@ -34,14 +34,6 @@ public sealed class RegisterViewModel
     public string Email { get; set; } = string.Empty;
 
     [Required]
-    [MaxLength(32)]
-    [Display(Name = "Phone number")]
-    [RegularExpression(
-        @"^\+?[0-9][0-9 ()-]{7,30}$",
-        ErrorMessage = "Enter a valid phone number, including the country code when applicable.")]
-    public string PhoneNumber { get; set; } = string.Empty;
-
-    [Required]
     [DataType(DataType.Password)]
     [StringLength(128, MinimumLength = 12)]
     public string Password { get; set; } = string.Empty;

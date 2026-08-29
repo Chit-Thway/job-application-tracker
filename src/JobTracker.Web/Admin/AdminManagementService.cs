@@ -57,7 +57,6 @@ public sealed class AdminManagementService(
         {
             users = users.Where(user =>
                 (user.Email?.Contains(normalizedQuery, StringComparison.OrdinalIgnoreCase) ?? false)
-                || (user.PhoneNumber?.Contains(normalizedQuery, StringComparison.OrdinalIgnoreCase) ?? false)
                 || user.DisplayName.Contains(normalizedQuery, StringComparison.OrdinalIgnoreCase))
                 .ToList();
         }
@@ -77,7 +76,6 @@ public sealed class AdminManagementService(
             users.Select(user => new AdminUserRow(
                 user.Id,
                 user.Email ?? string.Empty,
-                user.PhoneNumber,
                 user.DisplayName,
                 user.CreatedAt,
                 user.LastLoginAt,
@@ -86,6 +84,28 @@ public sealed class AdminManagementService(
                 applicationCounts.GetValueOrDefault(user.Id),
                 adminIds.Contains(user.Id),
                 user.LockoutEnd > now)).ToList());
+    }
+
+    public async Task<AdminDeleteAccountViewModel?> GetDeleteAccountAsync(
+        string targetUserId,
+        CancellationToken cancellationToken = default)
+    {
+        var target = await userManager.FindByIdAsync(targetUserId);
+        if (target is null)
+        {
+            return null;
+        }
+
+        return new AdminDeleteAccountViewModel
+        {
+            UserId = target.Id,
+            Email = target.Email ?? string.Empty,
+            DisplayName = target.DisplayName,
+            ApplicationCount = await database.JobApplications.CountAsync(
+                application => application.OwnerId == target.Id,
+                cancellationToken),
+            IsAdmin = await userManager.IsInRoleAsync(target, AdminRole.Name),
+        };
     }
 
     public async Task<AdminOperationResult> SetTierAsync(
@@ -272,6 +292,51 @@ public sealed class AdminManagementService(
 
         await RecordAsync(actorUserId, "Verification resent", "A new email verification code was sent.", target.Id, cancellationToken: cancellationToken);
         return new(true, "Verification code sent.");
+    }
+
+    public async Task<AdminOperationResult> DeleteAccountAsync(
+        string actorUserId,
+        string targetUserId,
+        string confirmationEmail,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.Equals(actorUserId, targetUserId, StringComparison.Ordinal))
+        {
+            return new(false, "You cannot delete your own account from administration.");
+        }
+
+        var target = await userManager.FindByIdAsync(targetUserId);
+        if (target is null)
+        {
+            return new(false, "The selected account no longer exists.");
+        }
+
+        if (await userManager.IsInRoleAsync(target, AdminRole.Name))
+        {
+            return new(false, "Remove administrator access before deleting this account.");
+        }
+
+        if (!string.Equals(
+                target.Email,
+                confirmationEmail.Trim(),
+                StringComparison.OrdinalIgnoreCase))
+        {
+            return new(false, "The confirmation email does not match the selected account.");
+        }
+
+        var result = await userManager.DeleteAsync(target);
+        if (!result.Succeeded)
+        {
+            return new(false, "The account could not be deleted.");
+        }
+
+        await RecordAsync(
+            actorUserId,
+            "Account deleted",
+            "The account and its private tracker data were permanently deleted.",
+            targetUserId,
+            cancellationToken: cancellationToken);
+        return new(true, "Account and private tracker data permanently deleted.");
     }
 
     private async Task RecordAsync(

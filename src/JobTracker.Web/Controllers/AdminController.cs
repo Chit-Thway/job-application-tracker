@@ -28,7 +28,71 @@ public sealed class AdminController(
         CancellationToken cancellationToken)
     {
         ViewData["Section"] = "admin";
+        ViewData["ActorUserId"] = ActorUserId();
         return View(await admin.GetUsersAsync(query, cancellationToken));
+    }
+
+    [HttpGet("/admin/users/{userId}/delete")]
+    public async Task<IActionResult> DeleteAccount(
+        string userId,
+        CancellationToken cancellationToken)
+    {
+        var model = await admin.GetDeleteAccountAsync(userId, cancellationToken);
+        if (model is null)
+        {
+            TempData["Error"] = "The selected account no longer exists.";
+            return RedirectToAction(nameof(Users));
+        }
+
+        if (string.Equals(ActorUserId(), userId, StringComparison.Ordinal))
+        {
+            TempData["Error"] = "You cannot delete your own account from administration.";
+            return RedirectToAction(nameof(Users));
+        }
+
+        if (model.IsAdmin)
+        {
+            TempData["Error"] = "Remove administrator access before deleting this account.";
+            return RedirectToAction(nameof(Users));
+        }
+
+        ViewData["Section"] = "admin";
+        return View(model);
+    }
+
+    [HttpPost("/admin/users/{userId}/delete")]
+    public async Task<IActionResult> DeleteAccount(
+        string userId,
+        AdminDeleteAccountViewModel input,
+        CancellationToken cancellationToken)
+    {
+        var model = await admin.GetDeleteAccountAsync(userId, cancellationToken);
+        if (model is null)
+        {
+            TempData["Error"] = "The selected account no longer exists.";
+            return RedirectToAction(nameof(Users));
+        }
+
+        model.ConfirmationEmail = input.ConfirmationEmail;
+        ViewData["Section"] = "admin";
+        if (!ModelState.IsValid)
+        {
+            return View(model);
+        }
+
+        var result = await admin.DeleteAccountAsync(
+            ActorUserId(),
+            userId,
+            input.ConfirmationEmail,
+            cancellationToken);
+        if (result.Succeeded)
+        {
+            SetMessage(result);
+            return RedirectToAction(nameof(Users));
+        }
+
+        ModelState.AddModelError(nameof(input.ConfirmationEmail), result.Message);
+        return View(model);
     }
 
     [HttpPost("/admin/users/{userId}/promote")]

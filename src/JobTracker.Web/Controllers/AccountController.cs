@@ -45,7 +45,6 @@ public sealed class AccountController(
         {
             UserName = email,
             Email = email,
-            PhoneNumber = model.PhoneNumber.Trim(),
             DisplayName = model.DisplayName.Trim(),
             TimeZoneId = "Australia/Perth",
             AccountTier = AccountTier.Tier1,

@@ -55,7 +55,6 @@
                             <a class="@NavClass("admin")" aria-current="@AriaCurrent("admin")" asp-controller="Admin" asp-action="Index">Admin</a>
                         }
                     }
-                    <a class="@NavClass("demo")" aria-current="@AriaCurrent("demo")" asp-controller="Demo" asp-action="Index">Demo</a>
                     <a class="@NavClass("extension")" aria-current="@AriaCurrent("extension")" asp-controller="Home" asp-action="BrowserExtension">Install extension</a>
                     @if (HostEnvironment.IsDevelopment())
                     {
@@ -73,6 +72,7 @@
                     }
                     else
                     {
+                        <a class="@NavClass("demo")" aria-current="@AriaCurrent("demo")" asp-controller="Demo" asp-action="Index">Demo</a>
                         <a class="nav-link" asp-controller="Account" asp-action="Login">Sign in</a>
                         <a class="@NavClass("register", action: true)" aria-current="@AriaCurrent("register")" asp-controller="Account" asp-action="Register">Create account</a>
                     }

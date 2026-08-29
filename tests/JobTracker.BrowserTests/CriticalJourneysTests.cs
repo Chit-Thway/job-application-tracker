@@ -93,7 +93,6 @@ public sealed class CriticalJourneysTests(BrowserJourneyFixture fixture)
         await page.GotoAsync("/account/register");
         await page.GetByLabel("Your name").FillAsync("Browser Signup User");
         await page.GetByLabel("Email").FillAsync(email);
-        await page.GetByLabel("Phone number").FillAsync("+61 400 987 654");
         await page.GetByLabel("Password", new() { Exact = true }).FillAsync(BrowserJourneyFixture.Password);
         await page.GetByLabel("Confirm password").FillAsync(BrowserJourneyFixture.Password);
         await page.GetByLabel("I agree to the Terms of Service and acknowledge the Privacy Policy").CheckAsync();
@@ -113,12 +112,14 @@ public sealed class CriticalJourneysTests(BrowserJourneyFixture fixture)
         await page.GetByRole(AriaRole.Button, new() { Name = "Verify email" }).ClickAsync();
 
         await Expect(page.GetByRole(AriaRole.Heading, new() { Name = "Email verified" })).ToBeVisibleAsync();
+        await Expect(page.GetByRole(AriaRole.Link, new() { Name = "Resend an email verification code" })).ToHaveCountAsync(0);
         await page.GetByRole(AriaRole.Link, new() { Name = "Go to sign in" }).ClickAsync();
         await page.GetByLabel("Email").FillAsync(email);
         await page.GetByLabel("Password", new() { Exact = true }).FillAsync(BrowserJourneyFixture.Password);
         await page.GetByRole(AriaRole.Button, new() { Name = "Sign in" }).ClickAsync();
         await Expect(page.GetByRole(AriaRole.Heading, new() { Name = "Your job search, in one useful view." }))
             .ToBeVisibleAsync();
+        await Expect(page.GetByRole(AriaRole.Link, new() { Name = "Demo", Exact = true })).ToHaveCountAsync(0);
     }
 
     [Fact]

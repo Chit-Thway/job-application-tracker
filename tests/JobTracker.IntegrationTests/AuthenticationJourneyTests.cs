@@ -33,8 +33,9 @@ public sealed partial class AuthenticationJourneyTests
 
         Assert.Contains("Welcome back.", login, StringComparison.Ordinal);
         Assert.Contains("Registration is open", login, StringComparison.Ordinal);
+        Assert.DoesNotContain("Resend verification code", login, StringComparison.Ordinal);
         Assert.Contains("Open registration", registration, StringComparison.Ordinal);
-        Assert.Contains("Phone number", registration, StringComparison.Ordinal);
+        Assert.DoesNotContain("Phone number", registration, StringComparison.Ordinal);
         Assert.DoesNotContain("Invitation code", registration, StringComparison.Ordinal);
         Assert.Contains("How Job Application Tracker handles personal information", privacy, StringComparison.Ordinal);
         Assert.Contains("The agreement for using Job Application Tracker", terms, StringComparison.Ordinal);
@@ -60,7 +61,7 @@ public sealed partial class AuthenticationJourneyTests
             var database = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
             var user = await database.Users.SingleAsync(candidate => candidate.Email == email);
             Assert.False(user.EmailConfirmed);
-            Assert.Equal("+61 400 123 456", user.PhoneNumber);
+            Assert.Null(user.PhoneNumber);
             Assert.Equal(AccountTier.Tier1, user.AccountTier);
             Assert.Equal(LegalDocumentVersions.Terms, user.TermsVersion);
             Assert.Equal(LegalDocumentVersions.Privacy, user.PrivacyVersion);
@@ -86,6 +87,7 @@ public sealed partial class AuthenticationJourneyTests
 
         Assert.Equal(HttpStatusCode.OK, verifyResponse.StatusCode);
         Assert.Contains("Email verified", verifiedContent, StringComparison.Ordinal);
+        Assert.DoesNotContain("Resend an email verification code", verifiedContent, StringComparison.Ordinal);
 
         var loginResponse = await PostLoginAsync(client, email, TestPassword);
         Assert.Equal(HttpStatusCode.Redirect, loginResponse.StatusCode);
@@ -93,7 +95,7 @@ public sealed partial class AuthenticationJourneyTests
     }
 
     [Fact]
-    public async Task Registration_RequiresPolicyAgreementAndValidPhone()
+    public async Task Registration_RequiresPolicyAgreement()
     {
         var email = $"policy-{Guid.NewGuid():N}@example.test";
         var client = CreateClient();
@@ -105,7 +107,6 @@ public sealed partial class AuthenticationJourneyTests
             Form(
                 ("DisplayName", "Policy Test User"),
                 ("Email", email),
-                ("PhoneNumber", "invalid"),
                 ("Password", TestPassword),
                 ("ConfirmPassword", TestPassword),
                 ("AcceptPolicies", "false"),
@@ -114,7 +115,6 @@ public sealed partial class AuthenticationJourneyTests
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Contains("must agree to the Terms of Service", content, StringComparison.Ordinal);
-        Assert.Contains("Enter a valid phone number", content, StringComparison.Ordinal);
 
         await using var scope = factory.Services.CreateAsyncScope();
         var users = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
@@ -338,7 +338,6 @@ public sealed partial class AuthenticationJourneyTests
             Form(
                 ("DisplayName", "Open Registration User"),
                 ("Email", email),
-                ("PhoneNumber", "+61 400 123 456"),
                 ("Password", TestPassword),
                 ("ConfirmPassword", TestPassword),
                 ("AcceptPolicies", acceptPolicies ? "true" : "false"),

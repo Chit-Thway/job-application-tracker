@@ -50,7 +50,25 @@ public sealed partial class AdminManagementTests
         Assert.Contains("Administration.", content, StringComparison.Ordinal);
         Assert.Contains("What admins cannot see", content, StringComparison.Ordinal);
         Assert.Contains("href=\"/admin\"", content, StringComparison.Ordinal);
+        Assert.DoesNotContain("href=\"/demo\"", content, StringComparison.Ordinal);
         Assert.DoesNotContain(TestPassword, content, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Administrator_SeesGuardedAccountDeletionConfirmation()
+    {
+        var administrator = await CreateUserAsync(admin: true);
+        var user = await CreateUserAsync(admin: false);
+        var client = CreateClient();
+        await LoginAsync(client, administrator.Email!);
+
+        var accountsPage = await client.GetStringAsync("/admin/users");
+        var confirmationPage = await client.GetStringAsync($"/admin/users/{user.Id}/delete");
+
+        Assert.Contains($"href=\"/admin/users/{user.Id}/delete\"", accountsPage, StringComparison.Ordinal);
+        Assert.Contains("Permanent account deletion", confirmationPage, StringComparison.Ordinal);
+        Assert.Contains(user.Email!, confirmationPage, StringComparison.Ordinal);
+        Assert.Contains("Delete account permanently", confirmationPage, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -82,9 +100,7 @@ public sealed partial class AdminManagementTests
     public async Task Administrator_CanReviewAccountMetadataAndAuditTierChanges()
     {
         var administrator = await CreateUserAsync(admin: true);
-        var user = await CreateUserAsync(
-            admin: false,
-            phoneNumber: "+61400000001");
+        var user = await CreateUserAsync(admin: false);
         await using var scope = factory.Services.CreateAsyncScope();
         var service = scope.ServiceProvider.GetRequiredService<AdminManagementService>();
         var database = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
@@ -103,14 +119,13 @@ public sealed partial class AdminManagementTests
             });
         await database.SaveChangesAsync();
 
-        var accounts = await service.GetUsersAsync("400000001");
+        var accounts = await service.GetUsersAsync(user.Email);
         var account = Assert.Single(accounts.Users);
         var upgraded = await service.SetTierAsync(
             administrator.Id,
             user.Id,
             AccountTier.Tier2);
 
-        Assert.Equal("+61400000001", account.PhoneNumber);
         Assert.Equal(2, account.ApplicationCount);
         Assert.Equal(AccountTier.Tier1, account.AccountTier);
         Assert.True(upgraded.Succeeded);
@@ -146,10 +161,74 @@ public sealed partial class AdminManagementTests
             && item.Action == "Verification resent"));
     }
 
+    [Fact]
+    public async Task Administrator_CanPermanentlyDeleteConfirmedNonAdminAccountAndOwnedData()
+    {
+        var administrator = await CreateUserAsync(admin: true);
+        var user = await CreateUserAsync(admin: false);
+        await using var scope = factory.Services.CreateAsyncScope();
+        var service = scope.ServiceProvider.GetRequiredService<AdminManagementService>();
+        var database = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+        var company = new Company
+        {
+            OwnerId = user.Id,
+            Name = "Private deletion company",
+        };
+        database.Companies.Add(company);
+        database.JobApplications.Add(new JobApplication
+        {
+            OwnerId = user.Id,
+            CompanyId = company.Id,
+            RoleTitle = "Private role to delete",
+            AppliedOn = new DateOnly(2026, 8, 29),
+        });
+        await database.SaveChangesAsync();
+
+        var mismatch = await service.DeleteAccountAsync(
+            administrator.Id,
+            user.Id,
+            "different@example.test");
+        var deleted = await service.DeleteAccountAsync(
+            administrator.Id,
+            user.Id,
+            user.Email!);
+
+        Assert.False(mismatch.Succeeded);
+        Assert.True(deleted.Succeeded);
+        Assert.Null(await database.Users.FindAsync(user.Id));
+        Assert.False(await database.Companies.AnyAsync(item => item.OwnerId == user.Id));
+        Assert.False(await database.JobApplications.AnyAsync(item => item.OwnerId == user.Id));
+        Assert.Contains(await database.AdminAuditEntries.ToListAsync(), entry =>
+            entry.ActorUserId == administrator.Id
+            && entry.TargetUserId == user.Id
+            && entry.Action == "Account deleted"
+            && !entry.Details.Contains(user.Email!, StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public async Task AccountDeletion_ProtectsCurrentAdministratorAndOtherAdministrators()
+    {
+        var administrator = await CreateUserAsync(admin: true);
+        var otherAdministrator = await CreateUserAsync(admin: true);
+        await using var scope = factory.Services.CreateAsyncScope();
+        var service = scope.ServiceProvider.GetRequiredService<AdminManagementService>();
+
+        var selfDeletion = await service.DeleteAccountAsync(
+            administrator.Id,
+            administrator.Id,
+            administrator.Email!);
+        var administratorDeletion = await service.DeleteAccountAsync(
+            administrator.Id,
+            otherAdministrator.Id,
+            otherAdministrator.Email!);
+
+        Assert.False(selfDeletion.Succeeded);
+        Assert.False(administratorDeletion.Succeeded);
+    }
+
     private async Task<ApplicationUser> CreateUserAsync(
         bool admin,
-        bool confirmed = true,
-        string? phoneNumber = null)
+        bool confirmed = true)
     {
         var email = $"admin-test-{Guid.NewGuid():N}@example.test";
         await using var scope = factory.Services.CreateAsyncScope();
@@ -160,7 +239,6 @@ public sealed partial class AdminManagementTests
             UserName = email,
             Email = email,
             EmailConfirmed = confirmed,
-            PhoneNumber = phoneNumber,
             DisplayName = admin ? "Administrator Test" : "User Test",
             TimeZoneId = "Australia/Perth",
             CreatedAt = DateTimeOffset.UtcNow,

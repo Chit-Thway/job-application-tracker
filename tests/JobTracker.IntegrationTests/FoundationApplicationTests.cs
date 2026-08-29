@@ -46,7 +46,7 @@ public sealed class FoundationApplicationTests : IClassFixture<JobTrackerWebAppl
 
         Assert.Equal(HttpStatusCode.OK, privacyResponse.StatusCode);
         Assert.Contains("Information we collect", privacy, StringComparison.Ordinal);
-        Assert.Contains("phone number", privacy, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("does not request or retain a phone number", privacy, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("do not sell personal information", privacy, StringComparison.Ordinal);
         Assert.Contains("Account tiers", terms, StringComparison.Ordinal);
         Assert.Contains("Tier 1 accounts may store up to 10", terms, StringComparison.Ordinal);

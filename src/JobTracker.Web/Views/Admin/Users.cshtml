@@ -1,6 +1,7 @@
 @model AdminUsersViewModel
 @{
     ViewData["Title"] = "Account administration";
+    var actorUserId = ViewData["ActorUserId"] as string;
 }
 
 <section class="admin-page">
@@ -9,7 +10,7 @@
             <div>
                 <p class="eyebrow">Private administration</p>
                 <h1>Accounts.</h1>
-                <p>Verification and access controls only. Private tracker data stays private.</p>
+                <p>Manage verification, access, tiers, and authorised account closure without opening private tracker content.</p>
             </div>
         </div>
 
@@ -17,7 +18,7 @@
 
         <form class="admin-search" method="get" asp-controller="Admin" asp-action="Users">
             <div class="field">
-                <label for="admin-user-query">Search by name, email, or phone</label>
+                <label for="admin-user-query">Search by name or email</label>
                 <input id="admin-user-query" name="query" value="@Model.Query" type="search" autocomplete="off" />
             </div>
             <button class="button button-primary" type="submit">Search</button>
@@ -40,7 +41,6 @@
                         <div>
                             <h2>@account.DisplayName</h2>
                             <p>@account.Email</p>
-                            <p class="admin-user-phone">@(string.IsNullOrWhiteSpace(account.PhoneNumber) ? "Phone not provided" : account.PhoneNumber)</p>
                             <div class="admin-badges">
                                 <span class="admin-status @(account.EmailConfirmed ? "is-positive" : "is-warning")">@(account.EmailConfirmed ? "Verified" : "Unverified")</span>
                                 <span class="admin-status @(account.IsLocked ? "is-danger" : "")">@(account.IsLocked ? "Locked" : "Active")</span>
@@ -94,6 +94,10 @@
                             <form method="post" asp-controller="Admin" asp-action="Promote" asp-route-userId="@account.Id">
                                 <button class="button button-secondary button-small" type="submit">Make admin</button>
                             </form>
+                        }
+                        @if (!account.IsAdmin && !string.Equals(account.Id, actorUserId, StringComparison.Ordinal))
+                        {
+                            <a class="button button-danger button-small" asp-controller="Admin" asp-action="DeleteAccount" asp-route-userId="@account.Id">Delete account</a>
                         }
                     </div>
                 </article>

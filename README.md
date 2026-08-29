@@ -62,7 +62,7 @@ Then open [https://localhost:7239](https://localhost:7239).
 | `/terms` | Public Terms of Service |
 | `/cookies` | Public Cookie Policy and browser-storage controls |
 | `/account/login` | Private account sign-in |
-| `/account/register` | Open Tier 1 account creation with phone and policy acceptance |
+| `/account/register` | Open Tier 1 account creation with policy acceptance |
 | `/account/verify-email` | Six-digit email verification with a 30-second resend cooldown |
 | `/account/forgot-password` | Password-reset request |
 | `/account/resend-verification` | Email-verification resend |
@@ -184,9 +184,9 @@ dotnet user-secrets remove "BootstrapAccount:Password" --project src/JobTracker.
 
 ## Open registration and email verification
 
-Anyone can create a Tier 1 account at `/account/register` by supplying a name, email address, phone number, strong password, and policy agreement. Verification codes contain six digits, expire after ten minutes, allow five failed attempts, and can be resent only after a server-enforced 30-second delay. Only a password hash and verification-code hash are stored; readable passwords and codes are never stored or logged.
+Anyone can create a Tier 1 account at `/account/register` by supplying a name, email address, strong password, and policy agreement. Verification codes contain six digits, expire after ten minutes, allow five failed attempts, and can be resent only after a server-enforced 30-second delay. Only a password hash and verification-code hash are stored; readable passwords and codes are never stored or logged.
 
-Account administrators can review identity metadata and application counts, resend a verification code, lock access, and change Tier 1/Tier 2 status without opening private tracker content. Invitation commands, invitation records, and invitation administration routes no longer exist.
+Account administrators can review identity metadata and application counts, resend a verification code when needed, lock access, change Tier 1/Tier 2 status, and permanently delete an authorised account without opening its private tracker content. Account deletion requires typing the selected email address and removes all owner-scoped tracker records. Invitation commands, invitation records, and invitation administration routes no longer exist.
 
 ## Quality checks
 

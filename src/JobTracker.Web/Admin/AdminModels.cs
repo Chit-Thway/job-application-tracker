@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using JobTracker.Web.Data;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
 
 namespace JobTracker.Web.Admin;
 
@@ -19,7 +20,6 @@ public sealed record AdminAuditRow(
 public sealed record AdminUserRow(
     string Id,
     string Email,
-    string? PhoneNumber,
     string DisplayName,
     DateTimeOffset CreatedAt,
     DateTimeOffset? LastLoginAt,
@@ -32,5 +32,28 @@ public sealed record AdminUserRow(
 public sealed record AdminUsersViewModel(
     string Query,
     IReadOnlyList<AdminUserRow> Users);
+
+public sealed class AdminDeleteAccountViewModel
+{
+    [BindNever]
+    public string UserId { get; set; } = string.Empty;
+
+    [BindNever]
+    public string Email { get; set; } = string.Empty;
+
+    [BindNever]
+    public string DisplayName { get; set; } = string.Empty;
+
+    [BindNever]
+    public int ApplicationCount { get; set; }
+
+    [BindNever]
+    public bool IsAdmin { get; set; }
+
+    [Required(ErrorMessage = "Type the account email address to confirm permanent deletion.")]
+    [EmailAddress]
+    [Display(Name = "Type the account email address to confirm")]
+    public string ConfirmationEmail { get; set; } = string.Empty;
+}
 
 public sealed record AdminOperationResult(bool Succeeded, string Message);
