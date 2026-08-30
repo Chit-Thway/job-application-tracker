@@ -238,6 +238,27 @@ public sealed class FoundationApplicationTests : IClassFixture<JobTrackerWebAppl
         Assert.DoesNotContain("System.", content, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public async Task CanonicalOrigin_RedirectsLegacyHostsAndPreservesOperationalHealth()
+    {
+        using var canonicalFactory = factory.WithWebHostBuilder(builder =>
+            builder.UseSetting("CanonicalOrigin", "https://myjobtracker.com.au"));
+        using var client = canonicalFactory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            BaseAddress = new Uri("https://legacy.azurewebsites.net"),
+            AllowAutoRedirect = false,
+        });
+
+        var pageResponse = await client.GetAsync("/demo?query=platform%20engineer");
+        var healthResponse = await client.GetAsync("/health/live");
+
+        Assert.Equal(HttpStatusCode.PermanentRedirect, pageResponse.StatusCode);
+        Assert.Equal(
+            "https://myjobtracker.com.au/demo?query=platform%20engineer",
+            pageResponse.Headers.Location?.AbsoluteUri);
+        Assert.Equal(HttpStatusCode.OK, healthResponse.StatusCode);
+    }
+
     private HttpClient CreateClient()
     {
         return factory.CreateClient(new WebApplicationFactoryClientOptions

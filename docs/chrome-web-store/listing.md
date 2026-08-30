@@ -9,8 +9,8 @@
 - Visibility: `Unlisted`
 - Extension ID: `ofeagkadonbdgjhdiobfdnmafhoknkig`
 - Store URL: `https://chromewebstore.google.com/detail/ofeagkadonbdgjhdiobfdnmafhoknkig`
-- Homepage: `https://chit-thway-job-tracker-b9bpfvb5csccb5hb.australiaeast-01.azurewebsites.net/extension`
-- Privacy policy: `https://chit-thway-job-tracker-b9bpfvb5csccb5hb.australiaeast-01.azurewebsites.net/extension/privacy`
+- Homepage: `https://myjobtracker.com.au/extension`
+- Privacy policy: `https://myjobtracker.com.au/extension/privacy`
 - Support email: `redacted@example.invalid`
 
 ## Detailed description

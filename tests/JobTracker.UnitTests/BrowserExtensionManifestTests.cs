@@ -18,7 +18,11 @@ public sealed class BrowserExtensionManifestTests
             .ToArray();
 
         Assert.Equal(3, root.GetProperty("manifest_version").GetInt32());
+        Assert.Equal("1.0.3", root.GetProperty("version").GetString());
         Assert.Equal("102", root.GetProperty("minimum_chrome_version").GetString());
+        Assert.Equal(
+            "https://myjobtracker.com.au/extension",
+            root.GetProperty("homepage_url").GetString());
         Assert.Equal(new[] { "activeTab", "scripting", "storage" }, permissions);
         Assert.False(root.TryGetProperty("host_permissions", out _));
         Assert.False(root.TryGetProperty("content_scripts", out _));
@@ -39,6 +43,7 @@ public sealed class BrowserExtensionManifestTests
         Assert.DoesNotContain("fetch(", script, StringComparison.Ordinal);
         Assert.DoesNotContain("XMLHttpRequest", script, StringComparison.Ordinal);
         Assert.DoesNotContain("innerHTML", script, StringComparison.Ordinal);
+        Assert.Contains("https://myjobtracker.com.au", script, StringComparison.Ordinal);
     }
 
     [Fact]

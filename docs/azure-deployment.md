@@ -1,6 +1,6 @@
 # Azure production deployment
 
-This runbook deploys the tracker to the HTTPS `azurewebsites.net` address supplied by Azure App Service. A custom domain is optional and deliberately deferred until the default address passes production acceptance.
+This runbook deploys the tracker to Azure App Service at the canonical HTTPS origin `https://myjobtracker.com.au`. The default `azurewebsites.net` hostname remains attached for operations and redirects public page requests to the canonical domain.
 
 ## Production shape
 
@@ -51,6 +51,7 @@ App Service settings are environment configuration, not source-controlled values
 | `Email__PublicBaseUrl` | Public HTTPS origin without a trailing path, for example `https://name.azurewebsites.net` |
 | `Email__SupportAddress` | Support mailbox displayed as a `mailto:` link in account messages |
 | `AllowedHosts` | The assigned host, for example `chit-thway-job-tracker.azurewebsites.net` |
+| `CanonicalOrigin` | Canonical HTTPS origin without a trailing slash, currently `https://myjobtracker.com.au` |
 
 Never put the database password, email verification code, email token, publish profile, or Azure access key in GitHub text, workflow YAML, logs, screenshots, or support messages.
 

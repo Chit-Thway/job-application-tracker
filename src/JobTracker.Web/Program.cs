@@ -19,6 +19,22 @@ using System.Threading.RateLimiting;
 
 var builder = WebApplication.CreateBuilder(args);
 
+var canonicalOriginValue = builder.Configuration["CanonicalOrigin"]?.Trim();
+Uri? canonicalOrigin = null;
+if (!string.IsNullOrEmpty(canonicalOriginValue))
+{
+    if (!Uri.TryCreate(canonicalOriginValue, UriKind.Absolute, out canonicalOrigin)
+        || canonicalOrigin.Scheme != Uri.UriSchemeHttps
+        || canonicalOrigin.AbsolutePath != "/"
+        || !string.IsNullOrEmpty(canonicalOrigin.Query)
+        || !string.IsNullOrEmpty(canonicalOrigin.Fragment)
+        || !string.IsNullOrEmpty(canonicalOrigin.UserInfo))
+    {
+        throw new InvalidOperationException(
+            "CanonicalOrigin must be an absolute HTTPS origin without credentials, a path, query, or fragment.");
+    }
+}
+
 builder.Logging.ClearProviders();
 if (builder.Environment.IsProduction())
 {
@@ -262,6 +278,33 @@ app.Use(async (context, next) =>
 
     await next();
 });
+
+if (canonicalOrigin is not null)
+{
+    var canonicalBaseUrl = canonicalOrigin.GetLeftPart(UriPartial.Authority);
+    app.Use(async (context, next) =>
+    {
+        var isHealthEndpoint = context.Request.Path.StartsWithSegments(
+            "/health",
+            StringComparison.OrdinalIgnoreCase);
+        var isCanonicalHost = string.Equals(
+            context.Request.Host.Host,
+            canonicalOrigin.Host,
+            StringComparison.OrdinalIgnoreCase);
+
+        if (!isHealthEndpoint && !isCanonicalHost)
+        {
+            var destination = canonicalBaseUrl
+                + context.Request.PathBase
+                + context.Request.Path
+                + context.Request.QueryString;
+            context.Response.Redirect(destination, permanent: true, preserveMethod: true);
+            return;
+        }
+
+        await next();
+    });
+}
 
 app.UseHttpsRedirection();
 app.UseRouting();
