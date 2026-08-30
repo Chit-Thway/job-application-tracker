@@ -1,6 +1,6 @@
 # Azure production deployment
 
-This runbook deploys the tracker to Azure App Service at the canonical HTTPS origin `https://myjobtracker.com.au`. The default `azurewebsites.net` hostname remains attached for operations and redirects public page requests to the canonical domain.
+This runbook deploys the tracker to Azure App Service at the canonical HTTPS origin [myjobtracker.com.au](https://myjobtracker.com.au). The default `azurewebsites.net` hostname remains attached for operations and redirects public page requests to the canonical domain.
 
 ## Production shape
 
@@ -48,7 +48,7 @@ App Service settings are environment configuration, not source-controlled values
 | `ConnectionStrings__DefaultConnection` | Production Supabase Session Pooler connection string with TLS required |
 | `Email__Endpoint` | Communication Services HTTPS endpoint, for example `https://name.communication.azure.com` |
 | `Email__SenderAddress` | Exact MailFrom address displayed by the connected Azure Managed Domain |
-| `Email__PublicBaseUrl` | Public HTTPS origin without a trailing path, for example `https://name.azurewebsites.net` |
+| `Email__PublicBaseUrl` | Public HTTPS origin without a trailing path, currently `https://myjobtracker.com.au` |
 | `Email__SupportAddress` | Support mailbox displayed as a `mailto:` link in account messages |
 | `AllowedHosts` | The assigned host, for example `chit-thway-job-tracker.azurewebsites.net` |
 | `CanonicalOrigin` | Canonical HTTPS origin without a trailing slash, currently `https://myjobtracker.com.au` |

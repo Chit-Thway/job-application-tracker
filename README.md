@@ -2,9 +2,11 @@
 
 A private ASP.NET Core job-search organizer for tracking applications, follow-ups, appointments, and expiring records from one focused dashboard.
 
+**Live site:** [myjobtracker.com.au](https://myjobtracker.com.au) · [Public demo](https://myjobtracker.com.au/demo) · [Create an account](https://myjobtracker.com.au/account/register)
+
 ## Current status
 
-Milestone 10 raises the complete tracker to a launch-candidate baseline: production-secure cookies, OWASP-oriented response headers, privacy-safe structured request diagnostics, liveness and database-readiness probes, current dependency auditing, WCAG-focused checks, real Chromium journeys, a 1,000-application performance smoke test, and operational runbooks. Production deployment remains Milestone 11.
+The tracker is live at [myjobtracker.com.au](https://myjobtracker.com.au) with open email-code registration, Tier 1 application limits, administrator-managed Tier 2 upgrades, production-secure cookies, OWASP-oriented response headers, privacy-safe structured request diagnostics, liveness and database-readiness probes, dependency auditing, WCAG-focused checks, real Chromium journeys, a 1,000-application performance smoke test, and operational runbooks.
 
 Milestone 9's portfolio-friendly public demonstration remains available with a synthetic dashboard, application library, Action Centre, and application details. It uses a deterministic in-memory catalog, fictional slugs, a non-personalized public layout, and read-only routes that never query private application tables.
 
@@ -135,7 +137,7 @@ Install it locally:
 4. Pin **Job Application Tracker Capture** to the toolbar.
 5. Open a job advertisement, click the extension, and choose **Capture and review**.
 
-The store build defaults to `https://myjobtracker.com.au`; its advanced popup settings can remember a different address for development. The manifest requests only `activeTab`, `scripting`, and `storage`: there are no broad host permissions, content scripts, background workers, analytics, or remote APIs. The popup prominently discloses that the selected page URL and visible job content are sent to the configured private tracker. Version 1.0.3 posts the capture through a clean handoff page, stores it encrypted behind a random single-use token for at most 10 minutes, and opens only that short token in the authenticated tracker. Redeeming the token removes the handoff and creates an owner-scoped 24-hour review draft. See `browser-extension/README.md` and the public `/extension/privacy` route for the install and privacy details.
+The store build defaults to [myjobtracker.com.au](https://myjobtracker.com.au); its advanced popup settings can remember a different address for development. The manifest requests only `activeTab`, `scripting`, and `storage`: there are no broad host permissions, content scripts, background workers, analytics, or remote APIs. The popup prominently discloses that the selected page URL and visible job content are sent to the configured private tracker. Version 1.0.3 posts the capture through a clean handoff page, stores it encrypted behind a random single-use token for at most 10 minutes, and opens only that short token in the authenticated tracker. Redeeming the token removes the handoff and creates an owner-scoped 24-hour review draft. See `browser-extension/README.md` and the public [extension privacy page](https://myjobtracker.com.au/extension/privacy) for the install and privacy details.
 
 ## Database setup
 

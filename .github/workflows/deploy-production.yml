@@ -18,7 +18,7 @@ jobs:
     timeout-minutes: 20
     environment:
       name: production
-      url: ${{ steps.deploy.outputs.webapp-url }}
+      url: https://myjobtracker.com.au
 
     env:
       DOTNET_CLI_TELEMETRY_OPTOUT: 1

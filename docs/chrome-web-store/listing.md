@@ -8,9 +8,9 @@
 - Language: `English (UK)`
 - Visibility: `Unlisted`
 - Extension ID: `ofeagkadonbdgjhdiobfdnmafhoknkig`
-- Store URL: `https://chromewebstore.google.com/detail/ofeagkadonbdgjhdiobfdnmafhoknkig`
-- Homepage: `https://myjobtracker.com.au/extension`
-- Privacy policy: `https://myjobtracker.com.au/extension/privacy`
+- Store URL: [Chrome Web Store listing](https://chromewebstore.google.com/detail/ofeagkadonbdgjhdiobfdnmafhoknkig)
+- Homepage: [myjobtracker.com.au/extension](https://myjobtracker.com.au/extension)
+- Privacy policy: [myjobtracker.com.au/extension/privacy](https://myjobtracker.com.au/extension/privacy)
 - Support email: `redacted@example.invalid`
 
 ## Detailed description

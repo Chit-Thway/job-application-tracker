@@ -4,7 +4,7 @@ This Chrome Manifest V3 extension captures the active job advertisement, includi
 
 ## Install from the Chrome Web Store
 
-Open the extension page inside Job Application Tracker and choose **Install from Chrome Web Store**. Chrome shows the extension's permissions before installation and delivers approved updates automatically.
+Open the [extension page on myjobtracker.com.au](https://myjobtracker.com.au/extension) and choose **Install from Chrome Web Store**. Chrome shows the extension's permissions before installation and delivers approved updates automatically.
 
 ## Install for local development
 
@@ -16,7 +16,7 @@ Open the extension page inside Job Application Tracker and choose **Install from
 
 After pulling an extension update, use the extension page's **Reload** button before retesting an already open job tab.
 
-The published extension defaults to the production HTTPS tracker. Expand **Advanced tracker address** in the popup only when testing a different deployment or localhost.
+The published extension defaults to the production HTTPS tracker at [myjobtracker.com.au](https://myjobtracker.com.au). Expand **Advanced tracker address** in the popup only when testing a different deployment or localhost.
 
 ## Use
 
