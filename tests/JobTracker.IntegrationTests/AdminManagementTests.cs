@@ -47,7 +47,7 @@ public sealed partial class AdminManagementTests
         var content = await response.Content.ReadAsStringAsync();
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        Assert.Contains("Administration.", content, StringComparison.Ordinal);
+        Assert.Contains(">Admin</h1>", content, StringComparison.Ordinal);
         Assert.Contains("What admins cannot see", content, StringComparison.Ordinal);
         Assert.Contains("href=\"/admin\"", content, StringComparison.Ordinal);
         Assert.DoesNotContain("href=\"/demo\"", content, StringComparison.Ordinal);

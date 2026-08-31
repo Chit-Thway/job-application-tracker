@@ -16,9 +16,9 @@ public sealed class PublicDemoTests : IClassFixture<JobTrackerWebApplicationFact
     }
 
     [Theory]
-    [InlineData("/demo", "A realistic tracker")]
+    [InlineData("/demo", ">Dashboard</h1>")]
     [InlineData("/demo/applications", "synthetic applications")]
-    [InlineData("/demo/actions", "Synthetic Action Centre")]
+    [InlineData("/demo/actions", ">Action Centre</h1>")]
     [InlineData("/demo/applications/nova-harbour-graduate-platform-engineer", "Graduate Platform Engineer")]
     public async Task PublicDemo_IsBrowsableAndContainsOnlySyntheticReadOnlyContent(
         string route,

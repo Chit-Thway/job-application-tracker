@@ -14,7 +14,7 @@ public sealed class FoundationApplicationTests : IClassFixture<JobTrackerWebAppl
 
     [Theory]
     [InlineData("/", "Track every application", "Private tracker", "Synthetic public demo")]
-    [InlineData("/demo", "A realistic tracker", "Synthetic data", "Read only")]
+    [InlineData("/demo", ">Dashboard</h1>", "Synthetic data", "Read only")]
     public async Task FoundationRoutes_ReturnSuccessfulBrandedPages(
         string route,
         string expectedText,
@@ -67,7 +67,7 @@ public sealed class FoundationApplicationTests : IClassFixture<JobTrackerWebAppl
         var privacyContent = await privacyResponse.Content.ReadAsStringAsync();
 
         Assert.Equal(HttpStatusCode.OK, overviewResponse.StatusCode);
-        Assert.Contains("Bring the job page", overviewContent, StringComparison.Ordinal);
+        Assert.Contains(">Browser extension</h1>", overviewContent, StringComparison.Ordinal);
         Assert.Contains("Install from Chrome Web Store", overviewContent, StringComparison.Ordinal);
         Assert.Equal(HttpStatusCode.OK, privacyResponse.StatusCode);
         Assert.Contains("Website content and page address", privacyContent, StringComparison.Ordinal);
