@@ -167,7 +167,7 @@
                                 <label asp-for="Interaction.OccurredAtLocal"></label>
                                 <input asp-for="Interaction.OccurredAtLocal" type="datetime-local" />
                                 <span asp-validation-for="Interaction.OccurredAtLocal" class="field-error"></span>
-                                <small>@workflow.TimeZoneId</small>
+                                <small>Local time</small>
                             </div>
                             <label class="workflow-check">
                                 <input asp-for="Interaction.IsEmployerResponse" />
@@ -358,7 +358,7 @@
                     <form method="post" asp-action="AddTask" asp-route-id="@application.Id" class="workflow-form">
                         <div class="workflow-form-grid">
                             <div class="field"><label asp-for="Task.Title"></label><input asp-for="Task.Title" placeholder="Follow up with the recruiter" /><span asp-validation-for="Task.Title" class="field-error"></span></div>
-                            <div class="field"><label asp-for="Task.DueAtLocal"></label><input asp-for="Task.DueAtLocal" type="datetime-local" /><span asp-validation-for="Task.DueAtLocal" class="field-error"></span><small>@workflow.TimeZoneId</small></div>
+                            <div class="field"><label asp-for="Task.DueAtLocal"></label><input asp-for="Task.DueAtLocal" type="datetime-local" /><span asp-validation-for="Task.DueAtLocal" class="field-error"></span><small>Local time</small></div>
                             <div class="field form-span-2"><label asp-for="Task.Notes"></label><textarea asp-for="Task.Notes" rows="3"></textarea><span asp-validation-for="Task.Notes" class="field-error"></span></div>
                         </div>
                         <button class="button button-primary" type="submit">Add task</button>
@@ -423,7 +423,7 @@
                             <div class="field"><label asp-for="Appointment.LocationOrLink"></label><input asp-for="Appointment.LocationOrLink" placeholder="Office address or https://..." /><span asp-validation-for="Appointment.LocationOrLink" class="field-error"></span></div>
                             <div class="field"><label asp-for="Appointment.StartsAtLocal"></label><input asp-for="Appointment.StartsAtLocal" type="datetime-local" /><span asp-validation-for="Appointment.StartsAtLocal" class="field-error"></span></div>
                             <div class="field"><label asp-for="Appointment.EndsAtLocal"></label><input asp-for="Appointment.EndsAtLocal" type="datetime-local" /><span asp-validation-for="Appointment.EndsAtLocal" class="field-error"></span></div>
-                            <div class="field form-span-2"><small>Times use @workflow.TimeZoneId.</small><label asp-for="Appointment.Notes"></label><textarea asp-for="Appointment.Notes" rows="3"></textarea><span asp-validation-for="Appointment.Notes" class="field-error"></span></div>
+                            <div class="field form-span-2"><small>Times use your local timezone.</small><label asp-for="Appointment.Notes"></label><textarea asp-for="Appointment.Notes" rows="3"></textarea><span asp-validation-for="Appointment.Notes" class="field-error"></span></div>
                         </div>
                         <button class="button button-primary" type="submit">Add appointment</button>
                     </form>

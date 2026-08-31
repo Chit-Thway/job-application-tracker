@@ -13,7 +13,7 @@ public sealed class FoundationApplicationTests : IClassFixture<JobTrackerWebAppl
     }
 
     [Theory]
-    [InlineData("/", "Your job search", "Private tracker", "Synthetic public demo")]
+    [InlineData("/", "Track every application", "Private tracker", "Synthetic public demo")]
     [InlineData("/demo", "A realistic tracker", "Synthetic data", "Read only")]
     public async Task FoundationRoutes_ReturnSuccessfulBrandedPages(
         string route,

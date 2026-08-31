@@ -1,143 +1,58 @@
 @{
-    ViewData["Title"] = "Welcome";
+    ViewData["Title"] = "Job Application Tracker";
     var isAuthenticated = User.Identity?.IsAuthenticated == true;
-    var currentMonth = DateTime.Today;
-    var months = Enumerable.Range(0, 3)
-        .Select(offset => currentMonth.AddMonths(offset - 2).ToString("MMM"))
-        .ToArray();
 }
 
-<section class="hero">
-    <div class="shell hero-grid">
-        <div class="hero-copy">
-            <p class="eyebrow">Private job-search workspace</p>
-            <h1>Your job search,<br /><span>brought into focus.</span></h1>
-            <p class="hero-lead">
-                Track applications, follow-ups, contacts, and interviews in one deliberate workspace—without
-                losing the opportunities you want to keep.
-            </p>
+<section class="landing-hero">
+    <div class="shell landing-hero-grid">
+        <div class="landing-copy">
+            <p class="eyebrow">Job Application Tracker</p>
+            <h1>Track every application.</h1>
+            <p>Keep applications, follow-ups, interviews, and next steps together in one private workspace.</p>
             <div class="button-row">
                 @if (isAuthenticated)
                 {
-                    <a class="button button-primary" asp-controller="Home" asp-action="Dashboard">
-                        Open your dashboard
-                        <span aria-hidden="true">→</span>
-                    </a>
-                    <a class="button button-secondary" asp-controller="Applications" asp-action="Create">Add an application</a>
+                    <a class="button button-primary" asp-controller="Home" asp-action="Dashboard">Open dashboard</a>
+                    <a class="button button-secondary" asp-controller="Applications" asp-action="Create">Add application</a>
                 }
                 else
                 {
-                    <a class="button button-primary" asp-controller="Account" asp-action="Register">
-                        Create your account
-                        <span aria-hidden="true">→</span>
-                    </a>
-                    <a class="button button-secondary" asp-controller="Demo" asp-action="Index">Explore the live demo</a>
+                    <a class="button button-primary" asp-controller="Account" asp-action="Register">Create account</a>
+                    <a class="button button-secondary" asp-controller="Demo" asp-action="Applications">View demo</a>
                 }
             </div>
-            <p class="foundation-caption">
-                <span aria-hidden="true">●</span>
-                Open registration · Tier 1 includes 10 applications · The public demo contains synthetic data only.
-            </p>
         </div>
 
-        <aside class="window-card" aria-labelledby="window-title">
-            <div class="window-topline">
-                <div>
-                    <p class="mini-label">One focused dashboard</p>
-                    <h2 id="window-title">Your three-month window</h2>
-                </div>
-                <span class="window-badge">Private</span>
-            </div>
-            <div class="month-track" aria-label="Current dashboard month range">
-                @foreach (var month in months)
-                {
-                    <span class="month-chip @(month == months[^1] ? "is-current" : string.Empty)">@month</span>
-                }
-            </div>
-            <div class="metric-grid" aria-label="Tracker principles">
-                <div class="metric">
-                    <span>Dashboard</span>
-                    <strong>3 mo</strong>
-                </div>
-                <div class="metric">
-                    <span>Saved records</span>
-                    <strong>Kept</strong>
-                </div>
-                <div class="metric">
-                    <span>Deletion warning</span>
-                    <strong>3–14 d</strong>
-                </div>
-            </div>
-            <div class="next-action-preview">
-                <span class="preview-icon" aria-hidden="true">✓</span>
-                <div>
-                    <strong>Your next action stays visible</strong>
-                    <span>Follow-ups and appointments meet in one calm queue.</span>
-                </div>
-            </div>
-        </aside>
+        <a class="landing-product-shot" asp-controller="Demo" asp-action="Applications" aria-label="Open the read-only application demo">
+            <span class="landing-browser-bar" aria-hidden="true">
+                <span class="landing-browser-dots"><i></i><i></i><i></i></span>
+                <span>Applications</span>
+            </span>
+            <span class="landing-application-crop">
+                <img src="~/images/landing/applications-demo.png"
+                     asp-append-version="true"
+                     width="1440"
+                     height="1600"
+                     alt="Synthetic application cards in the read-only demo" />
+            </span>
+        </a>
     </div>
 </section>
 
-<section class="value-section" aria-labelledby="value-title">
-    <div class="shell">
-        <div class="section-heading">
-            <div>
-                <p class="eyebrow">Designed around the real workflow</p>
-                <h2 id="value-title">Less admin. More momentum.</h2>
-            </div>
-            <p>Capture the opportunity once, then let its status, history, tasks, and scheduled time stay connected.</p>
+<section class="landing-extension" aria-labelledby="extension-title">
+    <div class="shell landing-extension-grid">
+        <div class="landing-extension-visual">
+            <img src="~/images/landing/extension-popup.png"
+                 asp-append-version="true"
+                 width="420"
+                 height="430"
+                 alt="Job Application Tracker browser extension capture popup" />
         </div>
-
-        <div class="value-grid">
-            <article class="value-card value-card-blue">
-                <span class="card-number">01</span>
-                <div class="card-symbol" aria-hidden="true">◎</div>
-                <h3>Capture applications quickly</h3>
-                <p>Add one manually, paste a job description, import a public page, or capture the active browser tab.</p>
-                @if (isAuthenticated)
-                {
-                    <a asp-controller="Applications" asp-action="Create">Add an application <span aria-hidden="true">→</span></a>
-                }
-                else
-                {
-                    <a asp-controller="Home" asp-action="BrowserExtension">Install browser capture <span aria-hidden="true">→</span></a>
-                }
-            </article>
-            <article class="value-card value-card-violet">
-                <span class="card-number">02</span>
-                <div class="card-symbol" aria-hidden="true">◇</div>
-                <h3>Keep the full story</h3>
-                <p>Status changes, contacts, interactions, tasks, appointments, and notes stay attached to the application.</p>
-                <a asp-controller="Demo" asp-action="Applications">Explore the workflow <span aria-hidden="true">→</span></a>
-            </article>
-            <article class="value-card value-card-green">
-                <span class="card-number">03</span>
-                <div class="card-symbol" aria-hidden="true">↗</div>
-                <h3>Know the next move</h3>
-                <p>See overdue tasks, upcoming appointments, ghosting decisions, and deletion warnings without rebuilding context.</p>
-                <a asp-controller="Demo" asp-action="ActionCentre">Open the sample Action Centre <span aria-hidden="true">→</span></a>
-            </article>
+        <div class="landing-extension-copy">
+            <p class="eyebrow">Browser extension</p>
+            <h2 id="extension-title">Capture a job in one click.</h2>
+            <p>Send the job page you are viewing to a private review draft. Nothing is saved until you confirm it.</p>
+            <a class="button button-primary" asp-controller="Home" asp-action="BrowserExtension">Get the extension</a>
         </div>
-    </div>
-</section>
-
-<section class="foundation-section" aria-labelledby="privacy-title">
-    <div class="shell foundation-grid">
-        <div>
-            <p class="eyebrow">Private by design</p>
-            <h2 id="privacy-title">Your real search stays separate.</h2>
-            <p>
-                Accounts use six-digit email verification. Private records are owner-isolated, while
-                the public portfolio demo is generated entirely from fictional data.
-            </p>
-            <p><a class="foundation-link" asp-controller="Home" asp-action="Privacy">Read the privacy summary <span aria-hidden="true">→</span></a></p>
-        </div>
-        <ul class="check-list">
-            <li><span aria-hidden="true">✓</span> Open registration with secure email-code verification</li>
-            <li><span aria-hidden="true">✓</span> Owner-isolated applications and connected records</li>
-            <li><span aria-hidden="true">✓</span> Configurable retention timing and transparent deletion dates</li>
-            <li><span aria-hidden="true">✓</span> Synthetic public demo that never reads private tables</li>
-        </ul>
     </div>
 </section>

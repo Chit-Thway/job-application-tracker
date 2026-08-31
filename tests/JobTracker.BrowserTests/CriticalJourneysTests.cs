@@ -9,6 +9,28 @@ namespace JobTracker.BrowserTests;
 [Collection(BrowserJourneyCollection.Name)]
 public sealed class CriticalJourneysTests(BrowserJourneyFixture fixture)
 {
+    [Theory]
+    [InlineData(1280, 900)]
+    [InlineData(390, 844)]
+    public async Task PublicLanding_IsConciseResponsiveAndShowsProductPreviews(int width, int height)
+    {
+        await using var context = await fixture.CreateContextAsync(width, height);
+        var page = await context.NewPageAsync();
+
+        await page.GotoAsync("/");
+
+        await Expect(page.GetByRole(AriaRole.Heading, new() { Name = "Track every application.", Exact = true }))
+            .ToBeVisibleAsync();
+        await Expect(page.GetByAltText("Synthetic application cards in the read-only demo"))
+            .ToBeVisibleAsync();
+        await Expect(page.GetByAltText("Job Application Tracker browser extension capture popup"))
+            .ToBeVisibleAsync();
+        await Expect(page.GetByText("Your job search, brought into focus.", new() { Exact = true }))
+            .ToHaveCountAsync(0);
+        Assert.False(await page.EvaluateAsync<bool>("document.documentElement.scrollWidth > innerWidth"));
+        await AssertAccessiblePageStructureAsync(page);
+    }
+
     [Fact]
     public async Task LoginManualCreateSaveStatusAndDashboardJourney_WorksWithKeyboardReadyPages()
     {
@@ -23,10 +45,11 @@ public sealed class CriticalJourneysTests(BrowserJourneyFixture fixture)
         await page.GetByLabel("Email").FillAsync(BrowserJourneyFixture.Email);
         await page.GetByLabel("Password", new() { Exact = true }).FillAsync(BrowserJourneyFixture.Password);
         await page.GetByRole(AriaRole.Button, new() { Name = "Sign in" }).ClickAsync();
-        await Expect(page.GetByRole(AriaRole.Heading, new() { Name = "Your job search, in one useful view." }))
+        await Expect(page.GetByRole(AriaRole.Heading, new() { Name = "Dashboard", Exact = true }))
             .ToBeVisibleAsync();
 
         await page.GetByRole(AriaRole.Link, new() { Name = "Add application", Exact = true }).ClickAsync();
+        await Expect(page).ToHaveURLAsync(new Regex("/applications/new$"));
         await AssertAccessiblePageStructureAsync(page);
         await page.GetByLabel("Role title").FillAsync("Synthetic Browser-Test Engineer");
         await page.GetByLabel("Application date").FillAsync("2026-08-16");
@@ -73,7 +96,7 @@ public sealed class CriticalJourneysTests(BrowserJourneyFixture fixture)
         await Expect(toggle).Not.ToBeCheckedAsync();
         await navigation.Locator(".site-nav-summary").ClickAsync();
         await page.GetByRole(AriaRole.Link, new() { Name = "Applications", Exact = true }).ClickAsync();
-        await Expect(page.GetByRole(AriaRole.Heading, new() { Name = "Every opportunity, safe to explore." }))
+        await Expect(page.GetByRole(AriaRole.Heading, new() { Name = "Applications" }))
             .ToBeVisibleAsync();
         Assert.Equal(0, await page.Locator("form[method='post']").CountAsync());
 
@@ -117,7 +140,7 @@ public sealed class CriticalJourneysTests(BrowserJourneyFixture fixture)
         await page.GetByLabel("Email").FillAsync(email);
         await page.GetByLabel("Password", new() { Exact = true }).FillAsync(BrowserJourneyFixture.Password);
         await page.GetByRole(AriaRole.Button, new() { Name = "Sign in" }).ClickAsync();
-        await Expect(page.GetByRole(AriaRole.Heading, new() { Name = "Your job search, in one useful view." }))
+        await Expect(page.GetByRole(AriaRole.Heading, new() { Name = "Dashboard", Exact = true }))
             .ToBeVisibleAsync();
         await Expect(page.GetByRole(AriaRole.Link, new() { Name = "Demo", Exact = true })).ToHaveCountAsync(0);
     }
