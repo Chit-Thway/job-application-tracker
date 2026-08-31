@@ -83,7 +83,7 @@ public sealed partial class ApplicationWorkflowTests
         var dashboardPage = await client.GetAsync("/dashboard");
         var dashboardContent = await dashboardPage.Content.ReadAsStringAsync();
         Assert.Equal(HttpStatusCode.OK, dashboardPage.StatusCode);
-        Assert.Contains("Three-month dashboard", dashboardContent, StringComparison.Ordinal);
+        Assert.Contains(">Dashboard</h1>", dashboardContent, StringComparison.Ordinal);
         Assert.Contains("Synthetic Dashboard Coordinator", dashboardContent, StringComparison.Ordinal);
         Assert.Contains("Send dashboard follow-up", dashboardContent, StringComparison.Ordinal);
         Assert.Contains("class=\"pipeline-donut\"", dashboardContent, StringComparison.Ordinal);
