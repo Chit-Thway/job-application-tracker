@@ -18,7 +18,7 @@ public sealed class BrowserExtensionManifestTests
             .ToArray();
 
         Assert.Equal(3, root.GetProperty("manifest_version").GetInt32());
-        Assert.Equal("1.0.3", root.GetProperty("version").GetString());
+        Assert.Equal("1.0.4", root.GetProperty("version").GetString());
         Assert.Equal("102", root.GetProperty("minimum_chrome_version").GetString());
         Assert.Equal(
             "https://myjobtracker.com.au/extension",
@@ -149,5 +149,87 @@ public sealed class BrowserExtensionManifestTests
         Assert.Contains("job-details-jobs-unified-top-card__primary-description-container", script, StringComparison.Ordinal);
         Assert.Contains("jobs-description-content__text", script, StringComparison.Ordinal);
         Assert.Contains("currentJobId", script, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task ProspleFixture_SelectorsTargetSelectedOpportunityInsteadOfSearchHeading()
+    {
+        var fixturePath = Path.Combine(
+            AppContext.BaseDirectory,
+            "Fixtures",
+            "Extension",
+            "prosple-selected-job.html");
+        var document = await new HtmlParser().ParseDocumentAsync(File.ReadAllText(fixturePath));
+        var scriptPath = Path.Combine(AppContext.BaseDirectory, "BrowserExtension", "popup.js");
+        var script = File.ReadAllText(scriptPath);
+
+        var opportunityHeading = document.QuerySelectorAll("h2")
+            .Single(element => element.TextContent.Trim() == "Opportunity details");
+        var selectedOpportunity = opportunityHeading.ParentElement;
+        while (selectedOpportunity is not null
+               && (selectedOpportunity.QuerySelector("header h2") is null
+                   || selectedOpportunity.QuerySelector("[data-testid='raw-html']") is null))
+        {
+            selectedOpportunity = selectedOpportunity.ParentElement;
+        }
+
+        Assert.NotNull(selectedOpportunity);
+        Assert.Equal(
+            "Graduate Program, March 2027: General Application (Mar 2027)",
+            selectedOpportunity.QuerySelector("header h2 a")?.TextContent.Trim());
+        Assert.Equal(
+            "Capgemini Australia and New Zealand",
+            selectedOpportunity.QuerySelectorAll("header a[href*='/graduate-employers/']")
+                .Single(element => element.Closest("h1, h2, h3") is null)
+                .TextContent.Trim());
+        Assert.Equal(
+            "Auckland, Wellington, Canberra, Sydney, Brisbane, Adelaide, Melbourne, Perth",
+            selectedOpportunity.QuerySelector("header span + p")?.TextContent.Trim());
+        Assert.Contains(
+            "Build technology solutions",
+            selectedOpportunity.QuerySelector("[data-testid='raw-html']")?.TextContent,
+            StringComparison.Ordinal);
+        Assert.NotEqual(
+            document.QuerySelector("main > h1")?.TextContent.Trim(),
+            selectedOpportunity.QuerySelector("header h2 a")?.TextContent.Trim());
+
+        Assert.Contains("endsWith(\".prosple.com\")", script, StringComparison.Ordinal);
+        Assert.Contains("Opportunity details", script, StringComparison.Ordinal);
+        Assert.Contains("/graduate-employers/", script, StringComparison.Ordinal);
+        Assert.Contains("data-testid=\"raw-html\"", script, StringComparison.Ordinal);
+        Assert.Contains("data-event-track=\"cta-apply\"", script, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task GreenhouseFixture_SelectorsCaptureCompanyLocationAndDescription()
+    {
+        var fixturePath = Path.Combine(
+            AppContext.BaseDirectory,
+            "Fixtures",
+            "Extension",
+            "greenhouse-job.html");
+        var document = await new HtmlParser().ParseDocumentAsync(File.ReadAllText(fixturePath));
+        var scriptPath = Path.Combine(AppContext.BaseDirectory, "BrowserExtension", "popup.js");
+        var script = File.ReadAllText(scriptPath);
+
+        Assert.Equal(
+            "Junior Software Engineer",
+            document.QuerySelector(".job__title h1")?.TextContent.Trim());
+        Assert.Equal(
+            "US - Remote",
+            document.QuerySelector(".job__location")?.TextContent.Trim());
+        Assert.Equal(
+            "Waymark Logo",
+            document.QuerySelector(".job-post-container .logo img")?.GetAttribute("alt"));
+        Assert.Contains(
+            "technology-enabled healthcare",
+            document.QuerySelector(".job__description")?.TextContent,
+            StringComparison.Ordinal);
+
+        Assert.Contains("job-boards.greenhouse.io", script, StringComparison.Ordinal);
+        Assert.Contains(".job__title h1", script, StringComparison.Ordinal);
+        Assert.Contains(".job__location", script, StringComparison.Ordinal);
+        Assert.Contains(".job-post-container .logo img", script, StringComparison.Ordinal);
+        Assert.Contains(".job__description", script, StringComparison.Ordinal);
     }
 }
