@@ -274,6 +274,27 @@
       const match = String(value ?? "").match(pattern);
       return clean(match?.[0]?.replace(/-/g, " "), maximum);
     };
+    const visibleHeading = (text, selector = "h1, h2, h3") =>
+      [...document.querySelectorAll(selector)]
+        .find(element => isVisible(element) && clean(element.innerText ?? element.textContent) === text)
+        ?? null;
+    const labelledProspleValue = (root, label) => {
+      if (!root) {
+        return null;
+      }
+
+      for (const item of root.querySelectorAll('li[datatype="detail"]')) {
+        const lines = cleanMultiline(item.innerText ?? item.textContent, 1000)
+          ?.split("\n")
+          .map(line => clean(line, 500))
+          .filter(Boolean) ?? [];
+        if (lines.some(line => line.toLowerCase() === label.toLowerCase())) {
+          return clean(lines.filter(line => line.toLowerCase() !== label.toLowerCase()).join(" "), 500);
+        }
+      }
+
+      return null;
+    };
 
 
     const isIndeed = window.location.hostname === "indeed.com"
@@ -361,35 +382,126 @@
           ?? window.location.pathname.match(/\/jobs\/view\/(\d+)/)?.[1],
         200)
       : null;
+
+
+    const isProsple = window.location.hostname === "prosple.com"
+      || window.location.hostname.endsWith(".prosple.com");
+    const prospleDetail = (() => {
+      if (!isProsple) {
+        return null;
+      }
+
+      let root = visibleHeading("Opportunity details", "h2")?.parentElement ?? null;
+      while (root && root !== document.body) {
+        if (elementFrom(root, "header h2") && elementFrom(root, '[data-testid="raw-html"]')) {
+          return root;
+        }
+
+        root = root.parentElement;
+      }
+
+      return null;
+    })();
+    const prospleHeader = prospleDetail?.querySelector("header") ?? null;
+    const prospleTitle = isProsple
+      ? textFromElement(prospleHeader, "h2 a", "h2")
+      : null;
+    const prospleCompanyElement = isProsple
+      ? [...(prospleHeader?.querySelectorAll('a[href*="/graduate-employers/"]') ?? [])]
+        .find(element => !element.closest("h1, h2, h3"))
+      : null;
+    const prospleCompany = clean(
+      prospleCompanyElement?.innerText ?? prospleCompanyElement?.textContent,
+      300);
+    const prospleLocationLabel = isProsple
+      ? [...(prospleHeader?.querySelectorAll("span") ?? [])]
+        .find(element => clean(element.textContent)?.toLowerCase() === "location")
+      : null;
+    const prospleLocation = isProsple
+      ? textFromElement(prospleLocationLabel?.parentElement, "p")
+      : null;
+    const prospleHeaderText = cleanMultiline(
+      prospleHeader?.innerText ?? prospleHeader?.textContent,
+      3000);
+    const prospleEmploymentType = labelledProspleValue(prospleDetail, "Opportunity type");
+    const prospleSalary = labelledProspleValue(prospleDetail, "Salary");
+    const prospleClosingDate = matchedLabel(
+      prospleHeaderText,
+      /\bClosing in [^\n]+/i,
+      100)
+      ?? [...(prospleDetail?.querySelectorAll('li[datatype="detail"]') ?? [])]
+        .map(item => clean(item.innerText ?? item.textContent, 500))
+        .find(value => /\bApply by\b/i.test(value ?? ""))
+        ?.replace(/^.*?\bApply by\b/i, "Apply by")
+      ?? null;
+    const prospleJobReference = clean(
+      prospleHeader?.querySelector('[data-event-track="cta-apply"][data-node]')?.getAttribute("data-node"),
+      200);
+    const prospleWorkplaceMode = matchedLabel(
+      prospleHeaderText,
+      /\b(?:remote|hybrid|on[- ]site)\b/i,
+      100);
+
+
+    const isGreenhouse = window.location.hostname === "job-boards.greenhouse.io";
+    const greenhouseTitle = isGreenhouse
+      ? textFromElement(document, ".job__title h1", ".job__title")
+      : null;
+    const greenhouseLogoAlt = isGreenhouse
+      ? clean(document.querySelector(".job-post-container .logo img")?.getAttribute("alt"), 300)
+      : null;
+    const greenhouseCompany = isGreenhouse
+      ? clean(
+        greenhouseLogoAlt?.replace(/\s+logo\s*$/i, "")
+          ?? document.title.match(/\s+at\s+(.+)$/i)?.[1],
+        300)
+      : null;
+    const greenhouseLocation = isGreenhouse
+      ? textFromElement(document, ".job__location")
+      : null;
+    const greenhouseJobReference = isGreenhouse
+      ? clean(window.location.pathname.match(/\/jobs\/(\d+)/)?.[1], 200)
+      : null;
     const roleTitle = clean(schemaPosting?.title, 200)
       ?? indeedTitle
       ?? linkedInTitle
-      ?? textFrom('[data-automation="job-detail-title"]', '[itemprop="title"]', "main h1", "h1");
+      ?? prospleTitle
+      ?? greenhouseTitle
+      ?? (isProsple ? null : textFrom('[data-automation="job-detail-title"]', '[itemprop="title"]', "main h1", "h1"));
     const companyName = organizationName(schemaPosting?.hiringOrganization)
       ?? indeedCompany
       ?? linkedInCompany
+      ?? prospleCompany
+      ?? greenhouseCompany
       ?? textFrom('[data-automation="advertiser-name"]', '[itemprop="hiringOrganization"] [itemprop="name"]', '[itemprop="hiringOrganization"]');
     const companyLocation = addressText(schemaPosting?.jobLocation)
       ?? indeedLocation
       ?? linkedInLocation
+      ?? prospleLocation
+      ?? greenhouseLocation
       ?? textFrom('[data-automation="job-detail-location"]', '[itemprop="jobLocation"]');
     const employmentType = employmentText(schemaPosting?.employmentType)
       ?? indeedEmploymentType
       ?? linkedInEmploymentType
+      ?? prospleEmploymentType
       ?? textFrom('[data-automation="job-detail-work-type"]', '[itemprop="employmentType"]');
     const salary = salaryText(schemaPosting?.baseSalary)
       ?? indeedSalary
+      ?? prospleSalary
       ?? textFrom('[data-automation="job-detail-salary"]', '[itemprop="baseSalary"]');
     const workplaceMode = clean(
       String(schemaPosting?.jobLocationType ?? "").toUpperCase() === "TELECOMMUTE"
         ? "Remote"
-        : linkedInWorkplaceMode,
+        : linkedInWorkplaceMode ?? prospleWorkplaceMode,
       100);
     const closingDate = clean(schemaPosting?.validThrough, 100)
+      ?? prospleClosingDate
       ?? textFrom('[data-automation="job-detail-closing-date"]', '[itemprop="validThrough"]');
     const jobReference = identifierText(schemaPosting?.identifier)
       ?? indeedJobReference
-      ?? linkedInJobReference;
+      ?? linkedInJobReference
+      ?? prospleJobReference
+      ?? greenhouseJobReference;
     const sourceSite = meta('meta[property="og:site_name"]', 'meta[name="application-name"]')
       ?? clean(window.location.hostname, 200);
     const linkedInDescriptionElement = isLinkedIn
@@ -400,7 +512,15 @@
         ".jobs-box__html-content",
         ".jobs-description__content")
       : null;
+    const prospleDescriptionElement = isProsple
+      ? elementFrom(prospleDetail, '[data-testid="raw-html"]')
+      : null;
+    const greenhouseDescriptionElement = isGreenhouse
+      ? elementFrom(document, ".job__description")
+      : null;
     const renderedDescriptionElement = linkedInDescriptionElement
+      ?? prospleDescriptionElement
+      ?? greenhouseDescriptionElement
       ?? document.querySelector('#jobDescriptionText, [data-automation="jobAdDetails"], [itemprop="description"], main article');
     const description = stripHtml(schemaPosting?.description)
       ?? cleanMultiline(

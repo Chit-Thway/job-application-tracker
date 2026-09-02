@@ -9,7 +9,7 @@ Last reviewed: 31 August 2026. Read this file before searching historical milest
 - Registration is open. New accounts verify a six-digit email code and start on Tier 1 with a maximum of 10 stored applications.
 - Tier 2 is unlimited. Administrators can review accounts, change tiers, lock access, resend verification, and delete eligible non-admin accounts.
 - Phone numbers and invitation codes are not collected or used.
-- The Chrome extension source is version 1.0.3 and defaults to the custom domain. Publishing 1.0.3 to the Chrome Web Store is a separate store action.
+- The Chrome extension source is version 1.0.4 and defaults to the custom domain. Publishing 1.0.4 to the Chrome Web Store is a separate store action.
 - The default branch is `main`. The only remote branch is `main`.
 - Two local-only branches have no confirmed merge record: `extension-header-navigation` and `milestone-9-public-demo`. Do not delete them without reviewing or receiving user direction.
 
