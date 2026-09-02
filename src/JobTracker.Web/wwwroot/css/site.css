@@ -2177,7 +2177,10 @@ textarea:focus-visible {
 }
 
 .workspace-hero {
-  padding: clamp(3rem, 7vw, 5.5rem) 0 clamp(2.5rem, 5vw, 4rem);
+  display: flex;
+  min-height: 18rem;
+  align-items: center;
+  padding: clamp(2.5rem, 5vw, 4rem) 0;
   color: #fff;
   background:
     radial-gradient(circle at 85% 10%, rgba(95, 126, 238, 0.32), transparent 28rem),
@@ -4557,13 +4560,13 @@ html[data-theme="dark"] .next-action-card {
   opacity: 0.3;
 }
 
-.pipeline-stage-0 { --stage-color: #4169e1; }
-.pipeline-stage-1 { --stage-color: #7c5ce7; }
-.pipeline-stage-2 { --stage-color: #1696c7; }
-.pipeline-stage-3 { --stage-color: #d78a16; }
-.pipeline-stage-4 { --stage-color: #dc5a5a; }
-.pipeline-stage-5 { --stage-color: #c246a5; }
-.pipeline-stage-6 { --stage-color: #6b7ca8; }
+.pipeline-stage-0 { --stage-color: #3e63dd; }
+.pipeline-stage-1 { --stage-color: #e39a16; }
+.pipeline-stage-2 { --stage-color: #1b9b72; }
+.pipeline-stage-3 { --stage-color: #df5f69; }
+.pipeline-stage-4 { --stage-color: #805ad5; }
+.pipeline-stage-5 { --stage-color: #158fa8; }
+.pipeline-stage-6 { --stage-color: #69758e; }
 
 .pipeline-donut-centre {
   position: absolute;
@@ -5916,9 +5919,9 @@ html[data-theme="dark"] .demo-card-lock {
 
 .landing-hero-grid {
   display: grid;
-  grid-template-columns: minmax(18rem, 0.72fr) minmax(30rem, 1.28fr);
+  grid-template-columns: minmax(18rem, 0.8fr) minmax(26rem, 1.2fr);
   align-items: center;
-  gap: clamp(2.5rem, 6vw, 6rem);
+  gap: clamp(2.5rem, 5vw, 5rem);
 }
 
 .landing-copy h1 {
@@ -5940,6 +5943,8 @@ html[data-theme="dark"] .demo-card-lock {
 
 .landing-product-shot {
   display: block;
+  width: min(100%, 43rem);
+  justify-self: end;
   overflow: hidden;
   background: #fff;
   border: 1px solid var(--line);
@@ -5956,7 +5961,7 @@ html[data-theme="dark"] .demo-card-lock {
   display: flex;
   min-height: 2.8rem;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
   padding: 0.7rem 1rem;
   color: #dbe3ff;
   background: var(--navy);
@@ -5973,22 +5978,34 @@ html[data-theme="dark"] .demo-card-lock {
   display: block;
   width: 0.5rem;
   height: 0.5rem;
-  background: #7187d6;
   border-radius: 50%;
 }
 
-.landing-application-crop {
-  display: block;
-  aspect-ratio: 2 / 1;
-  overflow: hidden;
-  background: #f4f6fb;
+.landing-browser-dots i:nth-child(1) {
+  background: #ff5f57;
 }
 
-.landing-application-crop img {
+.landing-browser-dots i:nth-child(2) {
+  background: #febc2e;
+}
+
+.landing-browser-dots i:nth-child(3) {
+  background: #28c840;
+}
+
+.landing-dashboard-crop {
+  display: block;
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+  background: #eef1f7;
+}
+
+.landing-dashboard-crop img {
   display: block;
   width: 100%;
-  height: auto;
-  transform: translateY(-34%);
+  height: 100%;
+  object-fit: cover;
+  object-position: top center;
 }
 
 .landing-extension {
@@ -5998,45 +6015,106 @@ html[data-theme="dark"] .demo-card-lock {
 
 .landing-extension-grid {
   display: grid;
-  grid-template-columns: minmax(18rem, 0.8fr) minmax(18rem, 1fr);
-  align-items: center;
-  gap: clamp(3rem, 8vw, 8rem);
-  max-width: 62rem;
+  grid-template-columns: 1fr;
+  gap: clamp(1.5rem, 3vw, 2.25rem);
+  max-width: 82rem;
 }
 
 .landing-extension-visual {
-  width: min(100%, 26.25rem);
+  position: relative;
+  width: 100%;
   overflow: hidden;
-  background: #f4f6fb;
+  background: var(--navy);
   border: 1px solid var(--line);
   border-radius: 1.2rem;
   box-shadow: var(--shadow-lg);
+  cursor: pointer;
 }
 
-.landing-extension-visual img {
+.landing-extension-visual video {
   display: block;
+  aspect-ratio: 16 / 9;
   width: 100%;
-  height: auto;
+  height: 100%;
+  object-fit: contain;
+  background: var(--navy);
+  filter: grayscale(1) brightness(0.58);
+  transition: filter 220ms ease;
+}
+
+.landing-extension-visual.has-started video {
+  filter: none;
+}
+
+.landing-video-play {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: rgba(10, 20, 48, 0.24);
+  transition: opacity 180ms ease;
+}
+
+.landing-video-play svg {
+  width: clamp(4rem, 8vw, 6rem);
+  height: clamp(4rem, 8vw, 6rem);
+  overflow: visible;
+  filter: drop-shadow(0 0.8rem 1.5rem rgba(8, 16, 40, 0.3));
+}
+
+.landing-video-play circle {
+  fill: rgba(255, 255, 255, 0.94);
+}
+
+.landing-video-play path {
+  fill: var(--blue);
+}
+
+.landing-extension-visual.has-started .landing-video-play {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.landing-extension-visual:focus-visible {
+  outline: 3px solid var(--blue);
+  outline-offset: 4px;
+}
+
+.landing-extension-copy {
+  display: grid;
+  grid-template-columns: minmax(18rem, 0.9fr) minmax(22rem, 1.1fr);
+  align-items: end;
+  gap: clamp(2rem, 5vw, 5rem);
+  padding: clamp(1.5rem, 3vw, 2.5rem);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 1.2rem;
+  box-shadow: var(--shadow-sm);
+}
+
+.landing-extension-heading .eyebrow {
+  margin-bottom: 0.75rem;
 }
 
 .landing-extension-copy h2 {
-  max-width: 12ch;
+  max-width: 14ch;
   margin: 0;
-  font-size: clamp(2.4rem, 5vw, 4.5rem);
+  font-size: clamp(2.2rem, 4vw, 3.75rem);
   letter-spacing: -0.055em;
   line-height: 1;
 }
 
-.landing-extension-copy > p:not(.eyebrow) {
+.landing-extension-details > p {
   max-width: 32rem;
-  margin: 1.4rem 0 2rem;
+  margin: 0 0 1.5rem;
   color: var(--ink-soft);
   font-size: 1.05rem;
   line-height: 1.7;
 }
 
 html[data-theme="dark"] .landing-product-shot,
-html[data-theme="dark"] .landing-extension-visual {
+html[data-theme="dark"] .landing-extension-visual,
+html[data-theme="dark"] .landing-extension-copy {
   border-color: #4e5058;
 }
 
@@ -6047,15 +6125,18 @@ html[data-theme="dark"] .landing-extension-visual {
   }
 
   .landing-product-shot {
-    width: min(100%, 52rem);
+    width: min(100%, 43rem);
+    justify-self: start;
   }
 
   .landing-extension-grid {
     max-width: var(--shell);
   }
 
-  .landing-extension-visual {
-    order: 2;
+  .landing-extension-copy {
+    grid-template-columns: 1fr;
+    align-items: start;
+    gap: 1.5rem;
   }
 }
 
@@ -6066,16 +6147,6 @@ html[data-theme="dark"] .landing-extension-visual {
 
   .landing-copy h1 {
     font-size: clamp(3rem, 15vw, 4.5rem);
-  }
-
-  .landing-application-crop {
-    aspect-ratio: 1.35 / 1;
-  }
-
-  .landing-application-crop img {
-    width: 150%;
-    max-width: none;
-    transform: translate(-17%, -33%);
   }
 
   .landing-extension {

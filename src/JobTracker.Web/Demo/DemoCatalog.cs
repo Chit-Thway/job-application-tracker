@@ -79,6 +79,33 @@ public sealed class DemoCatalog(TimeProvider timeProvider)
                 new("Introductory call", At(today.AddDays(3), 11, 0), At(today.AddDays(3), 11, 30), "Video call", "Meet the early careers partner."),
             ]),
         new(
+            Slug: "bright-wattle-junior-software-developer",
+            CompanyName: "Bright Wattle Studio",
+            RoleTitle: "Junior Software Developer",
+            Location: "Canberra ACT",
+            WorkArrangement: "Hybrid",
+            AppliedOn: today.AddDays(-9),
+            Stage: PipelineStage.Applied,
+            Outcome: ApplicationOutcome.Active,
+            RetentionState: DemoRetentionState.Recent,
+            DeletionScheduledAt: null,
+            EmploymentType: "Full time",
+            Salary: "$76,000 - $84,000 plus super",
+            SourceSite: "Synthetic Graduate Network",
+            JobReference: "DEMO-BWS-168",
+            Summary: "A junior product-engineering role building accessible tools for fictional community services.",
+            Description:
+            [
+                Section("The opportunity", "Learn alongside a small delivery team while contributing to well-tested web applications and clear technical documentation."),
+            ],
+            Contacts: [],
+            Activity:
+            [
+                new("Applied", At(today.AddDays(-9), 13, 10), "Application submitted through the synthetic graduate portal."),
+            ],
+            Tasks: [],
+            Appointments: []),
+        new(
             Slug: "atlas-ember-junior-cybersecurity-analyst",
             CompanyName: "Atlas Ember Systems",
             RoleTitle: "Junior Cybersecurity Analyst",
@@ -122,6 +149,40 @@ public sealed class DemoCatalog(TimeProvider timeProvider)
             [
                 new("Interview", At(today.AddDays(4), 13, 30), At(today.AddDays(4), 14, 15), "Sydney office", "Structured behavioural and technical interview."),
             ]),
+        new(
+            Slug: "harbour-pine-business-systems-graduate",
+            CompanyName: "Harbour & Pine Consulting",
+            RoleTitle: "Business Systems Graduate",
+            Location: "Hobart TAS",
+            WorkArrangement: "Flexible hybrid",
+            AppliedOn: today.AddDays(-20),
+            Stage: PipelineStage.Offer,
+            Outcome: ApplicationOutcome.Active,
+            RetentionState: DemoRetentionState.Saved,
+            DeletionScheduledAt: null,
+            EmploymentType: "Graduate program",
+            Salary: "$79,000 plus super",
+            SourceSite: "Synthetic Careers Board",
+            JobReference: "DEMO-HPC-284",
+            Summary: "A fictional consulting graduate role demonstrating the offer stage in the active pipeline.",
+            Description:
+            [
+                Section("The program", "Work with supported project teams to map business processes, improve internal systems, and communicate practical recommendations."),
+            ],
+            Contacts:
+            [
+                new("Morgan Example", "Graduate recruiter", "morgan.example@example.test", "Synthetic demonstration contact."),
+            ],
+            Activity:
+            [
+                new("Applied", At(today.AddDays(-20), 9, 25), "Application submitted."),
+                new("Offer", At(today.AddDays(-2), 15, 30), "A written synthetic offer was received.", IsEmployerResponse: true),
+            ],
+            Tasks:
+            [
+                new("Review offer details", At(today.AddDays(2), 17, 0), false, "Compare the role, learning support, and proposed start date."),
+            ],
+            Appointments: []),
         new(
             Slug: "paper-kite-support-engineer",
             CompanyName: "Paper Kite Digital",

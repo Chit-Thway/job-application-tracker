@@ -201,6 +201,18 @@ public sealed class ApplicationServiceTests
         Assert.Equal("Cloud Engineer", result.RoleTitle);
         Assert.Equal("Synthetic Atlas", result.CompanyName);
         Assert.True(result.IsSavedForever);
+
+        var roleResults = await service.SearchAsync(new ApplicationSearch(
+            "cloud engineer",
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            "newest"));
+        Assert.Equal("Cloud Engineer", Assert.Single(roleResults).RoleTitle);
     }
 
     [Fact]

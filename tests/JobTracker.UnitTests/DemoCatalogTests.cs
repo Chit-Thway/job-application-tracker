@@ -15,7 +15,7 @@ public sealed class DemoCatalogTests
 
         Assert.Equal(new DateOnly(2026, 6, 1), first.StartsOn);
         Assert.Equal(new DateOnly(2026, 8, 31), first.EndsOn);
-        Assert.Equal(6, first.Applications.Count);
+        Assert.Equal(8, first.Applications.Count);
         Assert.Equal(
             first.Applications.Select(item => item.Slug),
             second.Applications.Select(item => item.Slug));

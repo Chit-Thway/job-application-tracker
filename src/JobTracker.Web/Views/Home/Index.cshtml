@@ -1,7 +1,8 @@
 @{
     ViewData["Title"] = "Job Application Tracker";
-    var isAuthenticated = User.Identity?.IsAuthenticated == true;
 }
+
+<script src="~/js/landing-video.js" asp-append-version="true" defer></script>
 
 <section class="landing-hero">
     <div class="shell landing-hero-grid">
@@ -10,30 +11,22 @@
             <h1>Track every application.</h1>
             <p>Keep applications, follow-ups, interviews, and next steps together in one private workspace.</p>
             <div class="button-row">
-                @if (isAuthenticated)
-                {
-                    <a class="button button-primary" asp-controller="Home" asp-action="Dashboard">Open dashboard</a>
-                    <a class="button button-secondary" asp-controller="Applications" asp-action="Create">Add application</a>
-                }
-                else
-                {
-                    <a class="button button-primary" asp-controller="Account" asp-action="Register">Create account</a>
-                    <a class="button button-secondary" asp-controller="Demo" asp-action="Applications">View demo</a>
-                }
+                <a class="button button-primary" asp-controller="Account" asp-action="Register">Create account</a>
+                <a class="button button-primary" asp-controller="Account" asp-action="Login">Sign in</a>
+                <a class="button button-secondary" asp-controller="Demo" asp-action="Index">View demo</a>
             </div>
         </div>
 
-        <a class="landing-product-shot" asp-controller="Demo" asp-action="Applications" aria-label="Open the read-only application demo">
+        <a class="landing-product-shot" asp-controller="Demo" asp-action="Index" aria-label="Open the read-only dashboard demo">
             <span class="landing-browser-bar" aria-hidden="true">
                 <span class="landing-browser-dots"><i></i><i></i><i></i></span>
-                <span>Applications</span>
             </span>
-            <span class="landing-application-crop">
-                <img src="~/images/landing/applications-demo.png"
+            <span class="landing-dashboard-crop">
+                <img src="~/images/landing/dashboard-demo.png"
                      asp-append-version="true"
-                     width="1440"
-                     height="1600"
-                     alt="Synthetic application cards in the read-only demo" />
+                     width="1129"
+                     height="851"
+                     alt="Colourful application pipeline chart in the read-only demo dashboard" />
             </span>
         </a>
     </div>
@@ -41,18 +34,38 @@
 
 <section class="landing-extension" aria-labelledby="extension-title">
     <div class="shell landing-extension-grid">
-        <div class="landing-extension-visual">
-            <img src="~/images/landing/extension-popup.png"
-                 asp-append-version="true"
-                 width="420"
-                 height="430"
-                 alt="Job Application Tracker browser extension capture popup" />
+        <div class="landing-extension-visual"
+             data-extension-video
+             role="button"
+             tabindex="0"
+             aria-label="Play browser extension demonstration">
+            <video aria-label="Job Application Tracker browser extension capture demonstration"
+                   data-extension-video-player
+                   muted
+                   loop
+                   playsinline
+                   controls
+                   preload="metadata">
+                <source src="@Url.Content("~/images/landing/extension-demo.webm")" type="video/webm" />
+                <source src="@Url.Content("~/images/landing/extension-demo.mp4")" type="video/mp4" />
+                Your browser does not support embedded video.
+            </video>
+            <span class="landing-video-play" aria-hidden="true">
+                <svg viewBox="0 0 64 64" focusable="false">
+                    <circle cx="32" cy="32" r="30"></circle>
+                    <path d="M26 20 46 32 26 44Z"></path>
+                </svg>
+            </span>
         </div>
         <div class="landing-extension-copy">
-            <p class="eyebrow">Browser extension</p>
-            <h2 id="extension-title">Capture a job in one click.</h2>
-            <p>Send the job page you are viewing to a private review draft. Nothing is saved until you confirm it.</p>
-            <a class="button button-primary" asp-controller="Home" asp-action="BrowserExtension">Get the extension</a>
+            <div class="landing-extension-heading">
+                <p class="eyebrow">Browser extension</p>
+                <h2 id="extension-title">Capture a job in one click.</h2>
+            </div>
+            <div class="landing-extension-details">
+                <p>Send the job page you are viewing to a private review draft. Nothing is saved until you confirm it.</p>
+                <a class="button button-primary" asp-controller="Home" asp-action="BrowserExtension">Get the extension</a>
+            </div>
         </div>
     </div>
 </section>

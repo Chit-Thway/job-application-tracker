@@ -21,10 +21,26 @@ public sealed class CriticalJourneysTests(BrowserJourneyFixture fixture)
 
         await Expect(page.GetByRole(AriaRole.Heading, new() { Name = "Track every application.", Exact = true }))
             .ToBeVisibleAsync();
-        await Expect(page.GetByAltText("Synthetic application cards in the read-only demo"))
+        await Expect(page.GetByRole(AriaRole.Link, new() { Name = "Sign in", Exact = true }).Last)
             .ToBeVisibleAsync();
-        await Expect(page.GetByAltText("Job Application Tracker browser extension capture popup"))
+        await Expect(page.GetByAltText("Colourful application pipeline chart in the read-only demo dashboard"))
             .ToBeVisibleAsync();
+        var extensionVideo = page.Locator("video[aria-label='Job Application Tracker browser extension capture demonstration']");
+        await Expect(extensionVideo).ToBeVisibleAsync();
+        await page.WaitForTimeoutAsync(1_500);
+        var videoState = await extensionVideo.EvaluateAsync<string>(
+            "video => JSON.stringify({ source: video.currentSrc, duration: video.duration, readyState: video.readyState, networkState: video.networkState, error: video.error?.code ?? null })");
+        Assert.True(
+            await extensionVideo.EvaluateAsync<bool>("video => Number.isFinite(video.duration) && video.duration > 0"),
+            videoState);
+        Assert.True(await extensionVideo.EvaluateAsync<bool>("video => video.paused"));
+        var videoToggle = page.Locator("[data-extension-video]");
+        await Expect(videoToggle).ToBeVisibleAsync();
+        await Expect(videoToggle).ToHaveAttributeAsync("aria-label", "Play browser extension demonstration");
+        await videoToggle.ClickAsync();
+        await Expect(videoToggle).ToHaveClassAsync(new Regex("has-started"));
+        Assert.False(await extensionVideo.EvaluateAsync<bool>("video => video.paused"));
+        await Expect(extensionVideo).ToHaveAttributeAsync("controls", string.Empty);
         await Expect(page.GetByText("Your job search, brought into focus.", new() { Exact = true }))
             .ToHaveCountAsync(0);
         Assert.False(await page.EvaluateAsync<bool>("document.documentElement.scrollWidth > innerWidth"));
@@ -47,6 +63,8 @@ public sealed class CriticalJourneysTests(BrowserJourneyFixture fixture)
         await page.GetByRole(AriaRole.Button, new() { Name = "Sign in" }).ClickAsync();
         await Expect(page.GetByRole(AriaRole.Heading, new() { Name = "Dashboard", Exact = true }))
             .ToBeVisibleAsync();
+        await page.GotoAsync("/");
+        await Expect(page).ToHaveURLAsync(new Regex("/dashboard$"));
 
         await page.GetByRole(AriaRole.Link, new() { Name = "Add application", Exact = true }).ClickAsync();
         await Expect(page).ToHaveURLAsync(new Regex("/applications/new$"));
@@ -72,6 +90,19 @@ public sealed class CriticalJourneysTests(BrowserJourneyFixture fixture)
 
         await page.GetByRole(AriaRole.Link, new() { Name = "Dashboard", Exact = true }).ClickAsync();
         await Expect(page.GetByRole(AriaRole.Link, new() { Name = "Synthetic Browser-Test Engineer", Exact = true }).First)
+            .ToBeVisibleAsync();
+
+        await page.GetByRole(AriaRole.Link, new() { Name = "Applications", Exact = true }).ClickAsync();
+        var search = page.GetByLabel("Search", new() { Exact = true });
+        await search.FillAsync("Browser-Test");
+        await Expect(page).ToHaveURLAsync(new Regex("Query=Browser-Test"));
+        await Expect(page.GetByRole(AriaRole.Link, new() { Name = "Synthetic Browser-Test Engineer", Exact = true }))
+            .ToBeVisibleAsync();
+        await search.FillAsync("No matching application");
+        await Expect(page.GetByRole(AriaRole.Heading, new() { Name = "No applications found." }))
+            .ToBeVisibleAsync();
+        await search.FillAsync(string.Empty);
+        await Expect(page.GetByRole(AriaRole.Link, new() { Name = "Synthetic Browser-Test Engineer", Exact = true }))
             .ToBeVisibleAsync();
         await AssertAccessiblePageStructureAsync(page);
     }

@@ -4,15 +4,17 @@
     var actorUserId = ViewData["ActorUserId"] as string;
 }
 
+<section class="workspace-hero">
+    <div class="shell workspace-heading">
+        <div>
+            <h1>Accounts</h1>
+            <p>Manage verification, access, tiers, and authorised account closure without opening private tracker content.</p>
+        </div>
+    </div>
+</section>
+
 <section class="admin-page">
     <div class="shell">
-        <div class="admin-heading admin-heading-compact">
-            <div>
-                <h1>Accounts</h1>
-                <p>Manage verification, access, tiers, and authorised account closure without opening private tracker content.</p>
-            </div>
-        </div>
-
         <partial name="_AdminNav" />
 
         <form class="admin-search" method="get" asp-controller="Admin" asp-action="Users">

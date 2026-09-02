@@ -1,4 +1,5 @@
 (() => {
+    const initializeApplicationResults = () => {
     const results = document.querySelector("[data-application-results]");
     if (!results) {
         return;
@@ -193,4 +194,61 @@
     });
 
     setSelectionMode(false);
+    };
+
+    const initializeLiveSearch = () => {
+        const form = document.querySelector("[data-application-filter-form]");
+        const search = form?.querySelector("#application-search");
+        if (!form || !search) {
+            return;
+        }
+
+        let debounceTimer;
+        let activeRequest;
+
+        search.addEventListener("input", () => {
+            window.clearTimeout(debounceTimer);
+            debounceTimer = window.setTimeout(async () => {
+                activeRequest?.abort();
+                activeRequest = new AbortController();
+
+                const url = new URL(form.action || window.location.href, window.location.href);
+                url.search = new URLSearchParams(new FormData(form)).toString();
+                const currentContent = document.querySelector("[data-application-content]");
+                currentContent?.setAttribute("aria-busy", "true");
+
+                try {
+                    const response = await fetch(url, {
+                        headers: { "X-Requested-With": "fetch" },
+                        signal: activeRequest.signal
+                    });
+                    if (!response.ok) {
+                        throw new Error(`Application search failed with ${response.status}.`);
+                    }
+
+                    const nextPage = new DOMParser().parseFromString(await response.text(), "text/html");
+                    const nextContent = nextPage.querySelector("[data-application-content]");
+                    if (!nextContent || !currentContent) {
+                        throw new Error("Application search results were unavailable.");
+                    }
+
+                    currentContent.replaceWith(nextContent);
+                    window.history.replaceState({}, "", url);
+                    initializeApplicationResults();
+                    initializeLiveSearch();
+
+                    const nextSearch = document.querySelector("#application-search");
+                    nextSearch?.focus({ preventScroll: true });
+                    nextSearch?.setSelectionRange(nextSearch.value.length, nextSearch.value.length);
+                } catch (error) {
+                    if (error.name !== "AbortError") {
+                        window.location.assign(url);
+                    }
+                }
+            }, 250);
+        });
+    };
+
+    initializeApplicationResults();
+    initializeLiveSearch();
 })();

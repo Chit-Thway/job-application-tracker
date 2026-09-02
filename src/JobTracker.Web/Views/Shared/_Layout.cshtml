@@ -73,7 +73,7 @@
                     else
                     {
                         <a class="@NavClass("demo")" aria-current="@AriaCurrent("demo")" asp-controller="Demo" asp-action="Index">Demo</a>
-                        <a class="nav-link" asp-controller="Account" asp-action="Login">Sign in</a>
+                        <a class="@NavClass("login", action: true)" aria-current="@AriaCurrent("login")" asp-controller="Account" asp-action="Login">Sign in</a>
                         <a class="@NavClass("register", action: true)" aria-current="@AriaCurrent("register")" asp-controller="Account" asp-action="Register">Create account</a>
                     }
                 </nav>

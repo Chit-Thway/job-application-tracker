@@ -16,6 +16,11 @@ public class HomeController(
     [HttpGet("/")]
     public IActionResult Index()
     {
+        if (User.Identity?.IsAuthenticated == true)
+        {
+            return RedirectToAction(nameof(Dashboard));
+        }
+
         SetPage("home");
         return View();
     }
