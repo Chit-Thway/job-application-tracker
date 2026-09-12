@@ -20,6 +20,10 @@ coverage/
 playwright-report/
 test-results/
 
+# Local working files and packaged extension releases
+/.tmp/
+/job-application-tracker-capture-*.zip
+
 # Local configuration and secrets
 .env
 .env.*
@@ -31,4 +35,3 @@ secrets.json
 
 # Runtime output
 *.log
-

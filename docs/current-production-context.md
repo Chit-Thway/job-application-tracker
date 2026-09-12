@@ -1,6 +1,6 @@
 # Current production context
 
-Last reviewed: 31 August 2026. Read this file before searching historical milestones or reconstructing deployment details.
+Last reviewed: 12 September 2026. Read this file before searching historical milestones or reconstructing deployment details.
 
 ## Current stage
 
@@ -10,8 +10,9 @@ Last reviewed: 31 August 2026. Read this file before searching historical milest
 - Tier 2 is unlimited. Administrators can review accounts, change tiers, lock access, resend verification, and delete eligible non-admin accounts.
 - Phone numbers and invitation codes are not collected or used.
 - The Chrome extension source is version 1.0.4 and defaults to the custom domain. Publishing 1.0.4 to the Chrome Web Store is a separate store action.
-- The default branch is `main`. The only remote branch is `main`.
-- Two local-only branches have no confirmed merge record: `extension-header-navigation` and `milestone-9-public-demo`. Do not delete them without reviewing or receiving user direction.
+- The default branch is `main`. Use GitHub or `git branch -avv` for the current branch list.
+- The public demo and extension-navigation work reached `main` through PRs #26 and #32. The original branches are retained, and the September reconciliation records their ancestry in chronological order. See the [branch and deployment timeline](branch-history-reconciliation.md).
+- The extension autofill upgrade is [planned](extension-autofill-plan.md); implementation has not started.
 
 Historical milestones and portfolio notes are in `docs/project-process-candidates.md` and Git history. Consult them only when a task specifically needs history.
 
