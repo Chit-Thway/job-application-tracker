@@ -1,242 +1,182 @@
 # Job Application Tracker
 
-A private ASP.NET Core job-search organizer for tracking applications, follow-ups, appointments, and expiring records from one focused dashboard.
+A full-stack web application that helps job seekers keep applications, follow-ups, interviews, and important dates in one private workspace.
 
-**Live site:** [myjobtracker.com.au](https://myjobtracker.com.au) · [Public demo](https://myjobtracker.com.au/demo) · [Create an account](https://myjobtracker.com.au/account/register)
+I built this project to solve a problem I experienced during a real job search: useful details were spread across job boards, emails, notes, and calendar reminders. The tracker brings that work together without hiding decisions behind automation.
 
-## Current status
+**[Explore the live demo](https://myjobtracker.com.au/demo)** · **[Visit the live site](https://myjobtracker.com.au)** · **[Create an account](https://myjobtracker.com.au/account/register)**
 
-The tracker is live at [myjobtracker.com.au](https://myjobtracker.com.au) with open email-code registration, Tier 1 application limits, administrator-managed Tier 2 upgrades, production-secure cookies, OWASP-oriented response headers, privacy-safe structured request diagnostics, liveness and database-readiness probes, dependency auditing, WCAG-focused checks, real Chromium journeys, a 1,000-application performance smoke test, and operational runbooks.
+![Application library showing fictional job applications](src/JobTracker.Web/wwwroot/images/landing/applications-demo.png)
 
-Milestone 9's portfolio-friendly public demonstration remains available with a synthetic dashboard, application library, Action Centre, and application details. It uses a deterministic in-memory catalog, fictional slugs, a non-personalized public layout, and read-only routes that never query private application tables.
+The public demo is read-only and uses fictional companies, people, and activity. It never reads private account data.
 
-The private tracker retains a focused three-calendar-month dashboard plus configurable one-to-three-month retention and 3-to-14-day deletion warnings, card/list application views, owner-scoped bulk actions, deliberate ghosting confirmation, workflow history, contacts and interactions, tasks, appointments, deterministic extraction, safe public-URL import, and the explicit-click browser extension.
+## Try it in two minutes
 
-## Technology
+1. Open the [public demo](https://myjobtracker.com.au/demo). No account is needed.
+2. Choose **Applications** to browse the fictional opportunities.
+3. Open an application to see its timeline, notes, tasks, contacts, and appointments.
+4. Visit the **Action Centre** to see follow-ups and upcoming work gathered in one place.
+5. Use **Private sign in** if you want to create your own account and try the editable workflow.
 
-- .NET 10 LTS
-- ASP.NET Core MVC with server-rendered Razor Views
-- C#
-- Entity Framework Core with Npgsql
-- Supabase-hosted PostgreSQL
-- ASP.NET Core Identity
-- Custom responsive CSS
-- xUnit unit and integration tests
-- Playwright for .NET browser tests
-- GitHub Actions
-- Azure App Service and Azure Communication Services Email for production
+## What the application does
 
-Supabase provides PostgreSQL only; ASP.NET Core Identity owns authentication and application sessions.
+- Adds applications manually or from pasted job advertisements.
+- Imports public job pages into a review screen before anything is saved.
+- Captures the job currently open in Chrome or Edge through an optional extension.
+- Tracks stages, outcomes, contacts, conversations, tasks, and appointments.
+- Highlights overdue follow-ups, interviews, and applications that may need attention.
+- Protects saved applications and gives clear warning before old unsaved records are removed.
+- Keeps every account's records separate and private.
 
-## Prerequisites
-
-- [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0)
-- Git
-
-The repository pins its SDK feature band in `global.json` and allows compatible patch roll-forward.
-
-## Run locally
-
-From the repository root:
-
-```powershell
-dotnet restore
-dotnet run --project src/JobTracker.Web --launch-profile http
+```mermaid
+flowchart LR
+    A["Add or capture a job"] --> B["Review the details"]
+    B --> C["Track progress"]
+    C --> D["Plan the next action"]
+    D --> E["Interview, offer, or close"]
 ```
 
-Open [http://localhost:5261](http://localhost:5261). Stop the application with `Ctrl+C`.
+## A quick look
 
-To use the local HTTPS profile, trust the ASP.NET Core development certificate once:
+### A dashboard built around the next useful action
 
-```powershell
-dotnet dev-certs https --trust
-dotnet run --project src/JobTracker.Web --launch-profile https
+The dashboard shows recent applications, employer responses, interviews, overdue tasks, and upcoming appointments without turning the search into a wall of statistics.
+
+![Dashboard with application progress and items needing attention](src/JobTracker.Web/wwwroot/images/landing/dashboard-demo.png)
+
+### One place for every opportunity
+
+Applications can be searched and filtered by company, stage, outcome, date, saved state, and deletion status. Each application keeps its own history and supporting details.
+
+### A browser extension that still keeps the user in control
+
+The extension reads the active job advertisement only after it is clicked. It opens an editable review draft, so captured information can be checked before it becomes an application.
+
+![Browser extension popup explaining what will be captured](src/JobTracker.Web/wwwroot/images/landing/extension-popup.png)
+
+## Technology stack
+
+```mermaid
+flowchart TB
+    Browser["Browser<br/>Razor views, CSS, JavaScript"]
+    App["Web application<br/>C# and ASP.NET Core MVC"]
+    Identity["Accounts and sessions<br/>ASP.NET Core Identity"]
+    Data["Data access<br/>Entity Framework Core and Npgsql"]
+    Database[("PostgreSQL<br/>hosted by Supabase")]
+    Email["Account email<br/>Azure Communication Services"]
+    Delivery["Hosting and delivery<br/>Azure App Service and GitHub Actions"]
+    Quality["Automated quality<br/>xUnit and Playwright"]
+
+    Browser --> App
+    App --> Identity
+    App --> Data
+    Data --> Database
+    App --> Email
+    Delivery --> App
+    Quality -. verifies .-> App
 ```
 
-Then open [https://localhost:7239](https://localhost:7239).
+| Area | Technology | Why it is here |
+|---|---|---|
+| User interface | Razor Views, responsive CSS, and focused JavaScript | Fast pages with accessible forms and very little browser-side complexity |
+| Application | .NET 10, C#, and ASP.NET Core MVC | Clear server-side workflows, validation, and routing |
+| Accounts | ASP.NET Core Identity | Registration, email verification, password recovery, and secure sessions |
+| Data | Entity Framework Core, Npgsql, and PostgreSQL | Relational storage with migrations and account ownership enforced in the data model |
+| Database hosting | Supabase PostgreSQL | Managed production database; authentication remains inside the application |
+| Email | Azure Communication Services Email | Verification and password-reset messages |
+| Delivery | GitHub Actions and Azure App Service | Repeatable checks and production hosting |
+| Testing | xUnit and Playwright for .NET | Unit, integration, security, and real-browser coverage |
 
-## Main routes
+## Engineering decisions I care about
 
-| Route | Current behavior |
-|---|---|
-| `/` | Public product landing page |
-| `/privacy` | Public business-style Privacy Policy |
-| `/terms` | Public Terms of Service |
-| `/cookies` | Public Cookie Policy and browser-storage controls |
-| `/account/login` | Private account sign-in |
-| `/account/register` | Open Tier 1 account creation with policy acceptance |
-| `/account/verify-email` | Six-digit email verification with a 30-second resend cooldown |
-| `/account/forgot-password` | Password-reset request |
-| `/account/resend-verification` | Email-verification resend |
-| `/dev/mail` | Local-only verification/reset message sink |
-| `/dashboard` | Authenticated current-and-prior-two-calendar-month dashboard |
-| `/applications` | Searchable, filterable card/list library with explicit bulk-selection actions |
-| `/applications/new` | Manual application entry |
-| `/applications/import/url` | Safely import a public HTML job page into a review draft |
-| `/applications/import/text` | Paste a job description for deterministic extraction |
-| `/applications/import/extension` | Receive an active-tab browser capture into a private review draft |
-| `/applications/import/{id}/review` | Review and correct an owner-scoped extraction draft |
-| `/applications/{id}` | Complete private workflow: status history, collapsible contacts/tasks/appointments, readable job description, posting context, and saved state |
-| `/companies` | Searchable private company directory |
-| `/companies/new` | Manual company entry |
-| `/actions` | Overdue tasks, follow-up warnings, Ghosted decisions, scheduled-deletion warnings, and upcoming appointments |
-| `/settings` | Authenticated retention policy, owner-scoped counts, and scheduler health |
-| `/demo` | Public, read-only synthetic three-month dashboard |
-| `/demo/applications` | Searchable synthetic application library |
-| `/demo/applications/{slug}` | Read-only synthetic application details and workflow history |
-| `/demo/actions` | Synthetic tasks, appointments, ghosting checks, and retention warnings |
-| `/health/live` | Process liveness probe without dependency details |
-| `/health/ready` | Database-readiness probe with minimal JSON status |
-| `/health` | Compatibility alias for database readiness |
+**Review before save.** Imports suggest fields and explain where they came from. Uncertain information stays blank for the user to decide.
 
-Registration is open. New users begin on Tier 1 with a maximum of ten stored applications and verify their email with a six-digit code before signing in. Administrators can upgrade an account to unlimited Tier 2.
+**Privacy by design.** Private records are tied to their owner throughout the application and database relationships. The public demo uses a separate in-memory fictional catalog.
 
-## Public synthetic demo
+**Safe URL handling.** The importer accepts public web pages while blocking private networks, unsafe redirects, forwarded credentials, and oversized responses.
 
-The public demo is available without an account and is deliberately separated from authenticated data access. `DemoCatalog` constructs six deterministic fictional applications in memory, including fictional companies, `example.test` contacts, activity, tasks, appointments, pipeline stages, an accepted offer, hourly pay, and a scheduled-deletion example. Public routes use readable slugs rather than private application GUIDs.
+**Predictable extraction.** Pasted text, page metadata, and browser captures use deterministic rules. Job content is not sent to an AI service.
 
-The demo has its own layout so publicly cacheable responses never include signed-in navigation or account-specific state. Only `GET` exploration is supported; `POST`, `PUT`, `PATCH`, and `DELETE` requests under `/demo` receive `405 Method Not Allowed`. Automated tests seed a private canary record and prove it cannot appear in demo HTML, query results, unknown-record errors, scripts, or cacheable responses.
+**Visible retention.** Old unsaved applications receive a warning period. Saving an application protects it, and no settings change silently deletes a record.
 
-## Manual tracking
+**Production-minded quality.** Pull requests verify formatting, locked dependencies, release builds, package vulnerabilities, automated tests, browser journeys, and publish output.
 
-For manual entry, create companies separately and select one while adding or editing an application. Pasted-text review accepts a company name and location on the same page: an exact owner-scoped match is reused, otherwise the company is created only when the reviewed application is confirmed. A company cannot be deleted while applications still reference it.
+## Run it locally
 
-New applications begin at the `Applied` pipeline stage with an `Active` outcome and receive an initial append-only history event. Every later stage or outcome change adds another timestamped event instead of replacing the historical trail.
+You need the [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0), Git, and a PostgreSQL database.
 
-New applications default to not saved. **Saved** applications are exempt from future automatic retention deletion, and the setting can be changed from the application list, details page, or edit form. Milestone 8 adds a visible **Deletion scheduled** grace period and automated cleanup; changing the setting never immediately deletes anything.
+1. Clone the repository and enter the project folder.
 
-The application library defaults to a numbered compact list ordered newest first and remembers an optional card view in local browser storage. Each row supports a bookmark-style Saved control and inline stage/outcome review. Selection mode supports manual selection or all-shown, saved, unsaved, and deletion-scheduled presets, plus bulk save and unsave. Bulk stage changes append status history, bulk notes append a dated history entry without overwriting existing notes, and bulk deletion always opens a separate permanent-action review page.
+   ```powershell
+   git clone https://github.com/Chit-Thway/job-application-tracker.git
+   cd job-application-tracker
+   ```
 
-## Complete tracking workflow
+2. Store your PostgreSQL connection string outside the repository.
 
-The application details page is the operational home for a job opportunity. Status and outcome changes are appended to its timeline with an optional note. Calls, emails, messages, meetings, and notes appear in the same chronological history. Marking an interaction as an employer response derives the first-response time; correcting or deleting that interaction recalculates the value. Empty contact, task, and appointment sections start collapsed; sections with saved records start expanded but remain collapsible.
+   ```powershell
+   dotnet user-secrets set "ConnectionStrings:DefaultConnection" "Host=localhost;Database=jobtracker;Username=postgres;Password=your-password" --project src/JobTracker.Web
+   ```
 
-Contacts are owner-scoped and may be linked only to their own application. Follow-up tasks can have a local due time and can be completed, reopened, or deleted. Interviews, calls, assessments, and other appointments preserve the user's configured timezone while storing their instants in UTC. The sidebar promotes the next open task or upcoming appointment so the user does not have to reconstruct the next step from several pages. A stored description appears between reviewed posting details and the original source; its popout separates recognised section headings, paragraphs, and lists without executing source HTML.
+3. Prepare the database.
 
-## Pasted-text extraction
+   ```powershell
+   dotnet tool restore
+   dotnet ef database update --project src/JobTracker.Web
+   ```
 
-The extractor normalizes pasted text and reads explicit labels such as `Job Title`, `Company`, `Location`, `Employment Type`, `Salary`, `Job Reference`, and `Closing Date`. It also recognises corroborated stacked job-board headers, Australian location formats, standalone pay lines, multi-line metadata headings, common platform title phrases, posting bylines, and explicit applications-close or apply-by sentences. Salary suggestions pass field-specific plausibility checks, so ratings and review counts are ignored while annual ranges, `70k–80k`, hourly rates, and daily rates remain supported. Every detected field includes a high- or medium-confidence evidence note. Uncertain values remain blank rather than being guessed.
+4. Start the application.
 
-Review drafts are private, owner-scoped, and expire after 24 hours. Cancelling removes the draft and creates no application. Confirming stores the original pasted text, the editable job description, the reviewed values, the initial Applied/Active history event, and any new company in one database operation. Description extraction is intentionally broad while structured fields retain their conservative rules. Extraction is deterministic and makes no external AI or network call.
+   ```powershell
+   dotnet run --project src/JobTracker.Web --launch-profile http
+   ```
 
-## Public-URL extraction
+5. Open [http://localhost:5261](http://localhost:5261).
 
-URL import allows only public HTTP or HTTPS pages with default ports. It rejects credentials in URLs and blocks loopback, private, link-local, metadata, documentation, multicast, transition, and other non-public IPv4/IPv6 destinations. DNS answers are checked before every request and redirect and checked again when the production socket connects. Redirects are manual and limited; browser cookies, credentials, authorization, referrer, and proxy credentials are not forwarded. Responses must be HTML, complete within the configured timeout, and remain under the decompressed size limit.
+The application shows local verification emails at `/dev/mail` while running in Development, so local registration does not require an email provider.
 
-The HTML parser reads official Schema.org `JobPosting` JSON-LD first, including hiring organisation, title, location, employment type, base salary, identifier, application contact, work mode, `validThrough`, and the job description. Page metadata and visible text then feed the existing deterministic rules as fallbacks. If a page blocks automated access or cannot be imported safely, the form keeps the URL visible and offers pasted-text and manual-entry alternatives.
+## Install the browser extension locally
 
-## Browser extension capture
-
-The Manifest V3 extension in `browser-extension` is the easiest option for script-heavy or automation-blocking job boards. It reads Schema.org `JobPosting` data, the readable description, and rendered job fields from the active tab only after the user clicks **Capture this tab and review**. It includes selected-job-panel support for SEEK and Indeed, including hourly pay such as `$35–$40 an hour`. It does not fetch the page again, execute page-owned scripts, contact an AI service, or save an application directly.
-
-Install it locally:
-
-1. Start the tracker, sign in, and leave it running.
+1. Start the tracker and sign in.
 2. Open `chrome://extensions` in Chrome or `edge://extensions` in Edge.
-3. Enable **Developer mode**, choose **Load unpacked**, and select the repository's `browser-extension` directory.
-4. Pin **Job Application Tracker Capture** to the toolbar.
-5. Open a job advertisement, click the extension, and choose **Capture and review**.
+3. Turn on **Developer mode**.
+4. Choose **Load unpacked** and select the `browser-extension` folder.
+5. Pin **Job Application Tracker Capture** to the toolbar.
+6. Open a job advertisement and choose **Capture this tab and review**.
 
-The store build defaults to [myjobtracker.com.au](https://myjobtracker.com.au); its advanced popup settings can remember a different address for development. The manifest requests only `activeTab`, `scripting`, and `storage`: there are no broad host permissions, content scripts, background workers, analytics, or remote APIs. The popup prominently discloses that the selected page URL and visible job content are sent to the configured private tracker. Version 1.0.3 posts the capture through a clean handoff page, stores it encrypted behind a random single-use token for at most 10 minutes, and opens only that short token in the authenticated tracker. Redeeming the token removes the handoff and creates an owner-scoped 24-hour review draft. See `browser-extension/README.md` and the public [extension privacy page](https://myjobtracker.com.au/extension/privacy) for the install and privacy details.
+The published extension is also available through the [Chrome Web Store](https://chromewebstore.google.com/detail/ofeagkadonbdgjhdiobfdnmafhoknkig). Its focused guide is in [browser-extension/README.md](browser-extension/README.md).
 
-## Database setup
+## Project structure
 
-Store `ConnectionStrings:DefaultConnection` with .NET user secrets. Use the Supabase Session Pooler on port 5432 with TLS required. Never place the database password in this repository or paste it into an issue.
-
-Restore the repository-local migration tool and apply reviewed migrations:
-
-```powershell
-dotnet tool restore
-dotnet ef database update --project src/JobTracker.Web
+```text
+browser-extension/   Chrome and Edge active-tab capture extension
+database/            Production database scheduling scripts
+docs/                Security, accessibility, deployment, and operations guides
+scripts/             Small maintenance and verification tools
+src/JobTracker.Web/  The web application
+tests/                Unit, integration, and real-browser tests
 ```
-
-The migrations create ASP.NET Core Identity tables, hashed email-verification state, policy-acceptance records, account tiers, and owner-aware private data tables. Composite foreign keys include the owner identifier to reject cross-owner relationships at the database boundary.
-
-## Automatic retention cleanup
-
-Each owner chooses whether unsaved applications become eligible on the one-, two-, or three-calendar-month anniversary of their application date in the configured timezone. They also choose a 3-, 5-, 10-, or 14-day deletion-warning period. Changing these settings recalculates that owner's pending schedules from the current time and never deletes immediately. Saving at any point cancels the deadline; unsaving an already-old application starts a fresh configured grace period.
-
-Milestone 8 places cleanup in the database so it does not depend on website traffic. After applying the migration, open the Supabase SQL editor and run `database/supabase/configure-retention-cron.sql` once. It enables Supabase Cron and schedules the atomic cleanup function hourly at minute 17. Use `database/supabase/verify-retention-cron.sql` to inspect the job and its privacy-safe operational history. Retention runs store timestamps, counts, success state, and a short database error code only; they never retain deleted role titles, company names, notes, or source text.
-
-The application list, application details, dashboard, and Action Centre show every application with **Deletion scheduled**, its exact deletion time, and a Save action. The database function re-checks both the saved state and due time inside the deletion transaction before cascading dependent records.
-
-## Controlled local account setup
-
-Configure the initial development owner account through user secrets:
-
-```powershell
-dotnet user-secrets set "BootstrapAccount:Email" "your-email@example.com" --project src/JobTracker.Web
-dotnet user-secrets set "BootstrapAccount:DisplayName" "Your name" --project src/JobTracker.Web
-
-$trackerAccountPassword = Read-Host "Choose a strong local account password" -AsSecureString
-$trackerPlainPassword = [System.Net.NetworkCredential]::new("", $trackerAccountPassword).Password
-dotnet user-secrets set "BootstrapAccount:Password" $trackerPlainPassword --project src/JobTracker.Web
-Remove-Variable trackerAccountPassword, trackerPlainPassword -ErrorAction SilentlyContinue
-```
-
-Start the application, open `/dev/mail` on localhost, and use the displayed six-digit verification code. The local message sink is available only in Development and keeps messages in memory.
-
-After the account is verified, remove the temporary bootstrap settings:
-
-```powershell
-dotnet user-secrets remove "BootstrapAccount:Email" --project src/JobTracker.Web
-dotnet user-secrets remove "BootstrapAccount:DisplayName" --project src/JobTracker.Web
-dotnet user-secrets remove "BootstrapAccount:Password" --project src/JobTracker.Web
-```
-
-## Open registration and email verification
-
-Anyone can create a Tier 1 account at `/account/register` by supplying a name, email address, strong password, and policy agreement. Verification codes contain six digits, expire after ten minutes, allow five failed attempts, and can be resent only after a server-enforced 30-second delay. Only a password hash and verification-code hash are stored; readable passwords and codes are never stored or logged.
-
-Account administrators can review identity metadata and application counts, resend a verification code when needed, lock access, change Tier 1/Tier 2 status, and permanently delete an authorised account without opening its private tracker content. Account deletion requires typing the selected email address and removes all owner-scoped tracker records. Invitation commands, invitation records, and invitation administration routes no longer exist.
 
 ## Quality checks
 
-Run the same checks used by continuous integration:
+Run the same main checks used by continuous integration:
 
 ```powershell
 dotnet restore --locked-mode
-dotnet list JobTracker.sln package --vulnerable --include-transitive
 dotnet format --verify-no-changes --no-restore
 dotnet build --configuration Release --no-restore
-pwsh tests/JobTracker.BrowserTests/bin/Release/net10.0/playwright.ps1 install chromium
 dotnet test --configuration Release --no-build
-dotnet publish src/JobTracker.Web --configuration Release --no-build --output artifacts/publish
 ```
 
-Build warnings are treated as errors. Package lock files make dependency restores repeatable. The browser project starts the application on an ephemeral local Kestrel port with an isolated in-memory database and drives the critical login, manual-create, Saved, status-update, dashboard, and public-demo journeys in Chromium.
+The current suite covers application workflows, account boundaries, retention, imports, security rules, the public demo, and critical journeys in Chromium.
 
-See the launch-quality evidence and repeatable procedures in:
+## More detail
 
-- [`docs/security-review.md`](docs/security-review.md)
-- [`docs/accessibility.md`](docs/accessibility.md)
-- [`docs/operations.md`](docs/operations.md)
-- [`docs/backup-restore.md`](docs/backup-restore.md)
-- [`docs/azure-deployment.md`](docs/azure-deployment.md)
+- [Security review](docs/security-review.md)
+- [Accessibility review](docs/accessibility.md)
+- [Testing approach](docs/test-strategy.md)
+- [Azure deployment guide](docs/azure-deployment.md)
+- [Operations guide](docs/operations.md)
+- [Backup and restore guide](docs/backup-restore.md)
 
-## Repository structure
-
-```text
-JobTracker.sln
-src/
-  JobTracker.Web/                 ASP.NET Core MVC application
-browser-extension/                Unpacked Chrome/Edge active-tab capture extension
-tests/
-  JobTracker.UnitTests/           Fast foundation and domain tests
-  JobTracker.IntegrationTests/    In-process HTTP and security checks
-  JobTracker.BrowserTests/        Real Chromium critical-journey checks
-docs/                             Security, accessibility, and operations runbooks
-```
-
-## Configuration and secrets
-
-- Do not commit credentials, connection strings, tokens, or personal job-search information.
-- Use [.NET user secrets](https://learn.microsoft.com/aspnet/core/security/app-secrets) for local credentials.
-- Use environment or host-managed settings in deployed environments.
-- The private planning directory is deliberately excluded by `.gitignore`.
-
-## Product direction
-
-The MVP provides a private authenticated tracker and a separate public read-only synthetic demo. Together they cover applications, companies, status history, contacts and interactions, tasks, appointments, three-calendar-month dashboard reporting, ghosting warnings, and transparent automatic retention for old unsaved applications.
-
-Built for Chit-Thway.
+Built by Chit-Thway as a practical, production-hosted response to the everyday work of managing a job search.
