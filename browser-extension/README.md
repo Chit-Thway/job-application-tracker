@@ -1,42 +1,74 @@
 # Job Application Tracker Capture
 
-This Chrome Manifest V3 extension captures the active job advertisement, including its readable job description, and opens an editable review draft in Job Application Tracker.
+A small Chrome and Edge extension that turns the job advertisement in your active tab into an editable Job Application Tracker draft.
 
-## Install from the Chrome Web Store
+It is designed to save repetitive copying while keeping the final decision with the user.
 
-Open the [extension page on myjobtracker.com.au](https://myjobtracker.com.au/extension) and choose **Install from Chrome Web Store**. Chrome shows the extension's permissions before installation and delivers approved updates automatically.
+**[Install from the Chrome Web Store](https://chromewebstore.google.com/detail/ofeagkadonbdgjhdiobfdnmafhoknkig)** · **[Open Job Application Tracker](https://myjobtracker.com.au)**
 
-## Install for local development
+![Extension popup explaining the capture before it begins](../src/JobTracker.Web/wwwroot/images/landing/extension-popup.png)
+
+## How to use it
+
+1. Sign in to [Job Application Tracker](https://myjobtracker.com.au/account/login).
+2. Open a public job advertisement in Chrome or Edge.
+3. Click **Job Application Tracker Capture** in the browser toolbar.
+4. Choose **Capture this tab and review**.
+5. Check the title, company, location, salary, closing date, and description in the review draft.
+6. Correct anything that needs attention, then confirm the application.
+
+If the tracker asks you to sign in, return to the job advertisement after signing in and click the extension again.
+
+```mermaid
+flowchart LR
+    A["Open a job advertisement"] --> B["Click the extension"]
+    B --> C["Review the captured details"]
+    C --> D["Confirm the application"]
+```
+
+## What it can capture
+
+- Job title and company
+- Location and workplace arrangement
+- Employment type and advertised pay
+- Job reference and closing date
+- Readable job description
+- The original job-page address
+
+The page reader understands official `JobPosting` information and has focused support for SEEK, Indeed, LinkedIn, Prosple, and Greenhouse layouts. When a field is unclear, the review screen leaves room for the user to correct it.
+
+## Privacy in plain language
+
+- The extension runs only after the user clicks it.
+- It reads only the active tab at that moment.
+- It sends the page address and visible job information to the user's chosen tracker over HTTPS.
+- It creates a temporary review draft rather than saving an application immediately.
+- A pending handoff is encrypted, single-use, and expires after ten minutes.
+- The extension has no advertising, analytics, background page reader, remote AI call, or broad access to browsing history.
+
+Chrome lists three permissions:
+
+| Permission | Why it is needed |
+|---|---|
+| `activeTab` | Temporarily read the page where the user clicked the extension |
+| `scripting` | Run the capture after that click |
+| `storage` | Remember the tracker address and hold the capture while the review tab opens |
+
+Read the public [extension privacy page](https://myjobtracker.com.au/extension/privacy) for the full explanation.
+
+## Install it from this repository
+
+This option is useful when reviewing or developing the project.
 
 1. Start Job Application Tracker and sign in.
 2. Open `chrome://extensions` in Chrome or `edge://extensions` in Edge.
 3. Turn on **Developer mode**.
-4. Choose **Load unpacked** and select this `browser-extension` directory.
-5. Pin **Job Application Tracker Capture** to the browser toolbar.
+4. Choose **Load unpacked**.
+5. Select this `browser-extension` folder.
+6. Pin **Job Application Tracker Capture** to the toolbar.
 
-After pulling an extension update, use the extension page's **Reload** button before retesting an already open job tab.
+After pulling an extension update, select **Reload** on the browser's extension page before testing an already-open job tab.
 
-The published extension defaults to the production HTTPS tracker at [myjobtracker.com.au](https://myjobtracker.com.au). Expand **Advanced tracker address** in the popup only when testing a different deployment or localhost.
+The extension uses [myjobtracker.com.au](https://myjobtracker.com.au) by default. **Advanced tracker address** in the popup can point it to a local development address when needed.
 
-## Use
-
-1. Open a public job advertisement in the active tab.
-2. Click the extension.
-3. Choose **Capture and review**.
-4. Review and correct the private 24-hour draft in the tracker.
-5. Optionally enter an **Application portal URL** for the employer's candidate-progress page. The extension never tries to extract or guess this URL.
-6. Confirm only when the details are right.
-
-If the tracker asks you to sign in, sign in, return to the job advertisement, and click the extension again.
-
-## Privacy and permissions
-
-- `activeTab` grants temporary access only to the tab where the user clicked the extension.
-- `scripting` runs the deterministic page reader after that click.
-- `storage` remembers the tracker address and holds a pending capture in browser-session memory only while the clean handoff tab opens.
-- Before each capture, the popup explains that the page URL and visible job content will be sent over HTTPS to the user's private tracker for review.
-- There are no broad host permissions, content scripts, background workers, analytics, remote APIs, or AI calls.
-- The capture is posted over HTTPS to a rate-limited handoff endpoint, encrypted at rest, and represented in the tracker URL only by a random single-use token. The handoff expires after 10 minutes and is deleted when redeemed or during cleanup.
-- A capture creates only a review draft. It never saves an application automatically.
-
-The page reader supports official Schema.org `JobPosting` metadata, SEEK's rendered job fields, Indeed's selected job-detail panel, and conservative generic fallbacks. Description headings, paragraphs, and list items are preserved as plain text for safe formatting by the tracker. Pay remains reviewable text, so annual, hourly, daily, and weekly rates can be preserved as advertised.
+Return to the [main project README](../README.md) for the product overview, technology stack, and local application setup.
