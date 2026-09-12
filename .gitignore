@@ -1,6 +1,9 @@
 # Private product notes (never commit)
 /private/
 
+# Local agent instructions (never commit)
+/AGENTS.md
+
 # .NET build output
 **/bin/
 **/obj/
