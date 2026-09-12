@@ -4,83 +4,6 @@ using Microsoft.EntityFrameworkCore;
 
 namespace JobTracker.Web.Applications;
 
-public sealed record DashboardMonthSummary(
-    DashboardMonth Month,
-    int ApplicationCount);
-
-public sealed record DashboardGroupSummary(
-    string Label,
-    int Count);
-
-public sealed record DashboardApplicationSummary(
-    Guid Id,
-    string RoleTitle,
-    string? CompanyName,
-    DateOnly AppliedOn,
-    PipelineStage Stage,
-    ApplicationOutcome Outcome,
-    bool IsSavedForever,
-    DateTimeOffset? FirstEmployerResponseAt);
-
-public sealed record DashboardTaskSummary(
-    Guid Id,
-    Guid ApplicationId,
-    string RoleTitle,
-    string? CompanyName,
-    string Title,
-    DateTimeOffset? DueAt,
-    bool IsOverdue);
-
-public sealed record DashboardAppointmentSummary(
-    Guid Id,
-    Guid ApplicationId,
-    string RoleTitle,
-    string? CompanyName,
-    AppointmentType Type,
-    DateTimeOffset StartsAt,
-    DateTimeOffset EndsAt,
-    string TimeZoneId,
-    string? LocationOrLink);
-
-public sealed record DashboardGhostingSummary(
-    Guid ApplicationId,
-    string RoleTitle,
-    string? CompanyName,
-    DateOnly AppliedOn,
-    GhostingAttentionKind Kind,
-    int DaysSinceApplied);
-
-public sealed record DashboardRetentionSummary(
-    Guid ApplicationId,
-    string RoleTitle,
-    string? CompanyName,
-    DateOnly AppliedOn,
-    DateTimeOffset DeletionScheduledAt);
-
-public sealed record DashboardActivitySummary(
-    Guid ApplicationId,
-    string RoleTitle,
-    string? CompanyName,
-    string Kind,
-    string Summary,
-    DateTimeOffset OccurredAt);
-
-public sealed record DashboardSnapshot(
-    string DisplayName,
-    DashboardCalendarWindow Window,
-    int ApplicationCount,
-    int ResponseCount,
-    int InterviewCount,
-    IReadOnlyList<DashboardMonthSummary> Months,
-    IReadOnlyList<DashboardGroupSummary> Stages,
-    IReadOnlyList<DashboardGroupSummary> Outcomes,
-    IReadOnlyList<DashboardApplicationSummary> RecentApplications,
-    IReadOnlyList<DashboardActivitySummary> RecentActivity,
-    IReadOnlyList<DashboardTaskSummary> OpenTasks,
-    IReadOnlyList<DashboardAppointmentSummary> UpcomingAppointments,
-    IReadOnlyList<DashboardGhostingSummary> GhostingAttention,
-    IReadOnlyList<DashboardRetentionSummary> DeletionScheduled);
-
 public sealed class DashboardService(
     ApplicationDbContext database,
     ICurrentUserContext currentUser,
@@ -90,38 +13,16 @@ public sealed class DashboardService(
         CancellationToken cancellationToken = default)
     {
         var ownerId = RequireOwnerId();
-        var user = await database.Users
-            .AsNoTracking()
-            .Where(item => item.Id == ownerId)
-            .Select(item => new { item.DisplayName, item.TimeZoneId })
-            .SingleAsync(cancellationToken);
+        var user = await GetUserAsync(ownerId, cancellationToken);
         var now = timeProvider.GetUtcNow();
         var window = DashboardCalendar.Create(now, user.TimeZoneId);
 
-        var applications = await database.JobApplications
-            .AsNoTracking()
-            .Where(item => item.OwnerId == ownerId)
-            .ToListAsync(cancellationToken);
-        var companies = await database.Companies
-            .AsNoTracking()
-            .Where(item => item.OwnerId == ownerId)
-            .ToDictionaryAsync(item => item.Id, item => item.Name, cancellationToken);
-        var interactions = await database.Interactions
-            .AsNoTracking()
-            .Where(item => item.OwnerId == ownerId)
-            .ToListAsync(cancellationToken);
-        var tasks = await database.Tasks
-            .AsNoTracking()
-            .Where(item => item.OwnerId == ownerId && item.CompletedAt == null)
-            .ToListAsync(cancellationToken);
-        var appointments = await database.Appointments
-            .AsNoTracking()
-            .Where(item => item.OwnerId == ownerId)
-            .ToListAsync(cancellationToken);
-        var statusHistory = await database.StatusHistory
-            .AsNoTracking()
-            .Where(item => item.OwnerId == ownerId)
-            .ToListAsync(cancellationToken);
+        var applications = await GetApplicationsAsync(ownerId, cancellationToken);
+        var companies = await GetCompaniesAsync(ownerId, cancellationToken);
+        var interactions = await GetInteractionsAsync(ownerId, cancellationToken);
+        var tasks = await GetOpenTasksAsync(ownerId, cancellationToken);
+        var appointments = await GetAppointmentsAsync(ownerId, cancellationToken);
+        var statusHistory = await GetStatusHistoryAsync(ownerId, cancellationToken);
 
         var applicationById = applications.ToDictionary(item => item.Id);
         var firstResponses = FirstResponses(applications, interactions, window.TimeZoneId);
@@ -138,61 +39,18 @@ public sealed class DashboardService(
             .ToList();
         var pipelineApplicationIds = pipelineApplications.Select(item => item.Id).ToHashSet();
 
-        var openTasks = tasks
-            .Where(item => applicationById.ContainsKey(item.JobApplicationId))
-            .Select(item => TaskSummary(
-                item,
-                applicationById[item.JobApplicationId],
-                companies,
-                now))
-            .OrderByDescending(item => item.IsOverdue)
-            .ThenBy(item => item.DueAt is null)
-            .ThenBy(item => item.DueAt)
-            .ThenBy(item => item.Title)
-            .ToList();
-        var upcomingAppointments = appointments
-            .Where(item => item.EndsAt >= now && applicationById.ContainsKey(item.JobApplicationId))
-            .Select(item => AppointmentSummary(
-                item,
-                applicationById[item.JobApplicationId],
-                companies))
-            .OrderBy(item => item.StartsAt)
-            .ToList();
-        var ghostingAttention = applications
-            .Select(item => new
-            {
-                Application = item,
-                Assessment = DashboardCalendar.AssessGhosting(
-                    item.AppliedOn,
-                    window.Today,
-                    item.Outcome,
-                    firstResponses.ContainsKey(item.Id)),
-            })
-            .Where(item => item.Assessment.Kind != GhostingAttentionKind.None)
-            .OrderByDescending(item => item.Assessment.Kind)
-            .ThenByDescending(item => item.Assessment.DaysSinceApplied)
-            .Select(item => new DashboardGhostingSummary(
-                item.Application.Id,
-                item.Application.RoleTitle,
-                CompanyName(item.Application, companies),
-                item.Application.AppliedOn,
-                item.Assessment.Kind,
-                item.Assessment.DaysSinceApplied))
-            .ToList();
-        var deletionScheduled = applications
-            .Where(item =>
-                !item.IsSavedForever
-                && item.DeletionScheduledAt is not null
-                && item.DeletionWarningDismissedAt is null)
-            .OrderBy(item => item.DeletionScheduledAt)
-            .ThenBy(item => item.RoleTitle)
-            .Select(item => new DashboardRetentionSummary(
-                item.Id,
-                item.RoleTitle,
-                CompanyName(item, companies),
-                item.AppliedOn,
-                item.DeletionScheduledAt!.Value))
-            .ToList();
+        var openTasks = BuildOpenTasks(tasks, applicationById, companies, now);
+        var upcomingAppointments = BuildUpcomingAppointments(
+            appointments,
+            applicationById,
+            companies,
+            now);
+        var ghostingAttention = BuildGhostingAttention(
+            applications,
+            companies,
+            firstResponses,
+            window.Today);
+        var deletionScheduled = BuildDeletionScheduled(applications, companies);
 
         var recentActivity = BuildActivity(
             window,
@@ -212,37 +70,198 @@ public sealed class DashboardService(
                 item.Type == AppointmentType.Interview
                 && windowApplicationIds.Contains(item.JobApplicationId)
                 && window.Contains(item.StartsAt)),
-            window.Months.Select(month => new DashboardMonthSummary(
-                month,
-                windowApplications.Count(item =>
-                    item.AppliedOn >= month.StartsOn && item.AppliedOn <= month.EndsOn)))
-                .ToList(),
-            ApplicationDisplay.ActiveStages
-                .Select(stage => new DashboardGroupSummary(
-                    ApplicationDisplay.Stage(stage),
-                    pipelineApplications.Count(item => ApplicationDisplay.NormalizeStage(item.Stage) == stage)))
-                .ToList(),
-            ApplicationDisplay.ActiveOutcomes
-                .Select(outcome => new DashboardGroupSummary(
-                    ApplicationDisplay.Outcome(outcome),
-                    pipelineApplications.Count(item => ApplicationDisplay.NormalizeOutcome(item.Outcome) == outcome)))
-                .ToList(),
-            windowApplications.Take(8).Select(item => new DashboardApplicationSummary(
-                item.Id,
-                item.RoleTitle,
-                CompanyName(item, companies),
-                item.AppliedOn,
-                item.Stage,
-                item.Outcome,
-                item.IsSavedForever,
-                firstResponses.GetValueOrDefault(item.Id)))
-                .ToList(),
+            BuildMonthSummaries(window, windowApplications),
+            BuildStageSummaries(pipelineApplications),
+            BuildOutcomeSummaries(pipelineApplications),
+            BuildRecentApplications(windowApplications, companies, firstResponses),
             recentActivity,
             openTasks,
             upcomingAppointments,
             ghostingAttention,
             deletionScheduled);
     }
+
+    private async Task<DashboardUser> GetUserAsync(
+        string ownerId,
+        CancellationToken cancellationToken) =>
+        await database.Users
+            .AsNoTracking()
+            .Where(user => user.Id == ownerId)
+            .Select(user => new DashboardUser(user.DisplayName, user.TimeZoneId))
+            .SingleAsync(cancellationToken);
+
+    private async Task<IReadOnlyList<JobApplication>> GetApplicationsAsync(
+        string ownerId,
+        CancellationToken cancellationToken) =>
+        await database.JobApplications
+            .AsNoTracking()
+            .Where(application => application.OwnerId == ownerId)
+            .ToListAsync(cancellationToken);
+
+    private async Task<IReadOnlyDictionary<Guid, string>> GetCompaniesAsync(
+        string ownerId,
+        CancellationToken cancellationToken) =>
+        await database.Companies
+            .AsNoTracking()
+            .Where(company => company.OwnerId == ownerId)
+            .ToDictionaryAsync(company => company.Id, company => company.Name, cancellationToken);
+
+    private async Task<IReadOnlyList<Interaction>> GetInteractionsAsync(
+        string ownerId,
+        CancellationToken cancellationToken) =>
+        await database.Interactions
+            .AsNoTracking()
+            .Where(interaction => interaction.OwnerId == ownerId)
+            .ToListAsync(cancellationToken);
+
+    private async Task<IReadOnlyList<TaskItem>> GetOpenTasksAsync(
+        string ownerId,
+        CancellationToken cancellationToken) =>
+        await database.Tasks
+            .AsNoTracking()
+            .Where(task => task.OwnerId == ownerId && task.CompletedAt == null)
+            .ToListAsync(cancellationToken);
+
+    private async Task<IReadOnlyList<Appointment>> GetAppointmentsAsync(
+        string ownerId,
+        CancellationToken cancellationToken) =>
+        await database.Appointments
+            .AsNoTracking()
+            .Where(appointment => appointment.OwnerId == ownerId)
+            .ToListAsync(cancellationToken);
+
+    private async Task<IReadOnlyList<StatusHistory>> GetStatusHistoryAsync(
+        string ownerId,
+        CancellationToken cancellationToken) =>
+        await database.StatusHistory
+            .AsNoTracking()
+            .Where(history => history.OwnerId == ownerId)
+            .ToListAsync(cancellationToken);
+
+    private static IReadOnlyList<DashboardTaskSummary> BuildOpenTasks(
+        IEnumerable<TaskItem> tasks,
+        IReadOnlyDictionary<Guid, JobApplication> applicationsById,
+        IReadOnlyDictionary<Guid, string> companies,
+        DateTimeOffset currentTime) =>
+        tasks
+            .Where(task => applicationsById.ContainsKey(task.JobApplicationId))
+            .Select(task => TaskSummary(
+                task,
+                applicationsById[task.JobApplicationId],
+                companies,
+                currentTime))
+            .OrderByDescending(task => task.IsOverdue)
+            .ThenBy(task => task.DueAt is null)
+            .ThenBy(task => task.DueAt)
+            .ThenBy(task => task.Title)
+            .ToList();
+
+    private static IReadOnlyList<DashboardAppointmentSummary> BuildUpcomingAppointments(
+        IEnumerable<Appointment> appointments,
+        IReadOnlyDictionary<Guid, JobApplication> applicationsById,
+        IReadOnlyDictionary<Guid, string> companies,
+        DateTimeOffset currentTime) =>
+        appointments
+            .Where(appointment =>
+                appointment.EndsAt >= currentTime
+                && applicationsById.ContainsKey(appointment.JobApplicationId))
+            .Select(appointment => AppointmentSummary(
+                appointment,
+                applicationsById[appointment.JobApplicationId],
+                companies))
+            .OrderBy(appointment => appointment.StartsAt)
+            .ToList();
+
+    private static IReadOnlyList<DashboardGhostingSummary> BuildGhostingAttention(
+        IEnumerable<JobApplication> applications,
+        IReadOnlyDictionary<Guid, string> companies,
+        IReadOnlyDictionary<Guid, DateTimeOffset> firstResponses,
+        DateOnly today) =>
+        applications
+            .Select(application => new
+            {
+                Application = application,
+                Assessment = DashboardCalendar.AssessGhosting(
+                    application.AppliedOn,
+                    today,
+                    application.Outcome,
+                    firstResponses.ContainsKey(application.Id)),
+            })
+            .Where(item => item.Assessment.Kind != GhostingAttentionKind.None)
+            .OrderByDescending(item => item.Assessment.Kind)
+            .ThenByDescending(item => item.Assessment.DaysSinceApplied)
+            .Select(item => new DashboardGhostingSummary(
+                item.Application.Id,
+                item.Application.RoleTitle,
+                CompanyName(item.Application, companies),
+                item.Application.AppliedOn,
+                item.Assessment.Kind,
+                item.Assessment.DaysSinceApplied))
+            .ToList();
+
+    private static IReadOnlyList<DashboardRetentionSummary> BuildDeletionScheduled(
+        IEnumerable<JobApplication> applications,
+        IReadOnlyDictionary<Guid, string> companies) =>
+        applications
+            .Where(application =>
+                !application.IsSavedForever
+                && application.DeletionScheduledAt is not null
+                && application.DeletionWarningDismissedAt is null)
+            .OrderBy(application => application.DeletionScheduledAt)
+            .ThenBy(application => application.RoleTitle)
+            .Select(application => new DashboardRetentionSummary(
+                application.Id,
+                application.RoleTitle,
+                CompanyName(application, companies),
+                application.AppliedOn,
+                application.DeletionScheduledAt!.Value))
+            .ToList();
+
+    private static IReadOnlyList<DashboardMonthSummary> BuildMonthSummaries(
+        DashboardCalendarWindow window,
+        IReadOnlyList<JobApplication> applications) =>
+        window.Months
+            .Select(month => new DashboardMonthSummary(
+                month,
+                applications.Count(application =>
+                    application.AppliedOn >= month.StartsOn
+                    && application.AppliedOn <= month.EndsOn)))
+            .ToList();
+
+    private static IReadOnlyList<DashboardGroupSummary> BuildStageSummaries(
+        IReadOnlyList<JobApplication> applications) =>
+        ApplicationDisplay.ActiveStages
+            .Select(stage => new DashboardGroupSummary(
+                ApplicationDisplay.Stage(stage),
+                applications.Count(application =>
+                    ApplicationDisplay.NormalizeStage(application.Stage) == stage)))
+            .ToList();
+
+    private static IReadOnlyList<DashboardGroupSummary> BuildOutcomeSummaries(
+        IReadOnlyList<JobApplication> applications) =>
+        ApplicationDisplay.ActiveOutcomes
+            .Select(outcome => new DashboardGroupSummary(
+                ApplicationDisplay.Outcome(outcome),
+                applications.Count(application =>
+                    ApplicationDisplay.NormalizeOutcome(application.Outcome) == outcome)))
+            .ToList();
+
+    private static IReadOnlyList<DashboardApplicationSummary> BuildRecentApplications(
+        IEnumerable<JobApplication> applications,
+        IReadOnlyDictionary<Guid, string> companies,
+        IReadOnlyDictionary<Guid, DateTimeOffset> firstResponses) =>
+        applications
+            .Take(ApplicationRules.RecentApplicationsDisplayCount)
+            .Select(application => new DashboardApplicationSummary(
+                application.Id,
+                application.RoleTitle,
+                CompanyName(application, companies),
+                application.AppliedOn,
+                application.Stage,
+                application.Outcome,
+                application.IsSavedForever,
+                firstResponses.GetValueOrDefault(application.Id)))
+            .ToList();
 
     public async Task<bool> CanConfirmGhostedAsync(
         Guid applicationId,
@@ -363,7 +382,7 @@ public sealed class DashboardService(
         return activity
             .OrderByDescending(item => item.OccurredAt)
             .ThenBy(item => item.RoleTitle)
-            .Take(10)
+            .Take(ApplicationRules.RecentActivityDisplayCount)
             .ToList();
     }
 
@@ -415,4 +434,6 @@ public sealed class DashboardService(
     private string RequireOwnerId() =>
         currentUser.UserId
         ?? throw new InvalidOperationException("An authenticated user is required.");
+
+    private sealed record DashboardUser(string DisplayName, string TimeZoneId);
 }

@@ -14,15 +14,20 @@ public sealed class ApplicationsController(
     CompanyTrackerService companies,
     TimeProvider timeProvider) : Controller
 {
+    private const string ApplicationListDestination = "index";
+    private const string DashboardDestination = "dashboard";
+    private const string ActionCentreDestination = "actions";
+
     [HttpGet("/applications")]
     public async Task<IActionResult> Index(
         ApplicationFilterViewModel filters,
         CancellationToken cancellationToken)
     {
         SetSection();
-        filters.Sort = filters.Sort is "oldest" or "title" or "company"
-            ? filters.Sort
-            : "newest";
+        if (!ApplicationSortOptions.IsSupported(filters.Sort))
+        {
+            filters.Sort = ApplicationSortOptions.Newest;
+        }
         if (filters.Stage is not null && !ApplicationDisplay.IsActive(filters.Stage.Value))
         {
             filters.Stage = ApplicationDisplay.NormalizeStage(filters.Stage.Value);
@@ -58,7 +63,7 @@ public sealed class ApplicationsController(
         CancellationToken cancellationToken)
     {
         SetSection("add");
-        var perth = TimeZoneInfo.FindSystemTimeZoneById("Australia/Perth");
+        var perth = TimeZoneInfo.FindSystemTimeZoneById(ApplicationUser.DefaultTimeZoneId);
         var localNow = TimeZoneInfo.ConvertTime(timeProvider.GetUtcNow(), perth);
         return View(await PopulateCompaniesAsync(new ApplicationFormViewModel
         {
@@ -121,7 +126,7 @@ public sealed class ApplicationsController(
 
         if (!ModelState.IsValid)
         {
-            if (returnTo == "index")
+            if (returnTo == ApplicationListDestination)
             {
                 TempData["Error"] = "Choose one of the available pipeline stages and outcomes.";
                 return RedirectToAction(nameof(Index));
@@ -144,7 +149,7 @@ public sealed class ApplicationsController(
 
         if (result == WorkflowWriteResult.InvalidTransition)
         {
-            if (returnTo == "index")
+            if (returnTo == ApplicationListDestination)
             {
                 TempData["Error"] = "That status change is not available. Ghosted can be confirmed only after 30 days, and the new state must differ from the current state.";
                 return RedirectToAction(nameof(Index));
@@ -160,7 +165,7 @@ public sealed class ApplicationsController(
         }
 
         TempData["Success"] = "Application status updated and added to the history.";
-        if (returnTo == "index")
+        if (returnTo == ApplicationListDestination)
         {
             return RedirectToAction(nameof(Index));
         }
@@ -534,9 +539,9 @@ public sealed class ApplicationsController(
             : "Application is no longer saved. If it is already old enough, a fresh 14-day grace period has started.";
         return returnTo switch
         {
-            "index" => RedirectToAction(nameof(Index)),
-            "dashboard" => RedirectToAction("Dashboard", "Home"),
-            "actions" => RedirectToAction("ActionCentre", "Home"),
+            ApplicationListDestination => RedirectToAction(nameof(Index)),
+            DashboardDestination => RedirectToAction("Dashboard", "Home"),
+            ActionCentreDestination => RedirectToAction("ActionCentre", "Home"),
             _ => RedirectToAction(nameof(Details), new { id }),
         };
     }
@@ -625,7 +630,7 @@ public sealed class ApplicationsController(
         }
 
         var note = model.Note?.Trim();
-        if (string.IsNullOrWhiteSpace(note) || note.Length > 2_000)
+        if (string.IsNullOrWhiteSpace(note) || note.Length > ApplicationRules.MaximumNoteLength)
         {
             TempData["Error"] = "Enter a note between 1 and 2,000 characters.";
             return RedirectToAction(nameof(Index));
@@ -772,7 +777,7 @@ public sealed class ApplicationsController(
             return false;
         }
 
-        if (model.SelectedApplicationIds.Count > 200)
+        if (model.SelectedApplicationIds.Count > ApplicationRules.MaximumBulkSelectionCount)
         {
             TempData["Error"] = "Select no more than 200 applications at a time.";
             return false;

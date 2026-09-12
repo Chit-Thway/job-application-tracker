@@ -1,6 +1,7 @@
 using JobTracker.Web.Data;
 using JobTracker.Web.Identity;
 using JobTracker.Web.Applications;
+using JobTracker.Web.Configuration;
 using JobTracker.Web.Extraction;
 using JobTracker.Web.Demo;
 using JobTracker.Web.Diagnostics;
@@ -116,7 +117,7 @@ builder.Services.Configure<SecurityStampValidatorOptions>(options =>
 builder.Services.AddRateLimiter(options =>
 {
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
-    options.AddPolicy("account", context =>
+    options.AddPolicy(RateLimitPolicies.AccountActions, context =>
         RateLimitPartition.GetFixedWindowLimiter(
             context.Connection.RemoteIpAddress?.ToString() ?? "local",
             _ => new FixedWindowRateLimiterOptions
@@ -126,7 +127,7 @@ builder.Services.AddRateLimiter(options =>
                 QueueLimit = 0,
                 AutoReplenishment = true,
             }));
-    options.AddPolicy("imports", context =>
+    options.AddPolicy(RateLimitPolicies.JobImports, context =>
         RateLimitPartition.GetFixedWindowLimiter(
             context.Connection.RemoteIpAddress?.ToString() ?? "local",
             _ => new FixedWindowRateLimiterOptions

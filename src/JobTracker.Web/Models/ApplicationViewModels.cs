@@ -30,7 +30,7 @@ public sealed class ApplicationFilterViewModel
     [Display(Name = "Applied to")]
     public DateOnly? AppliedTo { get; set; }
 
-    public string Sort { get; set; } = "newest";
+    public string Sort { get; set; } = ApplicationSortOptions.Newest;
 }
 
 public sealed record ApplicationIndexViewModel(
@@ -45,7 +45,7 @@ public sealed class BulkApplicationActionViewModel
 
     public PipelineStage? Stage { get; set; }
 
-    [StringLength(2_000)]
+    [StringLength(ApplicationRules.MaximumNoteLength)]
     public string? Note { get; set; }
 }
 

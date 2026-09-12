@@ -1,4 +1,6 @@
 using JobTracker.Web.Applications;
+using JobTracker.Web.Configuration;
+using JobTracker.Web.Data;
 using JobTracker.Web.Extraction;
 using JobTracker.Web.Models;
 using Microsoft.AspNetCore.Authorization;
@@ -16,6 +18,11 @@ public sealed class ApplicationImportsController(
     ExtensionCaptureHandoffService extensionCaptureHandoffs,
     TimeProvider timeProvider) : Controller
 {
+    private const long UrlImportRequestSizeLimitBytes = 32_000;
+    private const long PastedTextRequestSizeLimitBytes = 512_000;
+    private const long ExtensionHandoffRequestSizeLimitBytes = 512_000;
+    private const long DirectExtensionImportRequestSizeLimitBytes = 256_000;
+
     [HttpGet("/applications/import/url")]
     public IActionResult ImportUrl()
     {
@@ -24,8 +31,8 @@ public sealed class ApplicationImportsController(
     }
 
     [HttpPost("/applications/import/url")]
-    [EnableRateLimiting("imports")]
-    [RequestSizeLimit(32_000)]
+    [EnableRateLimiting(RateLimitPolicies.JobImports)]
+    [RequestSizeLimit(UrlImportRequestSizeLimitBytes)]
     public async Task<IActionResult> ImportUrl(
         JobPostingUrlInputViewModel model,
         CancellationToken cancellationToken)
@@ -57,7 +64,7 @@ public sealed class ApplicationImportsController(
     }
 
     [HttpPost("/applications/import/text")]
-    [RequestSizeLimit(512_000)]
+    [RequestSizeLimit(PastedTextRequestSizeLimitBytes)]
     public async Task<IActionResult> PasteText(
         PastedTextInputViewModel model,
         CancellationToken cancellationToken)
@@ -115,8 +122,8 @@ public sealed class ApplicationImportsController(
     [AllowAnonymous]
     [IgnoreAntiforgeryToken]
     [HttpPost("/applications/import/extension/handoff")]
-    [EnableRateLimiting("imports")]
-    [RequestSizeLimit(512_000)]
+    [EnableRateLimiting(RateLimitPolicies.JobImports)]
+    [RequestSizeLimit(ExtensionHandoffRequestSizeLimitBytes)]
     public async Task<IActionResult> CreateExtensionHandoff(
         BrowserExtensionCaptureInputViewModel model,
         CancellationToken cancellationToken)
@@ -135,8 +142,8 @@ public sealed class ApplicationImportsController(
     }
 
     [HttpPost("/applications/import/extension")]
-    [EnableRateLimiting("imports")]
-    [RequestSizeLimit(256_000)]
+    [EnableRateLimiting(RateLimitPolicies.JobImports)]
+    [RequestSizeLimit(DirectExtensionImportRequestSizeLimitBytes)]
     public async Task<IActionResult> ImportExtension(
         BrowserExtensionCaptureInputViewModel model,
         CancellationToken cancellationToken)
@@ -184,49 +191,16 @@ public sealed class ApplicationImportsController(
     {
         SetSection();
         model.DraftId = id;
-        if (model.ExistingCompanyId is null
-            && string.IsNullOrWhiteSpace(model.CompanyName)
-            && !string.IsNullOrWhiteSpace(model.CompanyLocation))
-        {
-            ModelState.AddModelError(
-                nameof(model.CompanyName),
-                "Enter a company name before adding a company location.");
-        }
+        ValidateCompanyInput(model);
 
         if (!ModelState.IsValid)
         {
-            var existingDraft = await drafts.FindReviewAsync(id, cancellationToken);
-            if (existingDraft is null)
-            {
-                return NotFound();
-            }
-
-            CopyReviewContext(existingDraft, model);
-            await PopulateCompanySuggestionsAsync(model, cancellationToken);
-            return View(model);
+            return await RedisplayReviewAsync(id, model, cancellationToken);
         }
 
         var completion = await drafts.CompleteAsync(
             id,
-            new ExtractionReviewInput(
-                model.RoleTitle,
-                model.CompanyName,
-                model.CompanyLocation,
-                model.ExistingCompanyId,
-                model.AppliedOn!.Value,
-                model.WorkplaceMode,
-                model.SourceUrl,
-                model.ApplicationPortalUrl,
-                model.SourceSite,
-                model.JobReference,
-                model.SalaryText,
-                model.EmploymentType,
-                model.ClosingDate,
-                model.ContactName,
-                model.ContactEmail,
-                model.DescriptionText,
-                model.Notes,
-                model.IsSavedForever),
+            CompletionInputFrom(model),
             cancellationToken);
 
         if (completion.Result == ExtractionDraftResult.NotFound)
@@ -245,29 +219,13 @@ public sealed class ApplicationImportsController(
             ModelState.AddModelError(
                 nameof(model.ExistingCompanyId),
                 "That company is no longer available. Choose another match or keep the extracted company.");
-            var existingDraft = await drafts.FindReviewAsync(id, cancellationToken);
-            if (existingDraft is null)
-            {
-                return NotFound();
-            }
-
-            CopyReviewContext(existingDraft, model);
-            await PopulateCompanySuggestionsAsync(model, cancellationToken);
-            return View(model);
+            return await RedisplayReviewAsync(id, model, cancellationToken);
         }
 
         if (completion.Result == ExtractionDraftResult.ApplicationLimitReached)
         {
             ModelState.AddModelError(string.Empty, ApplicationQuotaService.LimitReachedMessage);
-            var existingDraft = await drafts.FindReviewAsync(id, cancellationToken);
-            if (existingDraft is null)
-            {
-                return NotFound();
-            }
-
-            CopyReviewContext(existingDraft, model);
-            await PopulateCompanySuggestionsAsync(model, cancellationToken);
-            return View(model);
+            return await RedisplayReviewAsync(id, model, cancellationToken);
         }
 
         TempData["Success"] = "Reviewed application added.";
@@ -292,7 +250,7 @@ public sealed class ApplicationImportsController(
 
     private DateOnly LocalToday()
     {
-        var perth = TimeZoneInfo.FindSystemTimeZoneById("Australia/Perth");
+        var perth = TimeZoneInfo.FindSystemTimeZoneById(ApplicationUser.DefaultTimeZoneId);
         var localNow = TimeZoneInfo.ConvertTime(timeProvider.GetUtcNow(), perth);
         return DateOnly.FromDateTime(localNow.DateTime);
     }
@@ -330,6 +288,58 @@ public sealed class ApplicationImportsController(
         model.ExpiresAt = draft.ExpiresAt;
         model.Evidence = draft.Evidence;
         model.Warnings = draft.Warnings;
+    }
+
+    private static ExtractionReviewInput CompletionInputFrom(
+        ExtractionReviewViewModel model) => new(
+        model.RoleTitle,
+        model.CompanyName,
+        model.CompanyLocation,
+        model.ExistingCompanyId,
+        model.AppliedOn!.Value,
+        model.WorkplaceMode,
+        model.SourceUrl,
+        model.ApplicationPortalUrl,
+        model.SourceSite,
+        model.JobReference,
+        model.SalaryText,
+        model.EmploymentType,
+        model.ClosingDate,
+        model.ContactName,
+        model.ContactEmail,
+        model.DescriptionText,
+        model.Notes,
+        model.IsSavedForever);
+
+    private void ValidateCompanyInput(ExtractionReviewViewModel model)
+    {
+        var hasCompanyLocationWithoutName = model.ExistingCompanyId is null
+            && string.IsNullOrWhiteSpace(model.CompanyName)
+            && !string.IsNullOrWhiteSpace(model.CompanyLocation);
+        if (!hasCompanyLocationWithoutName)
+        {
+            return;
+        }
+
+        ModelState.AddModelError(
+            nameof(model.CompanyName),
+            "Enter a company name before adding a company location.");
+    }
+
+    private async Task<IActionResult> RedisplayReviewAsync(
+        Guid draftId,
+        ExtractionReviewViewModel model,
+        CancellationToken cancellationToken)
+    {
+        var existingDraft = await drafts.FindReviewAsync(draftId, cancellationToken);
+        if (existingDraft is null)
+        {
+            return NotFound();
+        }
+
+        CopyReviewContext(existingDraft, model);
+        await PopulateCompanySuggestionsAsync(model, cancellationToken);
+        return View(nameof(Review), model);
     }
 
     private async Task PopulateCompanySuggestionsAsync(

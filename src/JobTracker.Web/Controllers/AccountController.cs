@@ -1,4 +1,5 @@
 using JobTracker.Web.Data;
+using JobTracker.Web.Configuration;
 using JobTracker.Web.Identity;
 using JobTracker.Web.Models;
 using Microsoft.AspNetCore.Authorization;
@@ -31,7 +32,7 @@ public sealed class AccountController(
     }
 
     [HttpPost("/account/register")]
-    [EnableRateLimiting("account")]
+    [EnableRateLimiting(RateLimitPolicies.AccountActions)]
     public async Task<IActionResult> Register(RegisterViewModel model)
     {
         if (!ModelState.IsValid)
@@ -46,7 +47,7 @@ public sealed class AccountController(
             UserName = email,
             Email = email,
             DisplayName = model.DisplayName.Trim(),
-            TimeZoneId = "Australia/Perth",
+            TimeZoneId = ApplicationUser.DefaultTimeZoneId,
             AccountTier = AccountTier.Tier1,
             CreatedAt = now,
             TermsAcceptedAt = now,
@@ -95,7 +96,7 @@ public sealed class AccountController(
     }
 
     [HttpPost("/account/login")]
-    [EnableRateLimiting("account")]
+    [EnableRateLimiting(RateLimitPolicies.AccountActions)]
     public async Task<IActionResult> Login(LoginViewModel model)
     {
         if (!ModelState.IsValid)
@@ -146,7 +147,7 @@ public sealed class AccountController(
     public IActionResult ForgotPassword() => View(new EmailActionViewModel());
 
     [HttpPost("/account/forgot-password")]
-    [EnableRateLimiting("account")]
+    [EnableRateLimiting(RateLimitPolicies.AccountActions)]
     public async Task<IActionResult> ForgotPassword(EmailActionViewModel model)
     {
         if (!ModelState.IsValid)
@@ -176,7 +177,7 @@ public sealed class AccountController(
     public IActionResult ResendVerification() => View(new EmailActionViewModel());
 
     [HttpPost("/account/resend-verification")]
-    [EnableRateLimiting("account")]
+    [EnableRateLimiting(RateLimitPolicies.AccountActions)]
     public async Task<IActionResult> ResendVerification(EmailActionViewModel model)
     {
         if (!ModelState.IsValid)
@@ -221,7 +222,7 @@ public sealed class AccountController(
     }
 
     [HttpPost("/account/verify-email")]
-    [EnableRateLimiting("account")]
+    [EnableRateLimiting(RateLimitPolicies.AccountActions)]
     public async Task<IActionResult> VerifyEmail(
         EmailVerificationViewModel model,
         CancellationToken cancellationToken)
@@ -248,7 +249,7 @@ public sealed class AccountController(
     }
 
     [HttpPost("/account/verify-email/resend")]
-    [EnableRateLimiting("account")]
+    [EnableRateLimiting(RateLimitPolicies.AccountActions)]
     public async Task<IActionResult> ResendVerificationCode(
         Guid challengeId,
         CancellationToken cancellationToken)
@@ -294,7 +295,7 @@ public sealed class AccountController(
     }
 
     [HttpPost("/account/reset-password")]
-    [EnableRateLimiting("account")]
+    [EnableRateLimiting(RateLimitPolicies.AccountActions)]
     public async Task<IActionResult> ResetPassword(ResetPasswordViewModel model)
     {
         if (!ModelState.IsValid)

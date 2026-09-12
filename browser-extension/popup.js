@@ -2,64 +2,89 @@
   "use strict";
 
   const DEFAULT_TRACKER_URL = "https://myjobtracker.com.au";
-  const form = document.getElementById("capture-form");
+  const MINIMUM_CAPTURED_SOURCE_TEXT_LENGTH = 20;
+  const CAPTURE_STORAGE_KEY_PREFIX = "capture:";
+  const captureForm = document.getElementById("capture-form");
   const trackerUrlInput = document.getElementById("tracker-url");
-  const status = document.getElementById("status");
-  const submitButton = form.querySelector("button[type='submit']");
+  const statusMessage = document.getElementById("status");
+  const submitButton = captureForm.querySelector("button[type='submit']");
 
   chrome.storage.local.get({ trackerBaseUrl: DEFAULT_TRACKER_URL }, values => {
     trackerUrlInput.value = values.trackerBaseUrl;
   });
 
-  form.addEventListener("submit", async event => {
+  captureForm.addEventListener("submit", async event => {
     event.preventDefault();
-    status.textContent = "";
+    statusMessage.textContent = "";
     submitButton.disabled = true;
 
     try {
-      const trackerBaseUrl = normalizeTrackerUrl(trackerUrlInput.value);
-      await chrome.storage.local.set({ trackerBaseUrl });
-      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-      if (!tab?.id || !/^https?:/i.test(tab.url ?? "")) {
-        throw new Error("Open a normal HTTP or HTTPS job advertisement first.");
-      }
-
-      const [{ result: capture }] = await chrome.scripting.executeScript({
-        target: { tabId: tab.id },
-        func: captureJobPage,
-      });
-      if (!capture || !capture.sourceText || capture.sourceText.length < 20) {
-        throw new Error("This page did not expose enough readable job information.");
-      }
-
-      const payload = JSON.stringify(capture);
-      const captureId = crypto.randomUUID();
-      const storageKey = `capture:${captureId}`;
-      await chrome.storage.session.set({
-        [storageKey]: {
-          payload,
-          trackerBaseUrl,
-          createdAt: Date.now(),
-        },
-      });
-
-      try {
-        const handoffUrl = chrome.runtime.getURL(
-          `handoff.html?id=${encodeURIComponent(captureId)}`);
-        await chrome.tabs.create({ url: handoffUrl });
-      } catch (error) {
-        await chrome.storage.session.remove(storageKey);
-        throw error;
-      }
-
+      await captureCurrentJob();
       window.close();
     } catch (error) {
-      status.textContent = error instanceof Error
+      statusMessage.textContent = error instanceof Error
         ? error.message
         : "The page could not be captured. Reload it and try again.";
       submitButton.disabled = false;
     }
   });
+
+  async function captureCurrentJob() {
+    const trackerBaseUrl = normalizeTrackerUrl(trackerUrlInput.value);
+    await chrome.storage.local.set({ trackerBaseUrl });
+
+    const activeTab = await getActiveWebPageTab();
+    const capturedJob = await captureJobFromTab(activeTab.id);
+    const storageKey = await storeCapture(capturedJob, trackerBaseUrl);
+    await openHandoffTab(storageKey);
+  }
+
+  async function getActiveWebPageTab() {
+    const [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    if (!activeTab?.id || !/^https?:/i.test(activeTab.url ?? "")) {
+      throw new Error("Open a normal HTTP or HTTPS job advertisement first.");
+    }
+
+    return activeTab;
+  }
+
+  async function captureJobFromTab(tabId) {
+    const [{ result: capturedJob }] = await chrome.scripting.executeScript({
+      target: { tabId },
+      func: captureJobPage,
+    });
+    if (!capturedJob?.sourceText
+      || capturedJob.sourceText.length < MINIMUM_CAPTURED_SOURCE_TEXT_LENGTH) {
+      throw new Error("This page did not expose enough readable job information.");
+    }
+
+    return capturedJob;
+  }
+
+  async function storeCapture(capturedJob, trackerBaseUrl) {
+    const captureId = crypto.randomUUID();
+    const storageKey = `${CAPTURE_STORAGE_KEY_PREFIX}${captureId}`;
+    await chrome.storage.session.set({
+      [storageKey]: {
+        payload: JSON.stringify(capturedJob),
+        trackerBaseUrl,
+        createdAt: Date.now(),
+      },
+    });
+    return storageKey;
+  }
+
+  async function openHandoffTab(storageKey) {
+    const captureId = storageKey.slice(CAPTURE_STORAGE_KEY_PREFIX.length);
+    const handoffUrl = chrome.runtime.getURL(
+      `handoff.html?id=${encodeURIComponent(captureId)}`);
+    try {
+      await chrome.tabs.create({ url: handoffUrl });
+    } catch (error) {
+      await chrome.storage.session.remove(storageKey);
+      throw error;
+    }
+  }
 
   function normalizeTrackerUrl(value) {
     let url;
@@ -82,7 +107,21 @@
   }
 
   function captureJobPage() {
-    const clean = (value, maximum = 2000) => {
+    const SCHEMA_VERSION = 1;
+    const MAXIMUM_COMBINED_TEXT_LENGTH = 2000;
+    const MAXIMUM_SHORT_FIELD_LENGTH = 200;
+    const MAXIMUM_LONG_FIELD_LENGTH = 300;
+    const MAXIMUM_DETAIL_LENGTH = 500;
+    const MAXIMUM_LIST_ITEM_LENGTH = 1000;
+    const MAXIMUM_HEADER_TEXT_LENGTH = 3000;
+    const MAXIMUM_RICH_TEXT_BLOCK_LENGTH = 5000;
+    const MAXIMUM_DESCRIPTION_LENGTH = 50000;
+    const MAXIMUM_SOURCE_TEXT_LENGTH = 60000;
+    const MAXIMUM_CURRENCY_LENGTH = 12;
+    const MAXIMUM_SALARY_UNIT_LENGTH = 30;
+    const MAXIMUM_LABEL_LENGTH = 100;
+
+    const clean = (value, maximum = MAXIMUM_COMBINED_TEXT_LENGTH) => {
       if (value === null || value === undefined) {
         return null;
       }
@@ -138,7 +177,7 @@
         }
       }
 
-      return clean(values.join(" "), 2000);
+      return clean(values.join(" "), MAXIMUM_COMBINED_TEXT_LENGTH);
     };
     const meta = (...selectors) => {
       for (const selector of selectors) {
@@ -150,7 +189,7 @@
 
       return null;
     };
-    const cleanMultiline = (value, maximum = 50000) => {
+    const cleanMultiline = (value, maximum = MAXIMUM_DESCRIPTION_LENGTH) => {
       if (value === null || value === undefined) {
         return null;
       }
@@ -170,11 +209,11 @@
 
       const parsed = new DOMParser().parseFromString(String(value), "text/html");
       const blocks = [...parsed.body.querySelectorAll("h1, h2, h3, h4, h5, h6, p, li")]
-        .map(element => clean(element.textContent, 5000))
+        .map(element => clean(element.textContent, MAXIMUM_RICH_TEXT_BLOCK_LENGTH))
         .filter(Boolean);
       return cleanMultiline(
         blocks.length > 0 ? blocks.join("\n\n") : parsed.body?.textContent,
-        50000);
+        MAXIMUM_DESCRIPTION_LENGTH);
     };
     const findJobPosting = value => {
       if (!value || typeof value !== "object") {
@@ -229,7 +268,7 @@
       const first = Array.isArray(location) ? location[0] : location;
       const address = first?.address ?? first;
       if (typeof address === "string") {
-        return clean(address, 300);
+        return clean(address, MAXIMUM_LONG_FIELD_LENGTH);
       }
 
       if (!address || typeof address !== "object") {
@@ -242,35 +281,39 @@
         address.addressRegion,
         address.postalCode,
         typeof address.addressCountry === "object" ? address.addressCountry?.name : address.addressCountry,
-      ].filter(Boolean).join(", "), 300);
+      ].filter(Boolean).join(", "), MAXIMUM_LONG_FIELD_LENGTH);
     };
     const identifierText = identifier => {
       const first = Array.isArray(identifier) ? identifier[0] : identifier;
-      return clean(typeof first === "string" ? first : first?.value ?? first?.name, 200);
+      return clean(
+        typeof first === "string" ? first : first?.value ?? first?.name,
+        MAXIMUM_SHORT_FIELD_LENGTH);
     };
     const salaryText = salary => {
       const first = Array.isArray(salary) ? salary[0] : salary;
       if (!first || typeof first !== "object") {
-        return clean(first, 500);
+        return clean(first, MAXIMUM_DETAIL_LENGTH);
       }
 
       const value = first.value ?? first;
-      const currency = clean(first.currency ?? value.currency, 12);
+      const currency = clean(first.currency ?? value.currency, MAXIMUM_CURRENCY_LENGTH);
       const minimum = value.minValue ?? value.value;
       const maximum = value.maxValue;
-      const unit = clean(value.unitText, 30);
+      const unit = clean(value.unitText, MAXIMUM_SALARY_UNIT_LENGTH);
       const amount = minimum !== undefined && maximum !== undefined
         ? `${minimum} - ${maximum}`
         : minimum ?? maximum;
-      return clean([currency, amount, unit ? `/ ${unit}` : null].filter(Boolean).join(" "), 500);
+      return clean(
+        [currency, amount, unit ? `/ ${unit}` : null].filter(Boolean).join(" "),
+        MAXIMUM_DETAIL_LENGTH);
     };
     const employmentText = value => clean(
       (Array.isArray(value) ? value : [value])
         .filter(Boolean)
         .map(item => String(item).replace(/_/g, " ").toLowerCase().replace(/\b\w/g, letter => letter.toUpperCase()))
         .join(", "),
-      200);
-    const matchedLabel = (value, pattern, maximum = 200) => {
+      MAXIMUM_SHORT_FIELD_LENGTH);
+    const matchedLabel = (value, pattern, maximum = MAXIMUM_SHORT_FIELD_LENGTH) => {
       const match = String(value ?? "").match(pattern);
       return clean(match?.[0]?.replace(/-/g, " "), maximum);
     };
@@ -284,12 +327,16 @@
       }
 
       for (const item of root.querySelectorAll('li[datatype="detail"]')) {
-        const lines = cleanMultiline(item.innerText ?? item.textContent, 1000)
+        const lines = cleanMultiline(
+          item.innerText ?? item.textContent,
+          MAXIMUM_LIST_ITEM_LENGTH)
           ?.split("\n")
-          .map(line => clean(line, 500))
+          .map(line => clean(line, MAXIMUM_DETAIL_LENGTH))
           .filter(Boolean) ?? [];
         if (lines.some(line => line.toLowerCase() === label.toLowerCase())) {
-          return clean(lines.filter(line => line.toLowerCase() !== label.toLowerCase()).join(" "), 500);
+          return clean(
+            lines.filter(line => line.toLowerCase() !== label.toLowerCase()).join(" "),
+            MAXIMUM_DETAIL_LENGTH);
         }
       }
 
@@ -302,7 +349,7 @@
       || window.location.hostname.includes(".indeed.");
     const indeedTitle = isIndeed
       ? clean(textFrom('[data-testid="jobsearch-JobInfoHeader-title"]')
-        ?.replace(/\s*-\s*job post\s*$/i, ""), 200)
+        ?.replace(/\s*-\s*job post\s*$/i, ""), MAXIMUM_SHORT_FIELD_LENGTH)
       : null;
     const indeedCompany = isIndeed
       ? textFrom('[data-testid="inlineHeader-companyName"]')
@@ -324,7 +371,9 @@
           ?.replace(/^\s*-\s*/, "") ?? null
       : null;
     const indeedJobReference = isIndeed
-      ? clean(new URL(window.location.href).searchParams.get("vjk"), 200)
+      ? clean(
+        new URL(window.location.href).searchParams.get("vjk"),
+        MAXIMUM_SHORT_FIELD_LENGTH)
       : null;
 
 
@@ -361,7 +410,9 @@
         ".job-details-jobs-unified-top-card__primary-description-container",
         ".jobs-unified-top-card__primary-description")
       : null;
-    const linkedInLocation = clean(linkedInHeaderMeta?.split("·")[0], 300);
+    const linkedInLocation = clean(
+      linkedInHeaderMeta?.split("·")[0],
+      MAXIMUM_LONG_FIELD_LENGTH);
     const linkedInInsightText = isLinkedIn
       ? textFromElements(
         linkedInDetail ?? document,
@@ -375,12 +426,12 @@
     const linkedInWorkplaceMode = matchedLabel(
       `${linkedInInsightText ?? ""} ${linkedInHeaderMeta ?? ""}`,
       /\b(?:remote|hybrid|on[- ]site)\b/i,
-      100);
+      MAXIMUM_LABEL_LENGTH);
     const linkedInJobReference = isLinkedIn
       ? clean(
         new URL(window.location.href).searchParams.get("currentJobId")
           ?? window.location.pathname.match(/\/jobs\/view\/(\d+)/)?.[1],
-        200)
+        MAXIMUM_SHORT_FIELD_LENGTH)
       : null;
 
 
@@ -412,7 +463,7 @@
       : null;
     const prospleCompany = clean(
       prospleCompanyElement?.innerText ?? prospleCompanyElement?.textContent,
-      300);
+      MAXIMUM_LONG_FIELD_LENGTH);
     const prospleLocationLabel = isProsple
       ? [...(prospleHeader?.querySelectorAll("span") ?? [])]
         .find(element => clean(element.textContent)?.toLowerCase() === "location")
@@ -422,25 +473,25 @@
       : null;
     const prospleHeaderText = cleanMultiline(
       prospleHeader?.innerText ?? prospleHeader?.textContent,
-      3000);
+      MAXIMUM_HEADER_TEXT_LENGTH);
     const prospleEmploymentType = labelledProspleValue(prospleDetail, "Opportunity type");
     const prospleSalary = labelledProspleValue(prospleDetail, "Salary");
     const prospleClosingDate = matchedLabel(
       prospleHeaderText,
       /\bClosing in [^\n]+/i,
-      100)
+      MAXIMUM_LABEL_LENGTH)
       ?? [...(prospleDetail?.querySelectorAll('li[datatype="detail"]') ?? [])]
-        .map(item => clean(item.innerText ?? item.textContent, 500))
+        .map(item => clean(item.innerText ?? item.textContent, MAXIMUM_DETAIL_LENGTH))
         .find(value => /\bApply by\b/i.test(value ?? ""))
         ?.replace(/^.*?\bApply by\b/i, "Apply by")
       ?? null;
     const prospleJobReference = clean(
       prospleHeader?.querySelector('[data-event-track="cta-apply"][data-node]')?.getAttribute("data-node"),
-      200);
+      MAXIMUM_SHORT_FIELD_LENGTH);
     const prospleWorkplaceMode = matchedLabel(
       prospleHeaderText,
       /\b(?:remote|hybrid|on[- ]site)\b/i,
-      100);
+      MAXIMUM_LABEL_LENGTH);
 
 
     const isGreenhouse = window.location.hostname === "job-boards.greenhouse.io";
@@ -448,21 +499,25 @@
       ? textFromElement(document, ".job__title h1", ".job__title")
       : null;
     const greenhouseLogoAlt = isGreenhouse
-      ? clean(document.querySelector(".job-post-container .logo img")?.getAttribute("alt"), 300)
+      ? clean(
+        document.querySelector(".job-post-container .logo img")?.getAttribute("alt"),
+        MAXIMUM_LONG_FIELD_LENGTH)
       : null;
     const greenhouseCompany = isGreenhouse
       ? clean(
         greenhouseLogoAlt?.replace(/\s+logo\s*$/i, "")
           ?? document.title.match(/\s+at\s+(.+)$/i)?.[1],
-        300)
+        MAXIMUM_LONG_FIELD_LENGTH)
       : null;
     const greenhouseLocation = isGreenhouse
       ? textFromElement(document, ".job__location")
       : null;
     const greenhouseJobReference = isGreenhouse
-      ? clean(window.location.pathname.match(/\/jobs\/(\d+)/)?.[1], 200)
+      ? clean(
+        window.location.pathname.match(/\/jobs\/(\d+)/)?.[1],
+        MAXIMUM_SHORT_FIELD_LENGTH)
       : null;
-    const roleTitle = clean(schemaPosting?.title, 200)
+    const roleTitle = clean(schemaPosting?.title, MAXIMUM_SHORT_FIELD_LENGTH)
       ?? indeedTitle
       ?? linkedInTitle
       ?? prospleTitle
@@ -493,8 +548,8 @@
       String(schemaPosting?.jobLocationType ?? "").toUpperCase() === "TELECOMMUTE"
         ? "Remote"
         : linkedInWorkplaceMode ?? prospleWorkplaceMode,
-      100);
-    const closingDate = clean(schemaPosting?.validThrough, 100)
+      MAXIMUM_LABEL_LENGTH);
+    const closingDate = clean(schemaPosting?.validThrough, MAXIMUM_LABEL_LENGTH)
       ?? prospleClosingDate
       ?? textFrom('[data-automation="job-detail-closing-date"]', '[itemprop="validThrough"]');
     const jobReference = identifierText(schemaPosting?.identifier)
@@ -503,7 +558,7 @@
       ?? prospleJobReference
       ?? greenhouseJobReference;
     const sourceSite = meta('meta[property="og:site_name"]', 'meta[name="application-name"]')
-      ?? clean(window.location.hostname, 200);
+      ?? clean(window.location.hostname, MAXIMUM_SHORT_FIELD_LENGTH);
     const linkedInDescriptionElement = isLinkedIn
       ? elementFrom(
         linkedInDetail ?? document,
@@ -525,7 +580,7 @@
     const description = stripHtml(schemaPosting?.description)
       ?? cleanMultiline(
         renderedDescriptionElement?.innerText ?? renderedDescriptionElement?.textContent,
-        50000);
+        MAXIMUM_DESCRIPTION_LENGTH);
 
     const sourceParts = [];
     const add = (label, value) => {
@@ -559,7 +614,7 @@
       employmentType,
       closingDate,
       descriptionText: description,
-      sourceText: sourceParts.join("\n").slice(0, 60000),
+      sourceText: sourceParts.join("\n").slice(0, MAXIMUM_SOURCE_TEXT_LENGTH),
     };
   }
 })();

@@ -28,7 +28,7 @@ public sealed class StatusTransitionFormViewModel
     [EnumDataType(typeof(ApplicationOutcome))]
     public ApplicationOutcome Outcome { get; set; }
 
-    [StringLength(2_000)]
+    [StringLength(ApplicationRules.MaximumNoteLength)]
     [Display(Name = "What changed?")]
     public string? Note { get; set; }
 }

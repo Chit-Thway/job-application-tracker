@@ -73,6 +73,28 @@ public sealed partial class PastedJobTextExtractor
         var evidence = new Dictionary<string, string>(StringComparer.Ordinal);
         var warnings = new List<string>();
 
+        ExtractLabelledValues(lines, values, evidence);
+        JobBoardLayoutHeuristics.Enrich(normalized, lines, values, evidence, warnings);
+        NormalizeContactFields(normalized, values, evidence);
+        var fields = BuildFields(normalized, values, evidence, warnings);
+
+        AddMissingWarning(values, "RoleTitle", "No supported job-title label or corroborated header pattern was found. Enter the role title before saving.", warnings);
+        AddMissingWarning(values, "CompanyName", "No supported company label, header position, or organisation introduction was found. You can enter a company during review.", warnings);
+        AddMissingWarning(values, "CompanyLocation", "No supported Australian location label or header pattern was found. The location was left blank.", warnings);
+
+        return new PastedJobExtraction(
+            sourceText,
+            normalized,
+            fields,
+            evidence,
+            warnings);
+    }
+
+    private static void ExtractLabelledValues(
+        IEnumerable<string> lines,
+        IDictionary<string, string> values,
+        IDictionary<string, string> evidence)
+    {
         foreach (var line in lines)
         {
             foreach (var rule in Rules)
@@ -100,61 +122,87 @@ public sealed partial class PastedJobTextExtractor
                     $"High confidence — matched the explicit ‘{match.Groups["label"].Value}’ label.";
             }
         }
+    }
 
-        JobBoardLayoutHeuristics.Enrich(normalized, lines, values, evidence, warnings);
-
-        if (values.TryGetValue("ContactName", out var contactValue)
-            && EmailPattern().IsMatch(contactValue))
+    private static void NormalizeContactFields(
+        string normalizedSourceText,
+        IDictionary<string, string> values,
+        IDictionary<string, string> evidence)
+    {
+        MoveContactEmailOutOfName(values, evidence);
+        if (values.ContainsKey("ContactEmail"))
         {
-            values.Remove("ContactName");
-            evidence.Remove("ContactName");
-            if (!values.ContainsKey("ContactEmail"))
-            {
-                values["ContactEmail"] = contactValue;
-                evidence["ContactEmail"] =
-                    "High confidence — the explicit contact value was an email address.";
-            }
+            return;
         }
 
-        if (!values.ContainsKey("ContactEmail"))
+        var emailMatch = EmailPattern().Match(normalizedSourceText);
+        if (!emailMatch.Success)
         {
-            var emailMatch = EmailPattern().Match(normalized);
-            if (emailMatch.Success)
-            {
-                values["ContactEmail"] = emailMatch.Value;
-                evidence["ContactEmail"] =
-                    "High confidence — found an explicit email address in the pasted text.";
-            }
+            return;
         }
 
-        var closingDate = ParseDate(values, evidence, "ClosingDate", "closing date", warnings);
-        var appliedOn = ParseDate(values, evidence, "AppliedOn", "application date", warnings);
+        values["ContactEmail"] = emailMatch.Value;
+        evidence["ContactEmail"] =
+            "High confidence — found an explicit email address in the pasted text.";
+    }
+
+    private static void MoveContactEmailOutOfName(
+        IDictionary<string, string> values,
+        IDictionary<string, string> evidence)
+    {
+        if (!values.TryGetValue("ContactName", out var contactValue)
+            || !EmailPattern().IsMatch(contactValue))
+        {
+            return;
+        }
+
+        values.Remove("ContactName");
+        evidence.Remove("ContactName");
+        if (values.ContainsKey("ContactEmail"))
+        {
+            return;
+        }
+
+        values["ContactEmail"] = contactValue;
+        evidence["ContactEmail"] =
+            "High confidence — the explicit contact value was an email address.";
+    }
+
+    private static ExtractedJobFields BuildFields(
+        string normalizedSourceText,
+        IReadOnlyDictionary<string, string> values,
+        IDictionary<string, string> evidence,
+        ICollection<string> warnings)
+    {
+        var closingDate = ParseDate(
+            values,
+            evidence,
+            "ClosingDate",
+            "closing date",
+            warnings);
+        var appliedOn = ParseDate(
+            values,
+            evidence,
+            "AppliedOn",
+            "application date",
+            warnings);
         var sourceUrl = ValidateUrl(values, evidence, warnings);
 
-        AddMissingWarning(values, "RoleTitle", "No supported job-title label or corroborated header pattern was found. Enter the role title before saving.", warnings);
-        AddMissingWarning(values, "CompanyName", "No supported company label, header position, or organisation introduction was found. You can enter a company during review.", warnings);
-        AddMissingWarning(values, "CompanyLocation", "No supported Australian location label or header pattern was found. The location was left blank.", warnings);
-
-        return new PastedJobExtraction(
-            sourceText,
-            normalized,
-            new ExtractedJobFields(
-                Value(values, "RoleTitle"),
-                Value(values, "CompanyName"),
-                Value(values, "CompanyLocation"),
-                Value(values, "WorkplaceMode"),
-                sourceUrl,
-                Value(values, "SourceSite"),
-                Value(values, "JobReference"),
-                Value(values, "SalaryText"),
-                Value(values, "EmploymentType"),
-                closingDate,
-                Value(values, "ContactName"),
-                Value(values, "ContactEmail"),
-                JobDescriptionText.Extract(normalized),
-                appliedOn),
-            evidence,
-            warnings);
+        return new ExtractedJobFields(
+            Value(values, "RoleTitle"),
+            Value(values, "CompanyName"),
+            Value(values, "CompanyLocation"),
+            Value(values, "WorkplaceMode"),
+            sourceUrl,
+            Value(values, "SourceSite"),
+            Value(values, "JobReference"),
+            Value(values, "SalaryText"),
+            Value(values, "EmploymentType"),
+            closingDate,
+            Value(values, "ContactName"),
+            Value(values, "ContactEmail"),
+            JobDescriptionText.Extract(normalizedSourceText),
+            appliedOn);
     }
 
     public static string Normalize(string sourceText)

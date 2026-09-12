@@ -60,7 +60,7 @@ public sealed class BrowserExtensionManifestTests
         Assert.DoesNotContain("toBase64Url", popup, StringComparison.Ordinal);
         Assert.Contains("chrome.storage.session.remove", handoff, StringComparison.Ordinal);
         Assert.Contains("/applications/import/extension/handoff", handoff, StringComparison.Ordinal);
-        Assert.Contains("form.submit()", handoff, StringComparison.Ordinal);
+        Assert.Contains("handoffForm.submit()", handoff, StringComparison.Ordinal);
         Assert.DoesNotContain("fetch(", handoff, StringComparison.Ordinal);
     }
 

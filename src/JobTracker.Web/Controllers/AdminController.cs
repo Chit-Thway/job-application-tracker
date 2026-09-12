@@ -1,4 +1,5 @@
 using JobTracker.Web.Admin;
+using JobTracker.Web.Configuration;
 using JobTracker.Web.Data;
 using JobTracker.Web.Identity;
 using Microsoft.AspNetCore.Authorization;
@@ -154,7 +155,7 @@ public sealed class AdminController(
     }
 
     [HttpPost("/admin/users/{userId}/resend-verification")]
-    [EnableRateLimiting("account")]
+    [EnableRateLimiting(RateLimitPolicies.AccountActions)]
     public async Task<IActionResult> ResendVerification(
         string userId,
         CancellationToken cancellationToken)
