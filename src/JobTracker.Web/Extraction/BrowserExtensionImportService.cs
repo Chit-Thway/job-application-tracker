@@ -29,16 +29,23 @@ public sealed record BrowserExtensionImportResult(
 
 public sealed class BrowserExtensionImportService(PastedJobTextExtractor extractor)
 {
-    private const int MaxPayloadLength = 120_000;
-    private const int MaxSourceTextLength = 60_000;
+    private const int MinimumSourceTextLength = 20;
+    private const int MaximumPayloadLength = 120_000;
+    private const int MaximumSourceTextLength = 60_000;
+    private const int MaximumShortFieldLength = 200;
+    private const int MaximumLongFieldLength = 300;
+    private const int MaximumLabelLength = 100;
+    private const int MaximumDetailLength = 500;
+    private const int MaximumLabeledLineLength = 2_000;
+    private const int MaximumJsonDepth = 16;
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
     {
-        MaxDepth = 16,
+        MaxDepth = MaximumJsonDepth,
     };
 
     public BrowserExtensionImportResult Import(string payloadJson)
     {
-        if (string.IsNullOrWhiteSpace(payloadJson) || payloadJson.Length > MaxPayloadLength)
+        if (string.IsNullOrWhiteSpace(payloadJson) || payloadJson.Length > MaximumPayloadLength)
         {
             return BrowserExtensionImportResult.Failed(
                 "The browser capture was empty or too large. Return to the job page and capture it again.");
@@ -67,9 +74,9 @@ public sealed class BrowserExtensionImportService(PastedJobTextExtractor extract
                 "The browser capture did not include a valid HTTP or HTTPS job-page address.");
         }
 
-        var sourceText = Limit(capture.SourceText, MaxSourceTextLength)
+        var sourceText = Limit(capture.SourceText, MaximumSourceTextLength)
             ?? BuildSourceText(capture);
-        if (sourceText.Length < 20)
+        if (sourceText.Length < MinimumSourceTextLength)
         {
             return BrowserExtensionImportResult.Failed(
                 "The current page did not contain enough readable job information. Paste the advertisement or use manual entry instead.");
@@ -79,20 +86,32 @@ public sealed class BrowserExtensionImportService(PastedJobTextExtractor extract
         var capturedClosingDate = ParseClosingDate(capture.ClosingDate);
         var fields = extraction.Fields with
         {
-            RoleTitle = Prefer(capture.RoleTitle, extraction.Fields.RoleTitle, 200),
-            CompanyName = Prefer(capture.CompanyName, extraction.Fields.CompanyName, 200),
-            CompanyLocation = Prefer(capture.CompanyLocation, extraction.Fields.CompanyLocation, 300),
-            WorkplaceMode = Prefer(capture.WorkplaceMode, extraction.Fields.WorkplaceMode, 100),
+            RoleTitle = Prefer(capture.RoleTitle, extraction.Fields.RoleTitle, MaximumShortFieldLength),
+            CompanyName = Prefer(capture.CompanyName, extraction.Fields.CompanyName, MaximumShortFieldLength),
+            CompanyLocation = Prefer(
+                capture.CompanyLocation,
+                extraction.Fields.CompanyLocation,
+                MaximumLongFieldLength),
+            WorkplaceMode = Prefer(
+                capture.WorkplaceMode,
+                extraction.Fields.WorkplaceMode,
+                MaximumLabelLength),
             SourceUrl = pageUrl.AbsoluteUri,
-            SourceSite = Prefer(capture.SourceSite, pageUrl.Host, 200),
-            JobReference = Prefer(capture.JobReference, extraction.Fields.JobReference, 200),
-            SalaryText = Prefer(capture.SalaryText, extraction.Fields.SalaryText, 500),
-            EmploymentType = Prefer(capture.EmploymentType, extraction.Fields.EmploymentType, 200),
+            SourceSite = Prefer(capture.SourceSite, pageUrl.Host, MaximumShortFieldLength),
+            JobReference = Prefer(
+                capture.JobReference,
+                extraction.Fields.JobReference,
+                MaximumShortFieldLength),
+            SalaryText = Prefer(capture.SalaryText, extraction.Fields.SalaryText, MaximumDetailLength),
+            EmploymentType = Prefer(
+                capture.EmploymentType,
+                extraction.Fields.EmploymentType,
+                MaximumShortFieldLength),
             ClosingDate = capturedClosingDate ?? extraction.Fields.ClosingDate,
             DescriptionText = Prefer(
                 capture.DescriptionText,
                 extraction.Fields.DescriptionText,
-                MaxSourceTextLength),
+                MaximumSourceTextLength),
         };
         var evidence = new Dictionary<string, string>(extraction.Evidence, StringComparer.Ordinal);
         AddCapturedEvidence(evidence, nameof(fields.RoleTitle), capture.RoleTitle, "job title");
@@ -158,7 +177,7 @@ public sealed class BrowserExtensionImportService(PastedJobTextExtractor extract
 
     private static void AddLabeledLine(ICollection<string> lines, string label, string? value)
     {
-        var clean = Limit(value, 2_000);
+        var clean = Limit(value, MaximumLabeledLineLength);
         if (clean is not null)
         {
             lines.Add($"{label}: {clean}");
@@ -185,7 +204,7 @@ public sealed class BrowserExtensionImportService(PastedJobTextExtractor extract
 
     private static DateOnly? ParseClosingDate(string? value)
     {
-        var candidate = Limit(value, 100);
+        var candidate = Limit(value, MaximumLabelLength);
         if (candidate is null)
         {
             return null;

@@ -5,7 +5,7 @@ namespace JobTracker.Web.Demo;
 
 public sealed class DemoCatalog(TimeProvider timeProvider)
 {
-    public const string TimeZoneId = "Australia/Perth";
+    public const string TimeZoneId = ApplicationUser.DefaultTimeZoneId;
 
     public DemoDashboardViewModel GetDashboard()
     {
@@ -28,6 +28,17 @@ public sealed class DemoCatalog(TimeProvider timeProvider)
 
     private static IReadOnlyList<DemoApplication> BuildApplications(DateOnly today) =>
     [
+        BuildNovaHarbourApplication(today),
+        BuildBrightWattleApplication(today),
+        BuildAtlasEmberApplication(today),
+        BuildHarbourAndPineApplication(today),
+        BuildPaperKiteApplication(today),
+        BuildMeridianOrchardApplication(today),
+        BuildCobaltFinchApplication(today),
+        BuildLumenParcelApplication(today),
+    ];
+
+    private static DemoApplication BuildNovaHarbourApplication(DateOnly today) =>
         new(
             Slug: "nova-harbour-graduate-platform-engineer",
             CompanyName: "Nova Harbour Labs",
@@ -77,7 +88,9 @@ public sealed class DemoCatalog(TimeProvider timeProvider)
             Appointments:
             [
                 new("Introductory call", At(today.AddDays(3), 11, 0), At(today.AddDays(3), 11, 30), "Video call", "Meet the early careers partner."),
-            ]),
+            ]);
+
+    private static DemoApplication BuildBrightWattleApplication(DateOnly today) =>
         new(
             Slug: "bright-wattle-junior-software-developer",
             CompanyName: "Bright Wattle Studio",
@@ -104,7 +117,9 @@ public sealed class DemoCatalog(TimeProvider timeProvider)
                 new("Applied", At(today.AddDays(-9), 13, 10), "Application submitted through the synthetic graduate portal."),
             ],
             Tasks: [],
-            Appointments: []),
+            Appointments: []);
+
+    private static DemoApplication BuildAtlasEmberApplication(DateOnly today) =>
         new(
             Slug: "atlas-ember-junior-cybersecurity-analyst",
             CompanyName: "Atlas Ember Systems",
@@ -148,7 +163,9 @@ public sealed class DemoCatalog(TimeProvider timeProvider)
             Appointments:
             [
                 new("Interview", At(today.AddDays(4), 13, 30), At(today.AddDays(4), 14, 15), "Sydney office", "Structured behavioural and technical interview."),
-            ]),
+            ]);
+
+    private static DemoApplication BuildHarbourAndPineApplication(DateOnly today) =>
         new(
             Slug: "harbour-pine-business-systems-graduate",
             CompanyName: "Harbour & Pine Consulting",
@@ -182,7 +199,9 @@ public sealed class DemoCatalog(TimeProvider timeProvider)
             [
                 new("Review offer details", At(today.AddDays(2), 17, 0), false, "Compare the role, learning support, and proposed start date."),
             ],
-            Appointments: []),
+            Appointments: []);
+
+    private static DemoApplication BuildPaperKiteApplication(DateOnly today) =>
         new(
             Slug: "paper-kite-support-engineer",
             CompanyName: "Paper Kite Digital",
@@ -220,7 +239,9 @@ public sealed class DemoCatalog(TimeProvider timeProvider)
             [
                 new("Follow up on assessment", At(today.AddDays(-1), 9, 0), false, "Send a brief and polite follow-up."),
             ],
-            Appointments: []),
+            Appointments: []);
+
+    private static DemoApplication BuildMeridianOrchardApplication(DateOnly today) =>
         new(
             Slug: "meridian-orchard-technology-graduate",
             CompanyName: "Meridian Orchard Health",
@@ -258,7 +279,9 @@ public sealed class DemoCatalog(TimeProvider timeProvider)
                 new("Interview", At(today.AddDays(-8), 10, 0), "Completed the panel interview."),
             ],
             Tasks: [],
-            Appointments: []),
+            Appointments: []);
+
+    private static DemoApplication BuildCobaltFinchApplication(DateOnly today) =>
         new(
             Slug: "cobalt-finch-data-operations-associate",
             CompanyName: "Cobalt Finch Energy",
@@ -293,7 +316,9 @@ public sealed class DemoCatalog(TimeProvider timeProvider)
                 new("Outcome changed", At(today.AddDays(-5), 9, 30), "Offer accepted."),
             ],
             Tasks: [],
-            Appointments: []),
+            Appointments: []);
+
+    private static DemoApplication BuildLumenParcelApplication(DateOnly today) =>
         new(
             Slug: "lumen-parcel-service-desk-analyst",
             CompanyName: "Lumen Parcel Cooperative",
@@ -327,8 +352,7 @@ public sealed class DemoCatalog(TimeProvider timeProvider)
                 new("Retention", At(today, 8, 0), "A synthetic deletion grace period was scheduled."),
             ],
             Tasks: [],
-            Appointments: []),
-    ];
+            Appointments: []);
 
     private static DemoDescriptionSection Section(
         string heading,

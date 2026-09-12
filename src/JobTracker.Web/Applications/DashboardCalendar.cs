@@ -95,9 +95,9 @@ public static class DashboardCalendar
             return new GhostingAssessment(GhostingAttentionKind.None, daysSinceApplied);
         }
 
-        var kind = daysSinceApplied >= 30
+        var kind = daysSinceApplied >= ApplicationRules.GhostingConfirmationAfterDays
             ? GhostingAttentionKind.ConfirmGhosted
-            : daysSinceApplied >= 14
+            : daysSinceApplied >= ApplicationRules.FollowUpSuggestionAfterDays
                 ? GhostingAttentionKind.FollowUp
                 : GhostingAttentionKind.None;
         return new GhostingAssessment(kind, daysSinceApplied);

@@ -9,11 +9,12 @@ namespace JobTracker.Web.Extraction;
 public sealed class JobPostingHtmlExtractor(PastedJobTextExtractor textExtractor)
 {
     private const int MaximumReviewTextLength = 100_000;
+    private const int MaximumStructuredDataDepth = 64;
     private static readonly JsonDocumentOptions JsonOptions = new()
     {
         AllowTrailingCommas = true,
         CommentHandling = JsonCommentHandling.Skip,
-        MaxDepth = 64,
+        MaxDepth = MaximumStructuredDataDepth,
     };
 
     public PastedJobExtraction Extract(Uri requestedUri, Uri finalUri, string html)
@@ -31,6 +32,40 @@ public sealed class JobPostingHtmlExtractor(PastedJobTextExtractor textExtractor
         var metadataDescription = MetaContent(document, "og:description")
             ?? MetaContent(document, "description");
         var visibleText = ExtractVisibleText(document);
+        var (sourceText, wasShortened) = BuildReviewText(
+            semantic,
+            structured,
+            metadataTitle,
+            metadataDescription,
+            visibleText);
+
+        var textExtraction = textExtractor.Extract(sourceText);
+        var sourceSite = MetaContent(document, "og:site_name")
+            ?? FriendlyHostName(finalUri.Host);
+        var fields = MergeExtractedFields(
+            textExtraction.Fields,
+            semantic,
+            structured,
+            requestedUri,
+            sourceSite);
+        var evidence = BuildEvidence(document, textExtraction.Evidence, semantic, structured);
+        var warnings = BuildWarnings(textExtraction.Warnings, fields, wasShortened);
+
+        return new PastedJobExtraction(
+            sourceText,
+            sourceText,
+            fields,
+            evidence,
+            warnings);
+    }
+
+    private static (string Text, bool WasShortened) BuildReviewText(
+        SemanticJobData semantic,
+        StructuredJobData structured,
+        string? metadataTitle,
+        string? metadataDescription,
+        string visibleText)
+    {
         var sourceParts = semantic.HasJobDetails
             ? new[]
             {
@@ -64,38 +99,45 @@ public sealed class JobPostingHtmlExtractor(PastedJobTextExtractor textExtractor
         }
 
         var wasShortened = sourceText.Length > MaximumReviewTextLength;
-        if (wasShortened)
-        {
-            sourceText = sourceText[..MaximumReviewTextLength].TrimEnd();
-        }
+        return wasShortened
+            ? (sourceText[..MaximumReviewTextLength].TrimEnd(), true)
+            : (sourceText, false);
+    }
 
-        var textExtraction = textExtractor.Extract(sourceText);
-        var sourceSite = MetaContent(document, "og:site_name")
-            ?? FriendlyHostName(finalUri.Host);
-        var fields = textExtraction.Fields with
+    private static ExtractedJobFields MergeExtractedFields(
+        ExtractedJobFields textFields,
+        SemanticJobData semantic,
+        StructuredJobData structured,
+        Uri requestedUri,
+        string sourceSite) =>
+        textFields with
         {
-            RoleTitle = structured.RoleTitle ?? semantic.RoleTitle ?? textExtraction.Fields.RoleTitle,
-            CompanyName = structured.CompanyName ?? semantic.CompanyName ?? textExtraction.Fields.CompanyName,
+            RoleTitle = structured.RoleTitle ?? semantic.RoleTitle ?? textFields.RoleTitle,
+            CompanyName = structured.CompanyName ?? semantic.CompanyName ?? textFields.CompanyName,
             CompanyLocation = structured.CompanyLocation
                 ?? semantic.CompanyLocation
-                ?? textExtraction.Fields.CompanyLocation,
-            WorkplaceMode = structured.WorkplaceMode ?? textExtraction.Fields.WorkplaceMode,
+                ?? textFields.CompanyLocation,
+            WorkplaceMode = structured.WorkplaceMode ?? textFields.WorkplaceMode,
             SourceUrl = requestedUri.AbsoluteUri,
             SourceSite = sourceSite,
-            JobReference = structured.JobReference ?? textExtraction.Fields.JobReference,
-            SalaryText = structured.SalaryText ?? semantic.SalaryText ?? textExtraction.Fields.SalaryText,
+            JobReference = structured.JobReference ?? textFields.JobReference,
+            SalaryText = structured.SalaryText ?? semantic.SalaryText ?? textFields.SalaryText,
             EmploymentType = structured.EmploymentType
                 ?? semantic.EmploymentType
-                ?? textExtraction.Fields.EmploymentType,
-            ClosingDate = structured.ClosingDate ?? textExtraction.Fields.ClosingDate,
-            ContactName = structured.ContactName ?? textExtraction.Fields.ContactName,
-            ContactEmail = structured.ContactEmail ?? textExtraction.Fields.ContactEmail,
-            DescriptionText = structured.Description
-                ?? semantic.Description
-                ?? textExtraction.Fields.DescriptionText,
+                ?? textFields.EmploymentType,
+            ClosingDate = structured.ClosingDate ?? textFields.ClosingDate,
+            ContactName = structured.ContactName ?? textFields.ContactName,
+            ContactEmail = structured.ContactEmail ?? textFields.ContactEmail,
+            DescriptionText = structured.Description ?? semantic.Description ?? textFields.DescriptionText,
         };
 
-        var evidence = new Dictionary<string, string>(textExtraction.Evidence, StringComparer.Ordinal);
+    private static Dictionary<string, string> BuildEvidence(
+        IDocument document,
+        IReadOnlyDictionary<string, string> textEvidence,
+        SemanticJobData semantic,
+        StructuredJobData structured)
+    {
+        var evidence = new Dictionary<string, string>(textEvidence, StringComparer.Ordinal);
         AddSemanticEvidence(evidence, "RoleTitle", semantic.RoleTitle, "job title");
         AddSemanticEvidence(evidence, "CompanyName", semantic.CompanyName, "employer");
         AddSemanticEvidence(evidence, "CompanyLocation", semantic.CompanyLocation, "location");
@@ -117,20 +159,22 @@ public sealed class JobPostingHtmlExtractor(PastedJobTextExtractor textExtractor
         evidence["SourceSite"] = MetaContent(document, "og:site_name") is not null
             ? "High confidence — read from the page’s site-name metadata."
             : "Medium confidence — derived from the final public page hostname.";
+        return evidence;
+    }
 
-        var warnings = textExtraction.Warnings.ToList();
+    private static List<string> BuildWarnings(
+        IReadOnlyList<string> textWarnings,
+        ExtractedJobFields fields,
+        bool sourceTextWasShortened)
+    {
+        var warnings = textWarnings.ToList();
         RemoveResolvedWarnings(warnings, fields);
-        if (wasShortened)
+        if (sourceTextWasShortened)
         {
             warnings.Add("The fetched page text was shortened to keep the review draft manageable.");
         }
 
-        return new PastedJobExtraction(
-            sourceText,
-            sourceText,
-            fields,
-            evidence,
-            warnings);
+        return warnings;
     }
 
     private static SemanticJobData ExtractSemanticJobData(IDocument document) => new()

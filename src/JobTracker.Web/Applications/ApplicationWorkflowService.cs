@@ -4,103 +4,6 @@ using Microsoft.EntityFrameworkCore;
 
 namespace JobTracker.Web.Applications;
 
-public sealed record WorkflowStatusItem(
-    Guid Id,
-    PipelineStage? PreviousStage,
-    PipelineStage? NewStage,
-    ApplicationOutcome? PreviousOutcome,
-    ApplicationOutcome? NewOutcome,
-    DateTimeOffset EffectiveAt,
-    string? Note);
-
-public sealed record WorkflowContactItem(
-    Guid Id,
-    string Name,
-    string? JobTitle,
-    string? Email,
-    string? Phone,
-    string? Notes);
-
-public sealed record WorkflowInteractionItem(
-    Guid Id,
-    Guid? ContactId,
-    string? ContactName,
-    InteractionType Type,
-    DateTimeOffset OccurredAt,
-    bool IsEmployerResponse,
-    string? Notes);
-
-public sealed record WorkflowTaskItem(
-    Guid Id,
-    string Title,
-    DateTimeOffset? DueAt,
-    DateTimeOffset? CompletedAt,
-    string? Notes);
-
-public sealed record WorkflowAppointmentItem(
-    Guid Id,
-    AppointmentType Type,
-    DateTimeOffset StartsAt,
-    DateTimeOffset EndsAt,
-    string TimeZoneId,
-    string? LocationOrLink,
-    string? Notes);
-
-public sealed record ApplicationWorkflowDetails(
-    ApplicationDetails Application,
-    string TimeZoneId,
-    DateTimeOffset CurrentTime,
-    int RetentionMonths,
-    int DeletionGraceDays,
-    bool CanConfirmGhosted,
-    DateTimeOffset? FirstEmployerResponseAt,
-    IReadOnlyList<WorkflowStatusItem> StatusHistory,
-    IReadOnlyList<WorkflowContactItem> Contacts,
-    IReadOnlyList<WorkflowInteractionItem> Interactions,
-    IReadOnlyList<WorkflowTaskItem> Tasks,
-    IReadOnlyList<WorkflowAppointmentItem> Appointments);
-
-public sealed record StatusTransitionInput(
-    PipelineStage Stage,
-    ApplicationOutcome Outcome,
-    string? Note);
-
-public sealed record ContactInput(
-    string Name,
-    string? JobTitle,
-    string? Email,
-    string? Phone,
-    string? Notes);
-
-public sealed record InteractionInput(
-    Guid? ContactId,
-    InteractionType Type,
-    DateTime OccurredAtLocal,
-    bool IsEmployerResponse,
-    string? Notes);
-
-public sealed record WorkflowTaskInput(
-    string Title,
-    DateTime? DueAtLocal,
-    string? Notes);
-
-public sealed record WorkflowAppointmentInput(
-    AppointmentType Type,
-    DateTime StartsAtLocal,
-    DateTime EndsAtLocal,
-    string? LocationOrLink,
-    string? Notes);
-
-public enum WorkflowWriteResult
-{
-    Success,
-    NotFound,
-    InvalidRelationship,
-    InvalidTransition,
-    InvalidLocalTime,
-    ContactInUse,
-}
-
 public sealed class ApplicationWorkflowService(
     ApplicationDbContext database,
     ICurrentUserContext currentUser,
@@ -111,121 +14,23 @@ public sealed class ApplicationWorkflowService(
         CancellationToken cancellationToken = default)
     {
         var ownerId = RequireOwnerId();
-        var application = await database.JobApplications
-            .AsNoTracking()
-            .SingleOrDefaultAsync(
-                item => item.Id == applicationId && item.OwnerId == ownerId,
-                cancellationToken);
+        var application = await FindApplicationAsync(applicationId, ownerId, cancellationToken);
         if (application is null)
         {
             return null;
         }
 
-        var companyName = application.CompanyId is null
-            ? null
-            : await database.Companies
-                .AsNoTracking()
-                .Where(company =>
-                    company.Id == application.CompanyId
-                    && company.OwnerId == ownerId)
-                .Select(company => company.Name)
-                .SingleOrDefaultAsync(cancellationToken);
-        var preferences = await database.Users
-            .AsNoTracking()
-            .Where(user => user.Id == ownerId)
-            .Select(user => new RetentionPreferences(
-                user.TimeZoneId,
-                user.RetentionMonths,
-                user.DeletionGraceDays))
-            .SingleAsync(cancellationToken);
+        var companyName = await FindCompanyNameAsync(application.CompanyId, ownerId, cancellationToken);
+        var preferences = await GetRetentionPreferencesAsync(ownerId, cancellationToken);
         var timeZoneId = preferences.TimeZoneId;
         var currentTime = timeProvider.GetUtcNow();
         var localToday = DateOnly.FromDateTime(ApplicationTime.ToLocal(currentTime, timeZoneId));
 
-        var history = await database.StatusHistory
-            .AsNoTracking()
-            .Where(item =>
-                item.JobApplicationId == applicationId
-                && item.OwnerId == ownerId)
-            .OrderByDescending(item => item.EffectiveAt)
-            .Select(item => new WorkflowStatusItem(
-                item.Id,
-                item.PreviousStage,
-                item.NewStage,
-                item.PreviousOutcome,
-                item.NewOutcome,
-                item.EffectiveAt,
-                item.Note))
-            .ToListAsync(cancellationToken);
-
-        var contacts = await database.Contacts
-            .AsNoTracking()
-            .Where(item =>
-                item.JobApplicationId == applicationId
-                && item.OwnerId == ownerId)
-            .OrderBy(item => item.Name)
-            .Select(item => new WorkflowContactItem(
-                item.Id,
-                item.Name,
-                item.JobTitle,
-                item.Email,
-                item.Phone,
-                item.Notes))
-            .ToListAsync(cancellationToken);
-
-        var interactions = await database.Interactions
-            .AsNoTracking()
-            .Where(item =>
-                item.JobApplicationId == applicationId
-                && item.OwnerId == ownerId)
-            .OrderByDescending(item => item.OccurredAt)
-            .Select(item => new WorkflowInteractionItem(
-                item.Id,
-                item.ContactId,
-                database.Contacts
-                    .Where(contact =>
-                        contact.Id == item.ContactId
-                        && contact.OwnerId == ownerId)
-                    .Select(contact => contact.Name)
-                    .SingleOrDefault(),
-                item.Type,
-                item.OccurredAt,
-                item.IsEmployerResponse,
-                item.Notes))
-            .ToListAsync(cancellationToken);
-
-        var tasks = await database.Tasks
-            .AsNoTracking()
-            .Where(item =>
-                item.JobApplicationId == applicationId
-                && item.OwnerId == ownerId)
-            .OrderBy(item => item.CompletedAt != null)
-            .ThenBy(item => item.DueAt == null)
-            .ThenBy(item => item.DueAt)
-            .ThenBy(item => item.Title)
-            .Select(item => new WorkflowTaskItem(
-                item.Id,
-                item.Title,
-                item.DueAt,
-                item.CompletedAt,
-                item.Notes))
-            .ToListAsync(cancellationToken);
-
-        var appointments = await database.Appointments
-            .AsNoTracking()
-            .Where(item =>
-                item.JobApplicationId == applicationId
-                && item.OwnerId == ownerId)
-            .OrderBy(item => item.StartsAt)
-            .Select(item => new WorkflowAppointmentItem(
-                item.Id,
-                item.Type,
-                item.StartsAt,
-                item.EndsAt,
-                item.TimeZoneId,
-                item.LocationOrLink,
-                item.Notes))
-            .ToListAsync(cancellationToken);
+        var history = await GetStatusHistoryAsync(applicationId, ownerId, cancellationToken);
+        var contacts = await GetContactsAsync(applicationId, ownerId, cancellationToken);
+        var interactions = await GetInteractionsAsync(applicationId, ownerId, cancellationToken);
+        var tasks = await GetTasksAsync(applicationId, ownerId, cancellationToken);
+        var appointments = await GetAppointmentsAsync(applicationId, ownerId, cancellationToken);
 
         var appliedStart = ApplicationTime.TryConvertToUtc(
             application.AppliedOn.ToDateTime(TimeOnly.MinValue),
@@ -239,29 +44,12 @@ public sealed class ApplicationWorkflowService(
             .Min();
 
         return new ApplicationWorkflowDetails(
-            new ApplicationDetails(
-                application.Id,
-                application.CompanyId,
-                companyName,
-                application.RoleTitle,
-                application.AppliedOn,
-                application.Stage,
-                application.Outcome,
-                application.SourceUrl,
-                application.ApplicationPortalUrl,
-                application.SourceText,
-                application.DescriptionText,
-                application.ExtractionMetadataJson,
-                application.Notes,
-                application.IsSavedForever,
-                application.DeletionScheduledAt),
+            ToApplicationDetails(application, companyName),
             timeZoneId,
             currentTime,
             preferences.RetentionMonths,
             preferences.DeletionGraceDays,
-            localToday >= application.AppliedOn.AddDays(30)
-                && firstResponse is null
-                && application.Outcome != ApplicationOutcome.Ghosted,
+            CanConfirmGhosted(application, localToday, firstResponse),
             firstResponse,
             history,
             contacts,
@@ -301,7 +89,7 @@ public sealed class ApplicationWorkflowService(
             var timeZoneId = await GetTimeZoneIdAsync(ownerId, cancellationToken);
             var localToday = DateOnly.FromDateTime(
                 ApplicationTime.ToLocal(timeProvider.GetUtcNow(), timeZoneId));
-            if (localToday < application.AppliedOn.AddDays(30))
+            if (localToday < application.AppliedOn.AddDays(ApplicationRules.GhostingConfirmationAfterDays))
             {
                 return WorkflowWriteResult.InvalidTransition;
             }
@@ -652,6 +440,177 @@ public sealed class ApplicationWorkflowService(
         return WorkflowWriteResult.Success;
     }
 
+    private async Task<JobApplication?> FindApplicationAsync(
+        Guid applicationId,
+        string ownerId,
+        CancellationToken cancellationToken) =>
+        await database.JobApplications
+            .AsNoTracking()
+            .SingleOrDefaultAsync(
+                application => application.Id == applicationId && application.OwnerId == ownerId,
+                cancellationToken);
+
+    private async Task<string?> FindCompanyNameAsync(
+        Guid? companyId,
+        string ownerId,
+        CancellationToken cancellationToken)
+    {
+        if (companyId is null)
+        {
+            return null;
+        }
+
+        return await database.Companies
+            .AsNoTracking()
+            .Where(company => company.Id == companyId && company.OwnerId == ownerId)
+            .Select(company => company.Name)
+            .SingleOrDefaultAsync(cancellationToken);
+    }
+
+    private async Task<RetentionPreferences> GetRetentionPreferencesAsync(
+        string ownerId,
+        CancellationToken cancellationToken) =>
+        await database.Users
+            .AsNoTracking()
+            .Where(user => user.Id == ownerId)
+            .Select(user => new RetentionPreferences(
+                user.TimeZoneId,
+                user.RetentionMonths,
+                user.DeletionGraceDays))
+            .SingleAsync(cancellationToken);
+
+    private async Task<IReadOnlyList<WorkflowStatusItem>> GetStatusHistoryAsync(
+        Guid applicationId,
+        string ownerId,
+        CancellationToken cancellationToken) =>
+        await database.StatusHistory
+            .AsNoTracking()
+            .Where(history =>
+                history.JobApplicationId == applicationId
+                && history.OwnerId == ownerId)
+            .OrderByDescending(history => history.EffectiveAt)
+            .Select(history => new WorkflowStatusItem(
+                history.Id,
+                history.PreviousStage,
+                history.NewStage,
+                history.PreviousOutcome,
+                history.NewOutcome,
+                history.EffectiveAt,
+                history.Note))
+            .ToListAsync(cancellationToken);
+
+    private async Task<IReadOnlyList<WorkflowContactItem>> GetContactsAsync(
+        Guid applicationId,
+        string ownerId,
+        CancellationToken cancellationToken) =>
+        await database.Contacts
+            .AsNoTracking()
+            .Where(contact =>
+                contact.JobApplicationId == applicationId
+                && contact.OwnerId == ownerId)
+            .OrderBy(contact => contact.Name)
+            .Select(contact => new WorkflowContactItem(
+                contact.Id,
+                contact.Name,
+                contact.JobTitle,
+                contact.Email,
+                contact.Phone,
+                contact.Notes))
+            .ToListAsync(cancellationToken);
+
+    private async Task<IReadOnlyList<WorkflowInteractionItem>> GetInteractionsAsync(
+        Guid applicationId,
+        string ownerId,
+        CancellationToken cancellationToken) =>
+        await database.Interactions
+            .AsNoTracking()
+            .Where(interaction =>
+                interaction.JobApplicationId == applicationId
+                && interaction.OwnerId == ownerId)
+            .OrderByDescending(interaction => interaction.OccurredAt)
+            .Select(interaction => new WorkflowInteractionItem(
+                interaction.Id,
+                interaction.ContactId,
+                database.Contacts
+                    .Where(contact =>
+                        contact.Id == interaction.ContactId
+                        && contact.OwnerId == ownerId)
+                    .Select(contact => contact.Name)
+                    .SingleOrDefault(),
+                interaction.Type,
+                interaction.OccurredAt,
+                interaction.IsEmployerResponse,
+                interaction.Notes))
+            .ToListAsync(cancellationToken);
+
+    private async Task<IReadOnlyList<WorkflowTaskItem>> GetTasksAsync(
+        Guid applicationId,
+        string ownerId,
+        CancellationToken cancellationToken) =>
+        await database.Tasks
+            .AsNoTracking()
+            .Where(task =>
+                task.JobApplicationId == applicationId
+                && task.OwnerId == ownerId)
+            .OrderBy(task => task.CompletedAt != null)
+            .ThenBy(task => task.DueAt == null)
+            .ThenBy(task => task.DueAt)
+            .ThenBy(task => task.Title)
+            .Select(task => new WorkflowTaskItem(
+                task.Id,
+                task.Title,
+                task.DueAt,
+                task.CompletedAt,
+                task.Notes))
+            .ToListAsync(cancellationToken);
+
+    private async Task<IReadOnlyList<WorkflowAppointmentItem>> GetAppointmentsAsync(
+        Guid applicationId,
+        string ownerId,
+        CancellationToken cancellationToken) =>
+        await database.Appointments
+            .AsNoTracking()
+            .Where(appointment =>
+                appointment.JobApplicationId == applicationId
+                && appointment.OwnerId == ownerId)
+            .OrderBy(appointment => appointment.StartsAt)
+            .Select(appointment => new WorkflowAppointmentItem(
+                appointment.Id,
+                appointment.Type,
+                appointment.StartsAt,
+                appointment.EndsAt,
+                appointment.TimeZoneId,
+                appointment.LocationOrLink,
+                appointment.Notes))
+            .ToListAsync(cancellationToken);
+
+    private static ApplicationDetails ToApplicationDetails(
+        JobApplication application,
+        string? companyName) => new(
+        application.Id,
+        application.CompanyId,
+        companyName,
+        application.RoleTitle,
+        application.AppliedOn,
+        application.Stage,
+        application.Outcome,
+        application.SourceUrl,
+        application.ApplicationPortalUrl,
+        application.SourceText,
+        application.DescriptionText,
+        application.ExtractionMetadataJson,
+        application.Notes,
+        application.IsSavedForever,
+        application.DeletionScheduledAt);
+
+    private static bool CanConfirmGhosted(
+        JobApplication application,
+        DateOnly localToday,
+        DateTimeOffset? firstEmployerResponseAt) =>
+        localToday >= application.AppliedOn.AddDays(ApplicationRules.GhostingConfirmationAfterDays)
+        && firstEmployerResponseAt is null
+        && application.Outcome != ApplicationOutcome.Ghosted;
+
     private async Task<JobApplication?> FindOwnedApplicationAsync(
         Guid applicationId,
         string ownerId,
@@ -698,61 +657,4 @@ public sealed class ApplicationWorkflowService(
 
     private static string? NullIfWhiteSpace(string? value) =>
         string.IsNullOrWhiteSpace(value) ? null : value.Trim();
-}
-
-public static class ApplicationTime
-{
-    public static bool TryConvertToUtc(
-        DateTime localDateTime,
-        string timeZoneId,
-        out DateTimeOffset utcValue)
-    {
-        utcValue = default;
-        if (!TryFind(timeZoneId, out var timeZone))
-        {
-            return false;
-        }
-
-        var unspecified = DateTime.SpecifyKind(localDateTime, DateTimeKind.Unspecified);
-        if (timeZone.IsInvalidTime(unspecified))
-        {
-            return false;
-        }
-
-        var utcDateTime = TimeZoneInfo.ConvertTimeToUtc(unspecified, timeZone);
-        utcValue = new DateTimeOffset(utcDateTime, TimeSpan.Zero);
-        return true;
-    }
-
-    public static DateTime ToLocal(DateTimeOffset value, string timeZoneId)
-    {
-        var timeZone = TryFind(timeZoneId, out var found) ? found : TimeZoneInfo.Utc;
-        return DateTime.SpecifyKind(
-            TimeZoneInfo.ConvertTime(value, timeZone).DateTime,
-            DateTimeKind.Unspecified);
-    }
-
-    public static string Display(DateTimeOffset value, string timeZoneId) =>
-        $"{ToLocal(value, timeZoneId):d MMM yyyy, h:mm tt} ({timeZoneId})";
-
-    public static bool IsSupported(string timeZoneId) => TryFind(timeZoneId, out _);
-
-    private static bool TryFind(string timeZoneId, out TimeZoneInfo timeZone)
-    {
-        try
-        {
-            timeZone = TimeZoneInfo.FindSystemTimeZoneById(timeZoneId);
-            return true;
-        }
-        catch (TimeZoneNotFoundException)
-        {
-            timeZone = TimeZoneInfo.Utc;
-            return false;
-        }
-        catch (InvalidTimeZoneException)
-        {
-            timeZone = TimeZoneInfo.Utc;
-            return false;
-        }
-    }
 }

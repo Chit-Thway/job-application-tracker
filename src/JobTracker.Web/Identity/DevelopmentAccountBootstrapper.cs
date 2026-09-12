@@ -29,7 +29,7 @@ public sealed class DevelopmentAccountBootstrapper(
                 UserName = email,
                 Email = email,
                 DisplayName = displayName,
-                TimeZoneId = "Australia/Perth",
+                TimeZoneId = ApplicationUser.DefaultTimeZoneId,
             };
 
             var result = await userManager.CreateAsync(user, password);
