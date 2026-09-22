@@ -17,6 +17,8 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
     public DbSet<RetentionRun> RetentionRuns => Set<RetentionRun>();
     public DbSet<AdminAuditEntry> AdminAuditEntries => Set<AdminAuditEntry>();
     public DbSet<ExtensionCaptureHandoff> ExtensionCaptureHandoffs => Set<ExtensionCaptureHandoff>();
+    public DbSet<EmailVerificationMonthlyUsage> EmailVerificationMonthlyUsages
+        => Set<EmailVerificationMonthlyUsage>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -61,6 +63,12 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
             entity.Property(entry => entry.Details).HasMaxLength(300).IsRequired();
             entity.HasIndex(entry => entry.OccurredAt);
             entity.HasIndex(entry => entry.ActorUserId);
+        });
+
+        builder.Entity<EmailVerificationMonthlyUsage>(entity =>
+        {
+            entity.HasKey(usage => usage.MonthStart);
+            entity.Property(usage => usage.SentCount).IsRequired();
         });
 
         builder.Entity<ExtensionCaptureHandoff>(entity =>

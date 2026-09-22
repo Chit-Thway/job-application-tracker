@@ -159,6 +159,75 @@ public sealed partial class AuthenticationJourneyTests
     }
 
     [Fact]
+    public async Task VerificationEmails_StopAtMonthlyLimit()
+    {
+        var firstEmail = $"monthly-first-{Guid.NewGuid():N}@example.test";
+        var secondEmail = $"monthly-second-{Guid.NewGuid():N}@example.test";
+        var now = DateTimeOffset.UtcNow;
+        var monthStart = new DateTimeOffset(
+            now.Year,
+            now.Month,
+            day: 1,
+            hour: 0,
+            minute: 0,
+            second: 0,
+            TimeSpan.Zero);
+
+        try
+        {
+            await using (var scope = factory.Services.CreateAsyncScope())
+            {
+                var database = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+                var usage = await database.EmailVerificationMonthlyUsages
+                    .SingleOrDefaultAsync(item => item.MonthStart == monthStart);
+                if (usage is null)
+                {
+                    database.EmailVerificationMonthlyUsages.Add(new EmailVerificationMonthlyUsage
+                    {
+                        MonthStart = monthStart,
+                        SentCount = EmailVerificationService.MaxMonthlyVerificationEmails - 1,
+                    });
+                }
+                else
+                {
+                    usage.SentCount = EmailVerificationService.MaxMonthlyVerificationEmails - 1;
+                }
+
+                await database.SaveChangesAsync();
+            }
+
+            var client = CreateClient();
+            var allowedRegistration = await RegisterAsync(client, firstEmail, acceptPolicies: true);
+            Assert.Equal(HttpStatusCode.Redirect, allowedRegistration.StatusCode);
+            Assert.NotNull(FindMessage(firstEmail, "Your Job Application Tracker verification code"));
+
+            var blockedRegistration = await RegisterAsync(client, secondEmail, acceptPolicies: true);
+            var blockedContent = await blockedRegistration.Content.ReadAsStringAsync();
+            Assert.Equal(HttpStatusCode.OK, blockedRegistration.StatusCode);
+            Assert.Contains(
+                "monthly verification email limit has been reached",
+                blockedContent,
+                StringComparison.OrdinalIgnoreCase);
+
+            await using var verificationScope = factory.Services.CreateAsyncScope();
+            var users = verificationScope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+            Assert.Null(await users.FindByEmailAsync(secondEmail));
+        }
+        finally
+        {
+            await using var scope = factory.Services.CreateAsyncScope();
+            var database = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+            var usage = await database.EmailVerificationMonthlyUsages
+                .SingleOrDefaultAsync(item => item.MonthStart == monthStart);
+            if (usage is not null)
+            {
+                database.EmailVerificationMonthlyUsages.Remove(usage);
+                await database.SaveChangesAsync();
+            }
+        }
+    }
+
+    [Fact]
     public async Task ExpiredVerificationCode_IsRejected()
     {
         var email = $"expired-{Guid.NewGuid():N}@example.test";

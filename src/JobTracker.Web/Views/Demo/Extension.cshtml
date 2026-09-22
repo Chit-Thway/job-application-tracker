@@ -1,0 +1,120 @@
+@{
+    Layout = "_DemoLayout";
+    ViewData["Title"] = "Extension Demo";
+}
+
+<link rel="stylesheet" href="~/css/extension-demo.css" asp-append-version="true" />
+
+<section class="workspace-hero extension-demo-hero">
+    <div class="shell workspace-heading">
+        <div>
+            <p class="eyebrow">Try the workflow</p>
+            <h1>Extension Demo</h1>
+            <p>See how a job posting becomes a reviewed application. Follow the highlighted action in the window below.</p>
+        </div>
+        <span class="extension-demo-time">About 30 seconds · No install needed</span>
+    </div>
+</section>
+
+<section class="workspace-content extension-demo-workspace">
+    <div class="shell">
+        <div class="extension-demo-guide" aria-live="polite" aria-atomic="true">
+            <div>
+                <p class="mini-label" data-demo-progress>Step 1 of 3</p>
+                <h2 data-demo-instruction>Click the highlighted JT extension icon.</h2>
+                <p data-demo-explanation>The job advertisement is open. The extension reads this page only after you choose to capture it.</p>
+            </div>
+            <span class="extension-demo-guide-arrow" aria-hidden="true">↓</span>
+        </div>
+
+        <div class="extension-demo-window" data-extension-demo aria-label="Interactive extension demonstration">
+            <div class="extension-demo-titlebar" aria-hidden="true">
+                <span class="extension-demo-window-dots"><i></i><i></i><i></i></span>
+                <span>Chris Burmese Curry — Chef</span>
+                <span class="extension-demo-titlebar-spacer"></span>
+            </div>
+
+            <div class="extension-demo-browserbar" aria-label="Mock browser toolbar">
+                <span class="extension-demo-browser-controls" aria-hidden="true">‹ &nbsp; › &nbsp; ↻</span>
+                <span class="extension-demo-address">chrisburmesecurry.example / careers / chef</span>
+                <button class="extension-demo-toolbar-button extension-demo-next" type="button" data-demo-action="open" aria-label="Open Job Application Tracker extension">
+                    <span aria-hidden="true">JT</span>
+                    <span class="extension-demo-step-tag">Click me</span>
+                </button>
+            </div>
+
+            <div class="extension-demo-screen">
+                <div class="extension-demo-job" data-demo-stage="job">
+                    <div class="extension-demo-job-header">
+                        <span class="extension-demo-restaurant-mark" aria-hidden="true">CBC</span>
+                        <div><strong>Chris Burmese Curry</strong><span>Warm food. Good company.</span></div>
+                        <span class="extension-demo-jobs-label">Careers</span>
+                    </div>
+
+                    <div class="extension-demo-job-banner">
+                        <div>
+                            <p class="extension-demo-kicker">Join our kitchen · Perth, WA</p>
+                            <h2>Chef</h2>
+                            <p>Cook food worth sharing, with a team that cares about every bowl.</p>
+                        </div>
+                        <div class="extension-demo-bowl" aria-hidden="true"><span></span></div>
+                    </div>
+
+                    <div class="extension-demo-job-copy">
+                        <div>
+                            <p class="extension-demo-kicker">About us</p>
+                            <h3>A little taste of Myanmar in Perth.</h3>
+                            <p>Chris Burmese Curry is a small neighbourhood curry house serving comforting Burmese dishes made with care. We welcome people in for a quick lunch, a long dinner, and everything in between.</p>
+                        </div>
+                        <div>
+                            <p class="extension-demo-kicker">The role</p>
+                            <h3>Bring the kitchen to life.</h3>
+                            <p>As our chef, you will prepare favourites like mohinga, coconut chicken noodles, and rich Burmese curries. You will help with prep, keep the kitchen organised, and make every plate feel generous.</p>
+                            <div class="extension-demo-job-chips"><span>Full-time</span><span>Perth, WA</span><span>On-site</span></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="extension-demo-popup" data-demo-stage="popup" hidden>
+                    <div class="extension-demo-popup-heading"><span class="extension-demo-popup-icon">JT</span><strong>Job Application Tracker</strong></div>
+                    <h2>Capture this job</h2>
+                    <p>Read the job advertisement in this tab and open an editable review. Nothing is saved automatically.</p>
+                    <div class="extension-demo-popup-note"><strong>This tab only</strong><span>Chris Burmese Curry · Chef</span></div>
+                    <button class="button button-primary extension-demo-next" type="button" data-demo-action="capture">Capture this tab and review <span aria-hidden="true">→</span></button>
+                </div>
+
+                <div class="extension-demo-review" data-demo-stage="review" hidden>
+                    <div class="extension-demo-tracker-bar"><span class="extension-demo-tracker-mark">JT</span><strong>Job Application Tracker</strong><span>Review draft</span></div>
+                    <div class="extension-demo-review-body">
+                        <p class="extension-demo-kicker">Captured from the open job page</p>
+                        <h2>Review before saving</h2>
+                        <p>Here are the details the extension found. In the real tracker, you can correct them before saving.</p>
+                        <div class="extension-demo-fields">
+                            <div><span>Role</span><strong>Chef</strong></div>
+                            <div><span>Company</span><strong>Chris Burmese Curry</strong></div>
+                            <div><span>Location</span><strong>Perth, WA</strong></div>
+                            <div><span>Work type</span><strong>Full-time · On-site</strong></div>
+                        </div>
+                        <div class="extension-demo-description-preview"><span>Job description</span><p>Prepare mohinga, coconut chicken noodles, and Burmese curries in a welcoming neighbourhood kitchen.</p></div>
+                        <button class="button button-primary extension-demo-next" type="button" data-demo-action="save">Save application <span aria-hidden="true">→</span></button>
+                    </div>
+                </div>
+
+                <div class="extension-demo-saved" data-demo-stage="saved" hidden>
+                    <div class="extension-demo-tracker-bar"><span class="extension-demo-tracker-mark">JT</span><strong>Job Application Tracker</strong><span>Application</span></div>
+                    <div class="extension-demo-saved-body">
+                        <span class="extension-demo-success-icon" aria-hidden="true">✓</span>
+                        <p class="extension-demo-kicker">Demo complete</p>
+                        <h2>Your application is saved!</h2>
+                        <p>This is a walkthrough only. No account or real application was created.</p>
+                        <div class="extension-demo-saved-card"><span>Chris Burmese Curry</span><strong>Chef</strong><small>Perth, WA · Saved in your applications</small></div>
+                        <button class="button button-secondary extension-demo-next" type="button" data-demo-action="replay">Try it again</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <p class="extension-demo-footnote">This guided example uses fictional details and stays entirely on this page.</p>
+    </div>
+</section>
+
+<script src="~/js/extension-demo.js" asp-append-version="true" defer></script>

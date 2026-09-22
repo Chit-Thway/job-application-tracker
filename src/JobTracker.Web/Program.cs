@@ -238,6 +238,8 @@ builder.Services.AddHealthChecks()
 
 var app = builder.Build();
 
+var demoPreview = app.Environment.IsDevelopment() && app.Configuration.GetValue<bool>("DemoPreview");
+
 if (app.Environment.IsDevelopment())
 {
     app.UseDeveloperExceptionPage();
@@ -336,7 +338,7 @@ app.MapControllerRoute(
     pattern: "{controller=Home}/{action=Index}/{id?}")
     .WithStaticAssets();
 
-if (app.Environment.IsDevelopment())
+if (app.Environment.IsDevelopment() && !demoPreview)
 {
     await using var bootstrapScope = app.Services.CreateAsyncScope();
     await bootstrapScope.ServiceProvider
@@ -344,8 +346,9 @@ if (app.Environment.IsDevelopment())
         .InitializeAsync();
 }
 
-await using (var adminScope = app.Services.CreateAsyncScope())
+if (!demoPreview)
 {
+    await using var adminScope = app.Services.CreateAsyncScope();
     await adminScope.ServiceProvider
         .GetRequiredService<AdminRoleInitializer>()
         .InitializeAsync();
