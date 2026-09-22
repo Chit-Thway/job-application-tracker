@@ -68,6 +68,13 @@ public sealed class AccountController(
                 user,
                 VerificationUrl,
                 HttpContext.RequestAborted);
+            if (issue.MonthlyLimitReached)
+            {
+                await userManager.DeleteAsync(user);
+                ModelState.AddModelError(string.Empty, issue.Message);
+                return View(model);
+            }
+
             if (issue.Succeeded && issue.ChallengeId is Guid challengeId)
             {
                 return RedirectToAction(nameof(VerifyEmail), new { challengeId });

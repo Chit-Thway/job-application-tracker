@@ -137,6 +137,42 @@ public sealed class CriticalJourneysTests(BrowserJourneyFixture fixture)
         await AssertAccessiblePageStructureAsync(page);
     }
 
+    [Theory]
+    [InlineData(1280, 900)]
+    [InlineData(390, 844)]
+    public async Task ExtensionDemo_GuidesCaptureReviewAndSaveWithoutPersisting(int width, int height)
+    {
+        await using var context = await fixture.CreateContextAsync(width, height);
+        var page = await context.NewPageAsync();
+        var window = page.Locator("[data-extension-demo]");
+
+        await page.GotoAsync("/demo/extension");
+        await Expect(page.GetByRole(AriaRole.Heading, new() { Name = "Extension Demo" }))
+            .ToBeVisibleAsync();
+        await Expect(window.GetByRole(AriaRole.Button)).ToHaveCountAsync(1);
+        await window.GetByRole(AriaRole.Button, new() { Name = "Open Job Application Tracker extension" }).ClickAsync();
+
+        await Expect(page.GetByText("Step 2 of 3")).ToBeVisibleAsync();
+        await Expect(window.GetByRole(AriaRole.Button)).ToHaveCountAsync(1);
+        await window.GetByRole(AriaRole.Button, new() { Name = "Capture this tab and review" }).ClickAsync();
+
+        await Expect(page.GetByText("Step 3 of 3")).ToBeVisibleAsync();
+        await Expect(window.Locator("[data-demo-stage='review']").GetByText("Chris Burmese Curry", new() { Exact = true }))
+            .ToBeVisibleAsync();
+        await Expect(window.GetByRole(AriaRole.Button)).ToHaveCountAsync(1);
+        await window.GetByRole(AriaRole.Button, new() { Name = "Save application" }).ClickAsync();
+
+        await Expect(window.GetByRole(AriaRole.Heading, new() { Name = "Your application is saved!" }))
+            .ToBeVisibleAsync();
+        await Expect(window.GetByText("No account or real application was created.")).ToBeVisibleAsync();
+        Assert.Equal(0, await window.Locator("form").CountAsync());
+        Assert.False(await page.EvaluateAsync<bool>("document.documentElement.scrollWidth > innerWidth"));
+
+        await window.GetByRole(AriaRole.Button, new() { Name = "Try it again" }).ClickAsync();
+        await Expect(page.GetByText("Step 1 of 3")).ToBeVisibleAsync();
+        await AssertAccessiblePageStructureAsync(page);
+    }
+
     [Fact]
     public async Task OpenRegistration_EmailCodeJourneyCreatesVerifiedTierOneAccount()
     {

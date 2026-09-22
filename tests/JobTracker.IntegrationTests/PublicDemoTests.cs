@@ -19,6 +19,7 @@ public sealed class PublicDemoTests : IClassFixture<JobTrackerWebApplicationFact
     [InlineData("/demo", ">Dashboard</h1>")]
     [InlineData("/demo/applications", "synthetic applications")]
     [InlineData("/demo/actions", ">Action Centre</h1>")]
+    [InlineData("/demo/extension", "Chris Burmese Curry")]
     [InlineData("/demo/applications/nova-harbour-graduate-platform-engineer", "Graduate Platform Engineer")]
     public async Task PublicDemo_IsBrowsableAndContainsOnlySyntheticReadOnlyContent(
         string route,
@@ -54,6 +55,23 @@ public sealed class PublicDemoTests : IClassFixture<JobTrackerWebApplicationFact
         Assert.Contains("Nova Harbour Labs", content, StringComparison.Ordinal);
         Assert.DoesNotContain("Atlas Ember Systems", content, StringComparison.Ordinal);
         Assert.DoesNotContain(PrivateCanary, content, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task ExtensionDemo_ContainsTheGuidedMockWithoutSavingControls()
+    {
+        var client = CreateClient();
+
+        var response = await client.GetAsync("/demo/extension");
+        var content = await response.Content.ReadAsStringAsync();
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Contains("Extension Demo", content, StringComparison.Ordinal);
+        Assert.Contains("Capture this tab and review", content, StringComparison.Ordinal);
+        Assert.Contains("mohinga", content, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("This is a walkthrough only", content, StringComparison.Ordinal);
+        Assert.DoesNotContain("Install extension", content, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("<form", content, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]

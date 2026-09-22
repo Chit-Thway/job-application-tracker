@@ -54,6 +54,13 @@ public sealed class DemoController(DemoCatalog catalog) : Controller
         return View(new DemoActionCentreViewModel(dashboard.Today, dashboard.Applications));
     }
 
+    [HttpGet("/demo/extension")]
+    public IActionResult Extension()
+    {
+        SetPage("extension");
+        return View();
+    }
+
     [AcceptVerbs("POST", "PUT", "PATCH", "DELETE")]
     [Route("/demo/{**path}")]
     [IgnoreAntiforgeryToken]

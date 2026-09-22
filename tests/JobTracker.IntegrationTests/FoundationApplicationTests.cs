@@ -77,9 +77,12 @@ public sealed class FoundationApplicationTests : IClassFixture<JobTrackerWebAppl
     }
 
     [Theory]
-    [InlineData("/")]
-    [InlineData("/demo")]
-    public async Task PublicHeaders_LinkToBrowserExtensionInstallPage(string route)
+    [InlineData("/", "/extension", "Install extension")]
+    [InlineData("/demo", "/demo/extension", "Extension Demo")]
+    public async Task PublicHeaders_LinkToRelevantExtensionPage(
+        string route,
+        string extensionRoute,
+        string linkText)
     {
         var client = CreateClient();
 
@@ -87,8 +90,8 @@ public sealed class FoundationApplicationTests : IClassFixture<JobTrackerWebAppl
         var content = await response.Content.ReadAsStringAsync();
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        Assert.Contains("href=\"/extension\"", content, StringComparison.Ordinal);
-        Assert.Contains("Install extension", content, StringComparison.Ordinal);
+        Assert.Contains($"href=\"{extensionRoute}\"", content, StringComparison.Ordinal);
+        Assert.Contains(linkText, content, StringComparison.Ordinal);
     }
 
     [Theory]

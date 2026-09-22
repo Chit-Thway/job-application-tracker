@@ -10,6 +10,17 @@
         "ASPNETCORE_ENVIRONMENT": "Development"
       }
     },
+    "demo": {
+      "commandName": "Project",
+      "dotnetRunMessages": true,
+      "launchBrowser": false,
+      "applicationUrl": "http://localhost:5261",
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "DemoPreview": "true",
+        "ConnectionStrings__DefaultConnection": "Host=127.0.0.1;Port=1;Database=jobtracker_demo_preview;Username=demo;Password=unused"
+      }
+    },
     "https": {
       "commandName": "Project",
       "dotnetRunMessages": true,
