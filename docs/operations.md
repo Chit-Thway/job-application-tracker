@@ -32,7 +32,7 @@ This runbook covers setup and ongoing operation. Azure resource creation and fir
 
 ## Account registration and tiers
 
-Registration is public at `/account/register`. New accounts start on Tier 1 and cannot sign in until the six-digit email code is verified. Codes expire after ten minutes, allow five failed attempts, and have a server-enforced 30-second resend delay. Administrators can resend a code from the account page, but the same cooldown applies.
+Registration is public at `/account/register`. New accounts start on Tier 1 and cannot sign in until the six-digit email code is verified. Codes expire after ten minutes, allow five failed attempts, and have a server-enforced 30-second resend delay. The application sends no more than 25 verification emails per UTC month. Administrators can resend a code from the account page, but the same cooldown and monthly limit apply.
 
 Use `/admin/users` to review identity metadata, lock or unlock an account, assign Tier 1/Tier 2, or begin an authorised permanent account deletion. Deletion requires a separate confirmation page and the account's exact email address; administrators cannot delete themselves or delete another administrator until that role is removed. Admin tools show application counts but never expose private application contents. The former invitation commands and invitation administration page have been removed.
 

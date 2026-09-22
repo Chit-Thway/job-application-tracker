@@ -172,7 +172,7 @@ The current suite covers application workflows, account boundaries, retention, i
 
 ## More detail
 
-- [Security review](docs/security-review.md)
+- [Security and privacy review](docs/security-review.md)
 - [Accessibility review](docs/accessibility.md)
 - [Testing approach](docs/test-strategy.md)
 - [Azure deployment guide](docs/azure-deployment.md)

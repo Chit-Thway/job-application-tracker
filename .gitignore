@@ -27,6 +27,14 @@ test-results/
 /.tmp/
 /job-application-tracker-capture-*.zip
 
+# Private database exports and local dependency caches
+/backups/
+/exports/
+*.dump
+*.backup
+*.sql.gz
+node_modules/
+
 # Local configuration and secrets
 .env
 .env.*
@@ -38,3 +46,8 @@ secrets.json
 
 # Runtime output
 *.log
+
+# Operating-system metadata
+.DS_Store
+Thumbs.db
+desktop.ini
