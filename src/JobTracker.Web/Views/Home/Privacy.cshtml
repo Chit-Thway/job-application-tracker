@@ -1,5 +1,6 @@
 @{
     ViewData["Title"] = "Privacy Policy";
+    var supportAddress = Configuration["Email:SupportAddress"] ?? "support@example.test";
 }
 
 <section class="policy-hero">
@@ -15,13 +16,13 @@
         <aside class="policy-summary" aria-label="Policy summary">
             <strong>At a glance</strong>
             <p>Private tracker records are not public, personal information is not sold, and no advertising or external AI service receives your job-search content.</p>
-            <a href="mailto:redacted@example.invalid">Privacy contact</a>
+            <a href="mailto:@supportAddress">Privacy contact</a>
         </aside>
 
         <article class="policy-document">
             <section>
                 <h2>1. Who operates the service</h2>
-                <p>Job Application Tracker is operated by Chit-Thway from Perth, Western Australia. Questions, access requests, correction requests, or deletion requests can be sent to <a href="mailto:redacted@example.invalid">redacted@example.invalid</a>.</p>
+                <p>Job Application Tracker is operated by Chit-Thway from Perth, Western Australia. Questions, access requests, correction requests, or deletion requests can be sent to <a href="mailto:@supportAddress">@supportAddress</a>.</p>
             </section>
             <section>
                 <h2>2. Information we collect</h2>

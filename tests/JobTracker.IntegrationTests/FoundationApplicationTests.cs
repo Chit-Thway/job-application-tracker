@@ -73,7 +73,7 @@ public sealed class FoundationApplicationTests : IClassFixture<JobTrackerWebAppl
         Assert.Contains("Website content and page address", privacyContent, StringComparison.Ordinal);
         Assert.Contains("No passive browsing history", privacyContent, StringComparison.Ordinal);
         Assert.Contains("Chrome Web Store User Data Policy", privacyContent, StringComparison.Ordinal);
-        Assert.Contains("redacted@example.invalid", privacyContent, StringComparison.Ordinal);
+        Assert.Contains("support@example.test", privacyContent, StringComparison.Ordinal);
     }
 
     [Theory]

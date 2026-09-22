@@ -11,7 +11,7 @@
 - Store URL: [Chrome Web Store listing](https://chromewebstore.google.com/detail/ofeagkadonbdgjhdiobfdnmafhoknkig)
 - Homepage: [myjobtracker.com.au/extension](https://myjobtracker.com.au/extension)
 - Privacy policy: [myjobtracker.com.au/extension/privacy](https://myjobtracker.com.au/extension/privacy)
-- Support email: `redacted@example.invalid`
+- Support email: configured privately in the Chrome Web Store account
 
 ## Detailed description
 

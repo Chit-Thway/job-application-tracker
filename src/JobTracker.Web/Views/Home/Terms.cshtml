@@ -1,5 +1,6 @@
 @{
     ViewData["Title"] = "Terms of Service";
+    var supportAddress = Configuration["Email:SupportAddress"] ?? "support@example.test";
 }
 
 <section class="policy-hero">
@@ -15,7 +16,7 @@
         <aside class="policy-summary">
             <strong>Plain-language summary</strong>
             <p>Keep your account secure, use information you are authorised to handle, review extracted data, and do not misuse the service.</p>
-            <a href="mailto:redacted@example.invalid">Contact the operator</a>
+            <a href="mailto:@supportAddress">Contact the operator</a>
         </aside>
         <article class="policy-document">
             <section><h2>1. Agreement and eligibility</h2><p>By creating an account or using Job Application Tracker, you agree to these Terms and acknowledge the Privacy Policy. You must be at least 16 years old, capable of entering this agreement, and provide accurate account information.</p></section>
@@ -27,7 +28,7 @@
             <section><h2>7. Availability and changes</h2><p>The service may change, pause, or discontinue features for maintenance, security, cost, legal, or operational reasons. Reasonable efforts are made to keep it available, but uninterrupted or error-free operation is not guaranteed. Features described as unlimited remain subject to reasonable technical and abuse-prevention controls.</p></section>
             <section><h2>8. Suspension and termination</h2><p>You may stop using the service and request account deletion at any time. An authorised administrator may permanently delete an account and its private tracker records to complete an account-closure request or when reasonably necessary to address misuse, security risk, legal requirements, prolonged inactivity, or material breach of these Terms. Where practical, notice or an opportunity to resolve the issue will be provided.</p></section>
             <section><h2>9. Disclaimers and liability</h2><p>To the maximum extent permitted by law, the service is provided on an “as available” basis without warranties about job outcomes, data accuracy, or continuous availability. Nothing in these Terms excludes rights or remedies that cannot lawfully be excluded. To the extent liability can be limited, the operator is not responsible for indirect or consequential loss arising from use of the service.</p></section>
-            <section><h2>10. Governing law and contact</h2><p>These Terms are governed by the laws of Western Australia and applicable Commonwealth laws. Before starting formal proceedings, please contact <a href="mailto:redacted@example.invalid">redacted@example.invalid</a> so the issue can be considered in good faith.</p></section>
+            <section><h2>10. Governing law and contact</h2><p>These Terms are governed by the laws of Western Australia and applicable Commonwealth laws. Before starting formal proceedings, please contact <a href="mailto:@supportAddress">@supportAddress</a> so the issue can be considered in good faith.</p></section>
         </article>
     </div>
 </section>

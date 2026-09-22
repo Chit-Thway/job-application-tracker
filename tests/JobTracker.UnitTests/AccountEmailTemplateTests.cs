@@ -5,7 +5,7 @@ namespace JobTracker.UnitTests;
 public sealed class AccountEmailTemplateTests
 {
     private const string PublicBaseUrl = "https://tracker.example.test";
-    private const string SupportAddress = "redacted@example.invalid";
+    private const string SupportAddress = "support@example.test";
 
     [Fact]
     public void VerificationCode_ContainsSixDigitCodeExpiryAndSafeActionUrl()
@@ -32,7 +32,7 @@ public sealed class AccountEmailTemplateTests
             message.Html,
             StringComparison.Ordinal);
         Assert.Contains(
-            "mailto:redacted@example.invalid",
+            "mailto:support@example.test",
             message.Html,
             StringComparison.Ordinal);
     }

@@ -1,6 +1,7 @@
 @model RetentionSettingsSnapshot
 @{
     ViewData["Title"] = "Settings";
+    var supportAddress = Configuration["Email:SupportAddress"] ?? "support@example.test";
 }
 
 <section class="workspace-hero">
@@ -94,7 +95,7 @@
             <div class="settings-policy-content">
                 <p>The tracker stores the account details needed to secure your private workspace and the job-search records that you enter, import, or approve. Private applications, companies, notes, contacts, tasks, appointments, and source text are never included in the public synthetic demo.</p>
                 <p>Your information is used only to provide the tracker, account-security, retention, and transactional-email features. It is not sold, used for advertising, or sent to an external AI service.</p>
-                <p>You can edit or delete individual records in the tracker. For account-wide access or deletion, email <a class="inline-link" href="mailto:redacted@example.invalid">redacted@example.invalid</a>.</p>
+                <p>You can edit or delete individual records in the tracker. For account-wide access or deletion, email <a class="inline-link" href="mailto:@supportAddress">@supportAddress</a>.</p>
                 <p><a class="inline-link" asp-controller="Home" asp-action="Privacy">Read the full Privacy Policy</a> or review the <a class="inline-link" asp-controller="Home" asp-action="BrowserExtensionPrivacy">browser extension privacy notice</a>.</p>
             </div>
         </details>
@@ -120,7 +121,7 @@
             <div class="settings-policy-content">
                 <p>Job Application Tracker is a private productivity tool for registered users. Keep your account secure, submit only information you are authorised to use, and do not attempt to disrupt the service or access another person's records.</p>
                 <p>Imported and extracted job details are provided as an editable convenience. You are responsible for reviewing their accuracy before saving or relying on them. The tracker does not provide employment, legal, or financial advice and does not guarantee job-search outcomes or uninterrupted availability.</p>
-                <p>You may stop using the service at any time and request account deletion by emailing <a class="inline-link" href="mailto:redacted@example.invalid">redacted@example.invalid</a>. Access may be suspended when necessary to protect users, data, or the service.</p>
+                <p>You may stop using the service at any time and request account deletion by emailing <a class="inline-link" href="mailto:@supportAddress">@supportAddress</a>. Access may be suspended when necessary to protect users, data, or the service.</p>
                 <p><a class="inline-link" asp-controller="Home" asp-action="Terms">Read the full Terms of Service</a>.</p>
             </div>
         </details>

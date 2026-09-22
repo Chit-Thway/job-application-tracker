@@ -1,5 +1,6 @@
 @{
     ViewData["Title"] = "Cookie Policy";
+    var supportAddress = Configuration["Email:SupportAddress"] ?? "support@example.test";
 }
 
 <section class="policy-hero">
@@ -27,7 +28,7 @@
             <section><h2>3. Local browser preferences</h2><p>The service uses local storage for the selected light or dark theme, application-list display preference, and the record that the essential-cookie notice was acknowledged. These values remain on the device until cleared through browser settings or the available in-app control.</p></section>
             <section><h2>4. No optional tracking cookies</h2><p>The current service does not use analytics, advertising, profiling, social-media, or cross-site tracking cookies. Because no optional cookie category is active, there is no misleading “accept all” option. If optional cookies are introduced, they will remain disabled until an appropriate choice is obtained.</p></section>
             <section><h2>5. Managing storage</h2><p>You can clear cookies and local storage in your browser. Clearing the authentication cookie signs you out. Clearing local preferences resets the theme, display preferences, and cookie-notice acknowledgement on that device.</p></section>
-            <section><h2>6. Contact</h2><p>Questions about cookies or browser storage can be sent to <a href="mailto:redacted@example.invalid">redacted@example.invalid</a>.</p></section>
+            <section><h2>6. Contact</h2><p>Questions about cookies or browser storage can be sent to <a href="mailto:@supportAddress">@supportAddress</a>.</p></section>
         </article>
     </div>
 </section>
