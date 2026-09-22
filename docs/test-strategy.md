@@ -1,6 +1,6 @@
 # Test selection strategy
 
-The current full suite contains 231 tests: 122 unit, 104 integration, and 5 Playwright browser tests. Test age does not make a test obsolete: migration and early-feature tests still protect the schema and behavior running in production. The efficiency gain comes from selecting tests by risk instead of running all 231 for every change.
+The suite includes unit, integration, and Playwright browser tests. Test age does not make a test obsolete: migration and early-feature tests still protect the schema and behavior running in production. Select local checks by risk; the full suite remains the release gate.
 
 ## Verification levels
 
@@ -12,7 +12,7 @@ The current full suite contains 231 tests: 122 unit, 104 integration, and 5 Play
 | Authentication, authorization, account deletion, tier limits, secrets, SSRF/network safety, or owner isolation | Relevant security-sensitive unit and integration groups |
 | Database model or migration | Relevant migration-contract and integration tests; inspect generated migration |
 | Shared middleware, dependency upgrades, broad refactors, production release, or uncertain impact | Full suite |
-| Browser layout/navigation/copy behavior | The affected Playwright journey; all five only for broad UI or release validation |
+| Browser layout/navigation/copy behavior | The affected Playwright journey; all browser journeys for broad UI or release validation |
 | Performance-sensitive query or dashboard work | `PersonalUsePerformanceTests`; otherwise skip it |
 
 ## Current test groups

@@ -4,7 +4,7 @@ Supabase recommends that Free-plan projects regularly create off-site logical ex
 
 ## Safety boundary
 
-Restore only into a newly created, disposable non-production project. Never point the restore command at the source project, the future production project, or a database containing data you need. Verify the source and target project references, hostnames, and database passwords twice. A restore is intentionally not automated by this repository because choosing the destructive target requires a human decision.
+Restore only into a newly created, disposable non-production project. Never point the restore command at the source project, the production project, or a database containing data you need. Verify the source and target project references, hostnames, and database passwords twice. A restore is intentionally not automated by this repository because choosing the destructive target requires a human decision.
 
 ## Backup
 
@@ -43,4 +43,4 @@ Restore only into a newly created, disposable non-production project. Never poin
 
 ## Rehearsal record
 
-Record the date, operator, source environment label (not its secret connection string), disposable target label, backup file checksums, row-count comparison, migration state, functional checks, failures, corrective work, and final result. Milestone 10 acceptance requires this record; the repository cannot safely manufacture it without access to an explicitly disposable target.
+Record the date, operator, source environment label (not its secret connection string), disposable target label, backup file checksums, row-count comparison, migration state, functional checks, failures, corrective work, and final result. The repository cannot safely manufacture this record without access to an explicitly disposable target.
