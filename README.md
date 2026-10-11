@@ -6,7 +6,54 @@ I built this project to solve a problem I experienced during a real job search: 
 
 **[Explore the live demo](https://myjobtracker.com.au/demo)** · **[Visit the live site](https://myjobtracker.com.au)** · **[Create an account](https://myjobtracker.com.au/account/register)**
 
-![Application library showing fictional job applications](src/JobTracker.Web/wwwroot/images/landing/applications-demo.png)
+## Architecture and technology stack
+
+The tracker is a server-rendered, layered monolith: one ASP.NET Core MVC application deployed to Azure App Service, with separate areas for presentation, business logic, accounts, and data access. PostgreSQL and account email run in managed services outside the web application.
+
+```mermaid
+flowchart TB
+    Browser["Browser / frontend<br/>HTML, CSS, vanilla JavaScript"]
+    Extension["Chrome / Edge extension<br/>HTML, CSS, JavaScript"]
+
+    subgraph App["Web application — C# / .NET 10 — Azure App Service"]
+        MVC["ASP.NET Core MVC<br/>Controllers handle requests<br/>Razor views render pages"]
+        Services["Business logic / services<br/>Applications, companies, workflows<br/>Dashboards, retention, imports"]
+        Identity["ASP.NET Core Identity<br/>Accounts, sessions, permissions"]
+        Data["Entity Framework Core + Npgsql<br/>Database queries and migrations"]
+
+        MVC --> Services
+        MVC --> Identity
+        Services --> Data
+        Identity --> Data
+    end
+
+    Database[("PostgreSQL<br/>Hosted by Supabase")]
+    Email["Azure Communication Services Email<br/>Verification and password resets"]
+
+    Browser <-->|HTTPS requests and rendered pages| MVC
+    Extension -->|Captured job details| MVC
+    Data --> Database
+    Identity --> Email
+```
+
+For example, saving an application goes from a browser form to an MVC controller, then to an application service that checks ownership and account limits. Entity Framework Core writes the record to PostgreSQL, and the server returns the next page. Feature areas live in the same application and deploy together.
+
+| Area | Technology | Why it is here |
+|---|---|---|
+| User interface | Razor Views, responsive CSS, and focused JavaScript | Fast pages with accessible forms and very little browser-side complexity |
+| Application | .NET 10, C#, and ASP.NET Core MVC | Clear server-side workflows, validation, and routing |
+| Accounts | ASP.NET Core Identity | Registration, email verification, password recovery, and secure sessions |
+| Data | Entity Framework Core, Npgsql, and PostgreSQL | Relational storage with migrations and account ownership enforced in the data model |
+| Database hosting | Supabase PostgreSQL | Managed production database; authentication remains inside the application |
+| Email | Azure Communication Services Email | Verification and password-reset messages |
+| Delivery | GitHub Actions and Azure App Service | Repeatable checks and production hosting |
+| Testing | xUnit and Playwright for .NET | Unit, integration, security, and real-browser coverage |
+
+## Applications and tracked jobs
+
+The Applications page brings search, stage filters, and tracked jobs together. Each card shows the company, role, application date, stage, outcome, and saved state.
+
+![Applications page filters and four tracked jobs from the fictional public demo](docs/images/applications-preview.jpg)
 
 The public demo is read-only and uses fictional companies, people, and activity. It never reads private account data.
 
@@ -53,39 +100,6 @@ Applications can be searched and filtered by company, stage, outcome, date, save
 The extension reads the active job advertisement only after it is clicked. It opens an editable review draft, so captured information can be checked before it becomes an application.
 
 ![Browser extension popup explaining what will be captured](src/JobTracker.Web/wwwroot/images/landing/extension-popup.png)
-
-## Technology stack
-
-```mermaid
-flowchart TB
-    Browser["Browser<br/>Razor views, CSS, JavaScript"]
-    App["Web application<br/>C# and ASP.NET Core MVC"]
-    Identity["Accounts and sessions<br/>ASP.NET Core Identity"]
-    Data["Data access<br/>Entity Framework Core and Npgsql"]
-    Database[("PostgreSQL<br/>hosted by Supabase")]
-    Email["Account email<br/>Azure Communication Services"]
-    Delivery["Hosting and delivery<br/>Azure App Service and GitHub Actions"]
-    Quality["Automated quality<br/>xUnit and Playwright"]
-
-    Browser --> App
-    App --> Identity
-    App --> Data
-    Data --> Database
-    App --> Email
-    Delivery --> App
-    Quality -. verifies .-> App
-```
-
-| Area | Technology | Why it is here |
-|---|---|---|
-| User interface | Razor Views, responsive CSS, and focused JavaScript | Fast pages with accessible forms and very little browser-side complexity |
-| Application | .NET 10, C#, and ASP.NET Core MVC | Clear server-side workflows, validation, and routing |
-| Accounts | ASP.NET Core Identity | Registration, email verification, password recovery, and secure sessions |
-| Data | Entity Framework Core, Npgsql, and PostgreSQL | Relational storage with migrations and account ownership enforced in the data model |
-| Database hosting | Supabase PostgreSQL | Managed production database; authentication remains inside the application |
-| Email | Azure Communication Services Email | Verification and password-reset messages |
-| Delivery | GitHub Actions and Azure App Service | Repeatable checks and production hosting |
-| Testing | xUnit and Playwright for .NET | Unit, integration, security, and real-browser coverage |
 
 ## Engineering decisions I care about
 
