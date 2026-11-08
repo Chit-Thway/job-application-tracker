@@ -12,7 +12,7 @@ Use the development package below to try the autofill build from this branch.
 
 1. Sign in to [Job Application Tracker](https://myjobtracker.com.au/account/login).
 2. Open a public job ad and choose **Extract** in the extension. Review the extracted details in the private draft before saving it.
-3. Open **Extension → Autofill profile** in the tracker to save your contact information, work experience, education, certifications, links, and reusable answers. Use **Copy role** when a form needs manual entry.
+3. Open **Extension → Autofill profile**. Enter your details or upload a text PDF or DOCX résumé up to 5 MB, then review the suggested contact details, work experience, education, certifications and links. Select **Save profile** to use those details in the extension. Use **Copy role** when a form needs manual entry.
 4. Open the extension's connection section, choose **Get connection code**, and approve the connection in the tracker. Paste the code into the extension and choose **Connect**.
 5. Open an employer application and choose **Fill**. Review the completed fields, enter anything the form still needs, and submit from the employer's site.
 

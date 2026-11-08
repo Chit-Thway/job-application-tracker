@@ -13,6 +13,7 @@ namespace JobTracker.Web.Controllers;
 [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
 public sealed class AutofillController(
     AutofillProfileService profiles,
+    ResumeImportService resumes,
     UserManager<ApplicationUser> users) : Controller
 {
     [HttpGet("")]
@@ -20,7 +21,7 @@ public sealed class AutofillController(
         View(await profiles.GetAsync(OwnerId, cancellationToken) ?? new ApplicantProfile());
 
     [HttpPost("")]
-    [RequestSizeLimit(256 * 1024)]
+    [RequestSizeLimit(1024 * 1024)]
     public async Task<IActionResult> Save(ApplicantProfile profile, CancellationToken cancellationToken)
     {
         if (ModelState.IsValid)
@@ -33,6 +34,26 @@ public sealed class AutofillController(
             ModelState.AddModelError(string.Empty, "Your profile changed while saving. Review and save again.");
         }
         return View(nameof(Profile), profile);
+    }
+
+    [HttpPost("resume")]
+    [EnableRateLimiting(RateLimitPolicies.JobImports)]
+    [RequestSizeLimit(ResumeImportService.MaximumUploadBytes + 64 * 1024)]
+    [RequestFormLimits(
+        MultipartBodyLengthLimit = ResumeImportService.MaximumUploadBytes + 1024,
+        MemoryBufferThreshold = ResumeImportService.MaximumUploadBytes + 64 * 1024)]
+    public async Task<IActionResult> ImportResume(IFormFile? resume, CancellationToken cancellationToken)
+    {
+        var draft = await profiles.GetAsync(OwnerId, cancellationToken) ?? new ApplicantProfile();
+        try
+        {
+            ViewData["ResumeReview"] = await resumes.ImportAsync(resume, draft, cancellationToken);
+        }
+        catch (ResumeImportException error)
+        {
+            ViewData["ResumeError"] = error.Message;
+        }
+        return View(nameof(Profile), draft);
     }
 
     [HttpPost("delete")]

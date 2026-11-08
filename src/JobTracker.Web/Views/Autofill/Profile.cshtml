@@ -4,6 +4,7 @@
 @{
     ViewData["Title"] = "Autofill profile";
     ViewData["Section"] = "extension";
+    var review = ViewData["ResumeReview"] as ResumeImportReview;
     ViewDataDictionary Row(string prefix) => new(ViewData) { TemplateInfo = { HtmlFieldPrefix = prefix } };
 }
 
@@ -18,6 +19,64 @@
 </section>
 <section class="workspace-content">
     <div class="shell autofill-profile">
+        <section class="detail-card" aria-labelledby="resume-import-heading">
+            <h2 id="resume-import-heading">Import résumé</h2>
+            <p>Upload a text PDF or Word (.docx) file up to 5 MB. Import starts from your saved profile, so save any edits before uploading again.</p>
+            @if (ViewData["ResumeError"] is string error)
+            {
+                <p class="validation-summary" role="alert">@error</p>
+            }
+            @if (review is not null)
+            {
+                <div role="status">
+                    <h3>Review résumé suggestions</h3>
+                    <p>Check the draft below and click Save profile to keep it. Review names, dates and any gaps.</p>
+                    @if (review.FilledFields.Count > 0)
+                    {
+                        <p><strong>Fields filled</strong> @string.Join(", ", review.FilledFields)</p>
+                    }
+                    @if (review.RolesAdded + review.EducationAdded + review.CertificatesAdded > 0)
+                    {
+                        <p><strong>Entries added</strong> @review.RolesAdded work, @review.EducationAdded education, @review.CertificatesAdded certification.</p>
+                    }
+                    @if (review.EntriesSkipped > 0)
+                    {
+                        <p>@review.EntriesSkipped résumé entries already match your profile or exceed the section limit.</p>
+                    }
+                    @if (review.FilledFields.Count + review.RolesAdded + review.EducationAdded + review.CertificatesAdded == 0)
+                    {
+                        <p>No new values were added to the draft.</p>
+                    }
+                </div>
+                @if (review.Differences.Count > 0)
+                {
+                    <details>
+                        <summary>Compare résumé suggestions with your profile</summary>
+                        <dl>
+                            @foreach (var difference in review.Differences)
+                            {
+                                <dt>@difference.Field</dt>
+                                <dd>Saved value <strong>@(difference.Saved ?? "Empty")</strong></dd>
+                                <dd>Résumé suggestion <strong>@difference.Suggested</strong></dd>
+                            }
+                        </dl>
+                    </details>
+                }
+            }
+            <form asp-action="ImportResume" method="post" enctype="multipart/form-data">
+                <div class="field">
+                    <label for="resume">Résumé file</label>
+                    <input type="file" id="resume" name="resume" accept=".pdf,.docx" required />
+                </div>
+                <div class="autofill-actions">
+                    <button class="button button-secondary" type="submit">Extract résumé details</button>
+                    @if (review is not null)
+                    {
+                        <a class="button" asp-action="Profile">Discard import</a>
+                    }
+                </div>
+            </form>
+        </section>
         <form asp-action="Save" method="post">
             <div asp-validation-summary="All" class="validation-summary"></div>
             <section class="detail-card">

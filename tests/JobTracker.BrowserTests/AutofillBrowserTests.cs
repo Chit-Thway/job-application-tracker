@@ -1,6 +1,10 @@
 using System.Text.Json.Nodes;
 using System.Security.Cryptography;
 using Microsoft.Playwright;
+using UglyToad.PdfPig.Content;
+using UglyToad.PdfPig.Core;
+using UglyToad.PdfPig.Fonts.Standard14Fonts;
+using UglyToad.PdfPig.Writer;
 using static Microsoft.Playwright.Assertions;
 
 namespace JobTracker.BrowserTests;
@@ -110,9 +114,22 @@ public sealed class AutofillBrowserTests(BrowserJourneyFixture fixture)
         await page.GetByRole(AriaRole.Button, new() { Name = "Sign in", Exact = true }).ClickAsync();
         await page.WaitForURLAsync("**/dashboard");
         await page.GotoAsync(new Uri(fixture.BaseAddress, "/extension/profile").AbsoluteUri);
-        await page.GetByLabel("Given name").FillAsync("Maya");
-        await page.GetByLabel("Family name").FillAsync("Chen");
-        await page.GetByLabel("Application email").FillAsync("maya@example.test");
+        var resume = new PdfDocumentBuilder();
+        var font = resume.AddStandard14Font(Standard14Font.Helvetica);
+        var resumePage = resume.AddPage(PageSize.A4);
+        resumePage.AddText("Maya Chen", 16, new PdfPoint(50, 780), font);
+        resumePage.AddText("maya@example.test", 12, new PdfPoint(50, 755), font);
+        await page.GetByLabel("Résumé file").SetInputFilesAsync(new FilePayload
+        {
+            Name = "synthetic-resume.pdf",
+            MimeType = "application/pdf",
+            Buffer = resume.Build(),
+        });
+        await page.GetByRole(AriaRole.Button, new() { Name = "Extract résumé details" }).ClickAsync();
+        await Expect(page.GetByRole(AriaRole.Heading, new() { Name = "Review résumé suggestions" })).ToBeVisibleAsync();
+        await Expect(page.GetByLabel("Given name")).ToHaveValueAsync("Maya");
+        await Expect(page.GetByLabel("Family name")).ToHaveValueAsync("Chen");
+        await Expect(page.GetByLabel("Application email")).ToHaveValueAsync("maya@example.test");
         await page.GetByLabel("Postcode").FillAsync("0800");
         await page.GetByLabel("State or territory").FillAsync("Northern Territory");
         await page.GetByLabel("Country", new() { Exact = true }).FillAsync("Australia");

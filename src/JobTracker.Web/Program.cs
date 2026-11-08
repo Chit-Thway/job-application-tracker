@@ -228,6 +228,7 @@ builder.Services.AddScoped<JobPostingUrlImportService>();
 builder.Services.AddScoped<BrowserExtensionImportService>();
 builder.Services.AddScoped<ExtensionCaptureHandoffService>();
 builder.Services.AddScoped<AutofillProfileService>();
+builder.Services.AddSingleton<ResumeImportService>();
 builder.Services.AddHealthChecks()
     .AddCheck(
         "self",
