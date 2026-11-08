@@ -24,6 +24,7 @@ public sealed partial class ApplicationWorkflowTests
     public async Task AuthenticatedUser_CanCompleteManualApplicationJourney()
     {
         var client = await CreateAuthenticatedClientAsync();
+        var appliedOn = DashboardCalendar.Create(TimeProvider.System.GetUtcNow(), "Australia/Perth").Today.AddDays(-2);
 
         var companyPage = await client.GetAsync("/companies/new");
         var companyToken = ExtractAntiforgeryToken(await companyPage.Content.ReadAsStringAsync());
@@ -50,7 +51,7 @@ public sealed partial class ApplicationWorkflowTests
             Form(
                 ("RoleTitle", "Synthetic Platform Engineer"),
                 ("CompanyId", companyId.ToString()),
-                ("AppliedOn", "2026-08-04"),
+                ("AppliedOn", $"{appliedOn:yyyy-MM-dd}"),
                 ("SourceUrl", "https://example.test/jobs/platform"),
                 ("ApplicationPortalUrl", "https://careers.example.test/candidate/platform"),
                 ("DescriptionText", "About the role\n\nBuild reliable synthetic platforms.\n\nWhat you will do\n\n- Write tests\n- Review changes"),
@@ -93,7 +94,7 @@ public sealed partial class ApplicationWorkflowTests
         Assert.Equal(HttpStatusCode.Redirect, saveResponse.StatusCode);
 
         var filtered = await client.GetAsync(
-            "/applications?Query=Meridian&IsSavedForever=true&AppliedFrom=2026-08-01&AppliedTo=2026-08-31");
+            $"/applications?Query=Meridian&IsSavedForever=true&AppliedFrom={appliedOn.AddDays(-1):yyyy-MM-dd}&AppliedTo={appliedOn:yyyy-MM-dd}");
         var filteredContent = await filtered.Content.ReadAsStringAsync();
         Assert.Equal(HttpStatusCode.OK, filtered.StatusCode);
         Assert.Contains("Synthetic Platform Engineer", filteredContent, StringComparison.Ordinal);
@@ -106,7 +107,7 @@ public sealed partial class ApplicationWorkflowTests
             Form(
                 ("RoleTitle", "Synthetic Senior Platform Engineer"),
                 ("CompanyId", companyId.ToString()),
-                ("AppliedOn", "2026-08-03"),
+                ("AppliedOn", $"{appliedOn.AddDays(-1):yyyy-MM-dd}"),
                 ("SourceUrl", "https://example.test/jobs/platform-senior"),
                 ("ApplicationPortalUrl", "https://careers.example.test/candidate/platform-senior"),
                 ("Notes", "Updated safe notes"),
