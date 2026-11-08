@@ -6,7 +6,8 @@ namespace JobTracker.Web.Autofill;
 internal static partial class ResumeProfileExtractor
 {
     private const string MonthName = @"(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)";
-    private const string DateToken = @"(?:" + MonthName + @"\.?\s+(?:19|20)\d{2}|\d{1,2}/(?:19|20)\d{2}|(?:19|20)\d{2}-\d{2}|(?:19|20)\d{2})";
+    private const string MonthAndYear = MonthName + @"\.?\s+(?:19|20)\d{2}";
+    private const string DateToken = @"(?:" + MonthAndYear + @"|\d{1,2}/(?:19|20)\d{2}|(?:19|20)\d{2}-\d{2}|(?:19|20)\d{2})";
     private static readonly string[] MonthFormats = ["MMM yyyy", "MMMM yyyy", "M/yyyy", "MM/yyyy", "yyyy-MM"];
 
     public static ApplicantProfile Extract(string text, CancellationToken cancellationToken)
@@ -43,7 +44,8 @@ internal static partial class ResumeProfileExtractor
             GivenName = Field(header, 100, "given name", "given names", "first name"),
             FamilyName = Field(header, 100, "family name", "surname", "last name"),
             PreferredName = Field(header, 100, "preferred name"),
-            Email = Unique(header.SelectMany(line => EmailPattern().Matches(line).Select(match => match.Value))
+            Email = Unique(header.SelectMany(line => EmailPattern().Matches(UrlPattern().Replace(line, ""))
+                    .Select(match => match.Value))
                 .Where(value => value.Length <= 254)),
             Phone = ReadPhone(header),
             AddressLine1 = Field(header, 150, "street address", "address line 1"),
@@ -106,7 +108,8 @@ internal static partial class ResumeProfileExtractor
             }
         }
 
-        var place = new[] { locality }.OfType<string>().Concat(header.Take(12))
+        var place = new[] { locality }.OfType<string>().Concat(header.Take(12)
+                .SelectMany(line => line.Split('|', StringSplitOptions.TrimEntries)))
             .Select(line => AustralianLocalityPattern().Match(line)).FirstOrDefault(match => match.Success);
         if (place is not null)
         {
@@ -119,7 +122,8 @@ internal static partial class ResumeProfileExtractor
 
     private static void ReadExperience(List<string> lines, List<ExperienceEntry> roles, CancellationToken cancellationToken)
     {
-        foreach (var entry in ReadPairs(lines, ExperienceHeader, cancellationToken))
+        var employerFirst = InferDashOrder(lines, cancellationToken);
+        foreach (var entry in ReadPairs(lines, (section, index) => ExperienceHeader(section, index, employerFirst), cancellationToken))
         {
             var dates = Dates(entry.Source, entry.Details);
             var responsibilities = entry.Details.Where(line => !DateRangePattern().IsMatch(line)
@@ -137,7 +141,44 @@ internal static partial class ResumeProfileExtractor
         }
     }
 
-    private static Pair? ExperienceHeader(List<string> lines, int index)
+    private static bool? InferDashOrder(List<string> lines, CancellationToken cancellationToken)
+    {
+        bool? employerFirst = null;
+        foreach (var line in lines)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (IsBullet(line) || !HasDatedDash(line))
+            {
+                continue;
+            }
+            var parts = Parts(line);
+            if (parts.Length is not (2 or 3) || !Plausible(parts[0]) || !Plausible(parts[1]))
+            {
+                continue;
+            }
+            if (RoleOrder(parts[0], parts[1]) is { } order)
+            {
+                if (employerFirst.HasValue && employerFirst.Value != order)
+                {
+                    return null;
+                }
+                employerFirst = order;
+            }
+        }
+        return employerFirst;
+    }
+
+    private static bool HasDatedDash(string line) =>
+        DateRangePattern().IsMatch(line) && SpacedDashPattern().IsMatch(WithoutDates(line)) && !line.Contains('|');
+
+    private static bool? RoleOrder(string first, string second)
+    {
+        var firstIsRole = RoleTitlePattern().IsMatch(first);
+        var secondIsRole = RoleTitlePattern().IsMatch(second);
+        return firstIsRole != secondIsRole ? secondIsRole : null;
+    }
+
+    private static Pair? ExperienceHeader(List<string> lines, int index, bool? employerFirst)
     {
         var line = lines[index];
         if (IsBullet(line))
@@ -147,16 +188,19 @@ internal static partial class ResumeProfileExtractor
         var parts = Parts(line);
         if (parts.Length is 2 or 3 && Plausible(parts[0]) && Plausible(parts[1]))
         {
-            var firstIsRole = RoleTitlePattern().IsMatch(parts[0]);
-            var secondIsRole = RoleTitlePattern().IsMatch(parts[1]);
-            if (firstIsRole != secondIsRole)
+            var order = RoleOrder(parts[0], parts[1]);
+            if (order is null && employerFirst.HasValue && HasDatedDash(line))
+            {
+                order = employerFirst;
+            }
+            if (order is { } companyFirst)
             {
                 var location = parts.ElementAtOrDefault(2);
                 if (location is not null && DateOnlyPattern().IsMatch(location))
                 {
                     location = null;
                 }
-                return !firstIsRole && secondIsRole
+                return companyFirst
                     ? new Pair(parts[1], parts[0], 1, location)
                     : new Pair(parts[0], parts[1], 1, location);
             }
@@ -191,11 +235,18 @@ internal static partial class ResumeProfileExtractor
             {
                 Qualification = entry.Pair.First,
                 Institution = entry.Pair.Second,
-                FieldOfStudy = Field(entry.Details, 150, "major", "field of study", "specialisation", "specialization"),
+                FieldOfStudy = Field(entry.Details, 150, "major", "field of study", "specialisation", "specialization")
+                    ?? DegreeSubject(entry.Pair.First),
                 StartMonth = dates.Start,
                 EndMonth = dates.End ?? ParseMonth(Field(entry.Details, 30, "graduated", "graduation date", "completed")),
             });
         }
+    }
+
+    private static string? DegreeSubject(string qualification)
+    {
+        var subject = Limited(DegreeSubjectPattern().Match(qualification).Groups["subject"].Value, 150);
+        return subject?.ToLowerInvariant() is "honours" or "honors" or "hons" ? null : subject;
     }
 
     private static Pair? EducationHeader(List<string> lines, int index)
@@ -301,6 +352,14 @@ internal static partial class ResumeProfileExtractor
         var start = ParseMonth(match?.Groups["start"].Value ?? Field(details, 30, "start date", "start month"));
         var endText = match?.Groups["end"].Value ?? Field(details, 30, "end date", "end month");
         var end = ParseMonth(endText);
+        if (start is null && end is not null && match?.Groups["sharedStart"] is { Success: true } shared)
+        {
+            var sameYear = ParseMonth($"{shared.Value} {end[..4]}");
+            if (string.CompareOrdinal(sameYear, end) <= 0)
+            {
+                start = sameYear;
+            }
+        }
         if (start is not null && end is not null && string.CompareOrdinal(end, start) < 0)
         {
             end = null;
@@ -321,7 +380,8 @@ internal static partial class ResumeProfileExtractor
         {
             return labelled;
         }
-        var matches = header.SelectMany(line => PhonePattern().Matches(line).Select(match => match.Value.Trim()))
+        var matches = header.SelectMany(line => PhonePattern().Matches(UrlPattern().Replace(line, ""))
+                .Select(match => match.Value.Trim()))
             .Where(value => value.Count(char.IsAsciiDigit) is >= 9 and <= 15)
             .DistinctBy(value => string.Concat(value.Where(char.IsAsciiDigit)));
         return Unique(matches);
@@ -413,12 +473,16 @@ internal static partial class ResumeProfileExtractor
     private static partial Regex QualificationPattern();
     [GeneratedRegex(@"\b(?:university|college|tafe|school|institute|academy|polytechnic)\b", RegexOptions.IgnoreCase)]
     private static partial Regex InstitutionPattern();
-    [GeneratedRegex(@"(?<start>" + DateToken + @")\s*(?:[-–—]|\bto\b)\s*(?<end>" + DateToken + @"|present|current|now|ongoing)\b", RegexOptions.IgnoreCase)]
+    [GeneratedRegex(@"\b(?<start>" + DateToken + @")\s*(?:[-–—]|\bto\b)\s*(?<end>" + DateToken + @"|present|current|now|ongoing)\b|\b(?<sharedStart>" + MonthName + @"\.?)\s*[-–—]\s*(?<end>" + MonthAndYear + @")\b", RegexOptions.IgnoreCase)]
     private static partial Regex DateRangePattern();
     [GeneratedRegex(@"^" + DateToken + "$", RegexOptions.IgnoreCase)]
     private static partial Regex DateOnlyPattern();
-    [GeneratedRegex(@"\s*\|\s*|\s+(?:at|@|–|—)\s+", RegexOptions.IgnoreCase)]
+    [GeneratedRegex(@"\s*\|\s*|\s+(?:at|@|-|–|—)\s+", RegexOptions.IgnoreCase)]
     private static partial Regex EntrySeparator();
+    [GeneratedRegex(@"\s[-–—]\s")]
+    private static partial Regex SpacedDashPattern();
+    [GeneratedRegex(@"^(?:BSc|MSc|BEng|MEng|BA|MA|BCom|MCom|BIT|MIT|PhD)\s*\((?<subject>[^()]+)\)$", RegexOptions.IgnoreCase)]
+    private static partial Regex DegreeSubjectPattern();
     [GeneratedRegex(@"[A-Z0-9.!#$%&'*+/=?^_{|}~-]+@[A-Z0-9-]+(?:\.[A-Z0-9-]+)+", RegexOptions.IgnoreCase)]
     private static partial Regex EmailPattern();
     [GeneratedRegex(@"(?<![\p{L}\p{N}/])(?:\+?\d|\(\d{1,4}\))[\d ()-]{6,24}\d(?![\p{L}\p{N}/])")]

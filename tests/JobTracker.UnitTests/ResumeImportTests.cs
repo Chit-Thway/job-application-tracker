@@ -118,6 +118,82 @@ public sealed class ResumeImportTests
     }
 
     [Fact]
+    public async Task Pdf_ImportsCompanyFirstRowsWithCompactDatesAndReadsHeaderLinks()
+    {
+        var builder = new PdfDocumentBuilder();
+        var font = builder.AddStandard14Font(Standard14Font.Helvetica);
+        var page = builder.AddPage(PageSize.A4);
+        page.AddText("Maya Chen", 16, new PdfPoint(50, 800), font);
+        page.AddText("Darwin, NT | maya@example.test |", 12, new PdfPoint(50, 775), font);
+        page.AddText("Portfolio", 12, new PdfPoint(240, 775), font);
+        page.AddLink("https://example.test/maya-1234567890", new PdfRectangle(239, 772, 295, 790));
+        string[] lines =
+        [
+            "EXPERIENCE",
+            "Example Systems - Platform Support Intern Apr-Jun 2024",
+            "Maintained test workstations.",
+            "Example Events - Event Logistics & Operations Jan 2023-Present",
+            "Prepared event spaces.",
+            "Bluegum Labs - Web Developer Intern Nov-Dec 2022",
+            "Updated internal tools.",
+            "ACHIEVEMENTS",
+            "Award for synthetic work",
+            "EDUCATION",
+            "Example University - BSc (Information Systems) Mar 2019-Jul 2022",
+            "Coursework in systems design.",
+        ];
+        for (var index = 0; index < lines.Length; index++)
+        {
+            page.AddText(lines[index], 12, new PdfPoint(50, 745 - index * 20), font);
+        }
+
+        using var file = new MemoryStream(builder.Build());
+        using var service = new ResumeImportService();
+        var draft = new ApplicantProfile
+        {
+            FullName = "Maya Chen",
+            GivenName = "Maya",
+            FamilyName = "Chen",
+            Email = "maya@example.test",
+            Postcode = "0800",
+        };
+        var review = await service.ImportAsync(Upload(file, "synthetic.pdf"), draft, CancellationToken.None);
+
+        Assert.Equal("0800", draft.Postcode);
+        Assert.Equal("Darwin", draft.City);
+        Assert.Equal("NT", draft.Region);
+        Assert.Equal("https://example.test/maya-1234567890", draft.Portfolio);
+        Assert.Null(draft.Phone);
+        Assert.DoesNotContain(review.FilledFields, field => field.Name == nameof(ApplicantProfile.Email));
+        Assert.Equal(3, review.RolesAdded);
+        Assert.Collection(draft.Experience, first =>
+        {
+            Assert.Equal("Example Systems", first.Employer);
+            Assert.Equal("Platform Support Intern", first.Title);
+            Assert.Equal("2024-04", first.StartMonth);
+            Assert.Equal("2024-06", first.EndMonth);
+            Assert.Equal("Maintained test workstations.", first.Responsibilities);
+        }, second =>
+        {
+            Assert.Equal("Example Events", second.Employer);
+            Assert.Equal("Event Logistics & Operations", second.Title);
+            Assert.Equal("2023-01", second.StartMonth);
+            Assert.True(second.Current);
+        }, third =>
+        {
+            Assert.Equal("Bluegum Labs", third.Employer);
+            Assert.Equal("2022-11", third.StartMonth);
+            Assert.Equal("2022-12", third.EndMonth);
+        });
+        var education = Assert.Single(draft.Education);
+        Assert.Equal("Example University", education.Institution);
+        Assert.Equal("BSc (Information Systems)", education.Qualification);
+        Assert.Equal("Information Systems", education.FieldOfStudy);
+        Assert.Equal("2019-03", education.StartMonth);
+        Assert.Equal("2022-07", education.EndMonth);
+    }
+
+    [Fact]
     public async Task RejectsWrongSignaturesTextlessPdfsAndOversizedExpandedWordParts()
     {
         using var service = new ResumeImportService();

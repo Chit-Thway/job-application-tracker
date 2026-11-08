@@ -3,6 +3,8 @@ using System.Text;
 using System.Xml;
 using System.Xml.Linq;
 using UglyToad.PdfPig;
+using UglyToad.PdfPig.Content;
+using UglyToad.PdfPig.Core;
 using UglyToad.PdfPig.DocumentLayoutAnalysis.TextExtractor;
 using UglyToad.PdfPig.Filters;
 using UglyToad.PdfPig.Tokens;
@@ -55,6 +57,7 @@ internal static class ResumeDocumentReader
         }
 
         var text = new StringBuilder();
+        Dictionary<string, string> contactLinks = [];
         for (var pageNumber = 1; pageNumber <= document.NumberOfPages; pageNumber++)
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -64,8 +67,57 @@ internal static class ResumeDocumentReader
                 throw new ResumeImportException("This résumé contains too much text to import.");
             }
             AppendText(text, ContentOrderTextExtractor.GetText(page));
+            if (pageNumber == 1)
+            {
+                contactLinks = ReadPdfContactLinks(page, cancellationToken);
+            }
+        }
+        if (contactLinks.Count > 0)
+        {
+            AppendText(text, "Contact details");
+            foreach (var (label, target) in contactLinks)
+            {
+                AppendText(text, $"{label}: {target}");
+            }
         }
         return text.ToString();
+    }
+
+    private static Dictionary<string, string> ReadPdfContactLinks(Page page, CancellationToken cancellationToken)
+    {
+        IReadOnlyList<Hyperlink> links;
+        try
+        {
+            links = page.GetHyperlinks();
+        }
+        catch (PdfDocumentFormatException)
+        {
+            // A malformed optional annotation should not discard readable page text.
+            return [];
+        }
+
+        var contact = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (var link in links)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (link.Bounds.Bottom < page.Height * .75)
+            {
+                continue;
+            }
+            var label = link.Text?.Trim().ToLowerInvariant() switch
+            {
+                "linkedin" => "LinkedIn",
+                "github" => "GitHub",
+                "portfolio" or "website" or "personal website" => "Portfolio",
+                _ => null,
+            };
+            if (label is not null && Uri.TryCreate(link.Uri, UriKind.Absolute, out var uri)
+                && uri.AbsoluteUri.Length <= 500 && uri.Scheme is "http" or "https" && uri.UserInfo.Length == 0)
+            {
+                contact.TryAdd(label, uri.AbsoluteUri);
+            }
+        }
+        return contact;
     }
 
     private static string ReadDocx(byte[] bytes, CancellationToken cancellationToken)
