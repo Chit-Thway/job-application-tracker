@@ -1803,66 +1803,630 @@ html[data-theme="dark"] .verification-resend-button:hover {
   font: inherit;
 }
 
+.autofill-hero {
+  padding-block: clamp(1.4rem, 3vw, 2.3rem);
+  background: var(--surface);
+  border-bottom: 1px solid var(--line);
+}
+
+.autofill-hero-inner,
+.autofill-section-heading,
+.autofill-actions,
+.autofill-save-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: .75rem 1rem;
+}
+
+.autofill-hero h1 {
+  margin: .2rem 0 .3rem;
+  font-size: clamp(1.85rem, 3.5vw, 2.6rem);
+  line-height: 1.15;
+  letter-spacing: -.05em;
+}
+
+.autofill-hero p,
+.autofill-section-heading p,
+.autofill-save-bar p {
+  margin: 0;
+}
+
+.autofill-hero p:not(.mini-label),
+.autofill-section-heading p:not(.mini-label),
+.autofill-save-bar p,
+.autofill-help,
+.autofill-empty,
+.autofill-feedback {
+  color: var(--ink-soft);
+}
+
+.autofill-layout {
+  display: grid;
+  grid-template-columns: minmax(11rem, .65fr) minmax(0, 3fr);
+  align-items: start;
+  gap: clamp(1rem, 3vw, 2.5rem);
+  padding-block: 1.5rem 4rem;
+}
+
+.autofill-nav {
+  position: sticky;
+  top: 1.25rem;
+  font-size: .86rem;
+}
+
+.autofill-nav > .mini-label {
+  margin: .55rem .7rem;
+}
+
+.autofill-nav ul,
+.autofill-review-counts {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.autofill-nav ul {
+  display: grid;
+  gap: .15rem;
+}
+
+.autofill-nav a {
+  display: block;
+  padding: .55rem .7rem;
+  border-radius: .5rem;
+  color: var(--ink-soft);
+  transition: background-color 150ms ease, color 150ms ease;
+}
+
+.autofill-nav a:hover,
+.autofill-nav a[aria-current="location"] {
+  color: var(--blue-deep);
+  background: var(--blue-soft);
+}
+
+.autofill-nav .autofill-nav-save {
+  display: flex;
+  justify-content: space-between;
+  margin-top: .65rem;
+  border-top: 1px solid var(--line);
+  color: var(--blue-deep);
+  font-weight: 750;
+}
+
+.autofill-profile {
+  --autofill-danger: #a52b21;
+  --autofill-danger-soft: #fdf1ef;
+}
+
 .autofill-profile,
-.autofill-profile > form,
+.autofill-editor,
+.autofill-entries,
 .autofill-fields {
-    display: grid;
-    gap: 1rem;
+  display: grid;
+  gap: 1rem;
+  min-width: 0;
 }
 
-.autofill-profile > form > button {
-    justify-self: start;
+.detail-card.autofill-panel {
+  scroll-margin-top: 1.25rem;
+  box-shadow: none;
+}
+
+.autofill-panel:target {
+  border-color: var(--blue);
+}
+
+.autofill-section-heading {
+  align-items: flex-start;
+  margin-bottom: 1.1rem;
+}
+
+.autofill-panel .autofill-section-heading h2,
+.autofill-panel .autofill-import-summary h2 {
+  margin: 0;
+}
+
+.autofill-section-heading h2[tabindex] {
+  width: fit-content;
+  margin-block: .25rem .4rem;
+  border-radius: .2rem;
+  line-height: 1.3;
+  outline-offset: .1rem;
+}
+
+.autofill-section-heading p:not(.mini-label) {
+  margin-top: .2rem;
+  font-size: .9rem;
+}
+
+.autofill-profile .button,
+.autofill-hero .button {
+  min-height: 2.6rem;
+  padding: .5rem .85rem;
+  border-radius: .55rem;
+  box-shadow: none;
+  transform: none;
+  transition: background-color 150ms ease, border-color 150ms ease, opacity 150ms ease;
+}
+
+.autofill-profile button.button:not(:disabled) {
+  cursor: pointer;
+}
+
+.autofill-profile .button-secondary:hover:not(:disabled),
+.autofill-hero .button-secondary:hover {
+  border-color: var(--blue);
+  background: var(--blue-soft);
+}
+
+.autofill-profile .button:active:not(:disabled) {
+  opacity: .8;
+}
+
+.autofill-profile .button[aria-busy="true"] {
+  cursor: progress;
+  opacity: .82;
+}
+
+.autofill-import-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .8rem;
+  list-style: none;
+  cursor: pointer;
+}
+
+.autofill-import-summary::-webkit-details-marker {
+  display: none;
+}
+
+.autofill-import-summary::after {
+  width: .5rem;
+  height: .5rem;
+  flex: 0 0 auto;
+  margin-inline-end: .2rem;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  content: "";
+  transform: rotate(45deg);
+  transition: transform 150ms ease;
+}
+
+.autofill-import-disclosure[open] .autofill-import-summary::after {
+  transform: rotate(-135deg);
+}
+
+.autofill-import-summary:hover {
+  color: var(--blue-deep);
+}
+
+.autofill-import-intro {
+  margin: .25rem 0 .9rem;
+  color: var(--ink-soft);
+  font-size: .9rem;
+}
+
+.autofill-file-picker {
+  padding: .85rem 1rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface-muted);
+}
+
+.autofill-file-picker:focus-within {
+  border-color: var(--blue);
+}
+
+.autofill-file-picker input[type="file"] {
+  min-height: 2.85rem;
+  padding: .3rem;
+  overflow: hidden;
+  color: var(--ink-soft);
+  font-size: .88rem;
+}
+
+.autofill-file-picker input::file-selector-button {
+  margin-inline-end: .6rem;
+  padding: .42rem .65rem;
+  border: 1px solid var(--line);
+  border-radius: .45rem;
+  color: var(--ink);
+  background: var(--surface-muted);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background-color 150ms ease;
+}
+
+.autofill-file-picker input::file-selector-button:hover {
+  background: var(--blue-soft);
+}
+
+.autofill-upload-actions {
+  justify-content: flex-start;
+  margin-top: .8rem;
+}
+
+.autofill-help,
+.autofill-feedback {
+  margin: .45rem 0 0;
+  font-size: .84rem;
+}
+
+.autofill-file-picker .autofill-help,
+.autofill-feedback:empty {
+  margin: 0;
+}
+
+.autofill-file-error {
+  margin: .2rem 0 0;
+  color: var(--autofill-danger);
+  font-size: .86rem;
+  font-weight: 650;
+}
+
+.detail-card.autofill-review {
+  border-inline-start: 3px solid var(--blue);
+}
+
+.autofill-review-counts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .5rem .75rem;
+}
+
+.autofill-review-counts li {
+  display: flex;
+  align-items: baseline;
+  gap: .45rem;
+  padding: .3rem .65rem;
+  border-radius: .45rem;
+  background: var(--surface-muted);
+  font-size: .84rem;
+}
+
+.autofill-review-counts strong,
+.autofill-count {
+  color: var(--blue-deep);
+  font-variant-numeric: tabular-nums;
+}
+
+.autofill-review-counts a:hover {
+  text-decoration: underline;
+}
+
+.autofill-disclosure {
+  margin-top: 1rem;
+  border-top: 1px solid var(--line);
+}
+
+.autofill-disclosure summary {
+  padding: .7rem .25rem;
+  border-radius: .4rem;
+  font-size: .88rem;
+  font-weight: 720;
+  cursor: pointer;
+  transition: background-color 150ms ease;
+}
+
+.autofill-disclosure summary:hover {
+  background: var(--surface-muted);
+}
+
+.autofill-count {
+  margin-inline-start: .3rem;
+  padding: .1rem .45rem;
+  border-radius: .45rem;
+  background: var(--blue-soft);
+  font-size: .76rem;
+}
+
+.autofill-comparison {
+  display: grid;
+  gap: .7rem;
+}
+
+.autofill-comparison-row {
+  padding: .65rem .8rem;
+  border: 1px solid var(--line);
+  border-radius: .5rem;
+}
+
+.autofill-comparison-row h3 {
+  margin: 0 0 .25rem;
+  font-size: .9rem;
+}
+
+.autofill-comparison-row dl {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: .5rem 1rem;
+  margin: 0;
+}
+
+.autofill-comparison-row dt {
+  color: var(--ink-soft);
+  font-size: .76rem;
+}
+
+.autofill-comparison-row dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+  font-size: .86rem;
+}
+
+.autofill-group,
+.autofill-entry {
+  min-width: 0;
+  margin: 0;
+}
+
+.autofill-group {
+  padding: 0;
+  border: 0;
+}
+
+.autofill-group + .autofill-group {
+  margin-top: 1.2rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--line);
+}
+
+.autofill-group legend {
+  float: left;
+  width: 100%;
+  margin-bottom: .55rem;
+  padding: 0;
+  font-size: .88rem;
+  font-weight: 750;
 }
 
 .autofill-fields {
-    grid-template-columns: repeat(auto-fit, minmax(min(100%, 13rem), 1fr));
+  clear: both;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: .9rem 1rem;
+}
+
+.autofill-fields > .field {
+  grid-column: span 3;
+  min-width: 0;
+  align-content: start;
+}
+
+.autofill-fields > .autofill-wide {
+  grid-column: span 4;
+}
+
+.autofill-fields > .autofill-narrow {
+  grid-column: span 2;
+}
+
+.autofill-fields > .autofill-full {
+  grid-column: 1 / -1;
+}
+
+.autofill-fields :is(input:not([type="checkbox"]), textarea) {
+  width: 100%;
+  min-width: 0;
+  min-height: 2.75rem;
+  padding: .52rem .65rem;
+  border: 1px solid var(--field-border);
+  border-radius: .5rem;
+  color: var(--ink);
+  background: var(--surface-raised);
+  font: inherit;
+  transition: border-color 150ms ease, background-color 150ms ease;
+}
+
+.autofill-fields textarea {
+  resize: vertical;
+}
+
+.autofill-fields :is(input, textarea):focus-visible {
+  border-color: var(--blue);
+}
+
+.autofill-fields :is(input, textarea):hover:not(:focus):not([aria-invalid="true"]) {
+  border-color: var(--ink-soft);
+}
+
+.autofill-fields .autofill-checkbox {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: .4rem;
+  min-height: 2rem;
+  cursor: pointer;
+}
+
+.autofill-checkbox input[type="checkbox"] {
+  width: 1rem;
+  min-height: 1rem;
+  margin: 0;
+  padding: 0;
+  accent-color: var(--blue);
 }
 
 .autofill-entry {
-    min-width: 0;
-    margin: 0 0 1rem;
-    padding: 1rem;
-    border: 1px solid currentColor;
-    border-radius: .65rem;
+  padding: .75rem 1rem 1rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface-muted);
 }
 
-.autofill-wide {
-    grid-column: 1 / -1;
+.autofill-entry legend {
+  padding-inline: .35rem;
+  font-size: .88rem;
+  font-weight: 750;
 }
 
-.autofill-actions {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: .75rem;
-    margin-top: .75rem;
+.autofill-entry:focus-within {
+  border-color: var(--blue);
 }
 
-.autofill-entry .field input[type="checkbox"] {
-    width: auto;
+.autofill-entry-actions {
+  justify-content: flex-start;
+  margin-top: .9rem;
+  padding-top: .7rem;
+  border-top: 1px solid var(--line);
 }
 
-.autofill-entry [hidden] {
-    display: none;
+.autofill-remove {
+  margin-inline-start: auto;
+  padding: .45rem .55rem;
+  border: 0;
+  border-radius: .45rem;
+  color: var(--autofill-danger);
+  background: transparent;
+  font: inherit;
+  font-size: .84rem;
+  font-weight: 650;
+  cursor: pointer;
+  transition: background-color 150ms ease;
+}
+
+.autofill-remove:hover {
+  background: var(--autofill-danger-soft);
+}
+
+.autofill-empty {
+  margin: 0;
+  padding: .8rem;
+  border-radius: .5rem;
+  background: var(--surface-muted);
+  font-size: .88rem;
+}
+
+.autofill-profile [hidden] {
+  display: none;
+}
+
+.autofill-feedback[data-feedback="success"] {
+  color: var(--green);
+}
+
+.autofill-feedback[data-feedback="error"] {
+  color: var(--autofill-danger);
+}
+
+.autofill-save-bar {
+  padding: .7rem .85rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  font-size: .88rem;
+}
+
+.autofill-save-bar p {
+  flex: 1 1 12rem;
+}
+
+.autofill-delete-form p {
+  margin: 0 0 .75rem;
+  color: var(--ink-soft);
 }
 
 .resume-field-badge {
-    display: inline-block;
-    margin-inline-start: .45rem;
-    padding: .1rem .4rem;
-    border: 1px solid #d8ab32;
-    border-radius: .35rem;
-    background: #fff2bc;
-    color: #644500;
-    font-size: .72rem;
-    font-weight: 600;
-    white-space: nowrap;
+  display: inline-block;
+  margin-inline-start: .35rem;
+  padding: .08rem .38rem;
+  border: 1px solid #d8ab32;
+  border-radius: .35rem;
+  background: #fff2bc;
+  color: #644500;
+  font-size: .72rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.autofill-legend-badge {
+  margin-inline-start: 0;
+}
+
+html[data-theme="dark"] .autofill-profile {
+  --autofill-danger: #ffc0ba;
+  --autofill-danger-soft: #593330;
 }
 
 html[data-theme="dark"] .resume-field-badge {
-    border-color: #a57b29;
-    background: #4b3712;
-    color: #ffe4a0;
+  border-color: #a57b29;
+  background: #4b3712;
+  color: #ffe4a0;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .autofill-review,
+  .autofill-entry[data-new-entry] {
+    animation: autofill-enter 170ms ease-out both;
+  }
+
+  .autofill-profile .button[aria-busy="true"]::before {
+    width: .8rem;
+    height: .8rem;
+    border: 2px solid currentColor;
+    border-inline-end-color: transparent;
+    border-radius: 50%;
+    content: "";
+    animation: autofill-spin 800ms linear infinite;
+  }
+}
+
+@keyframes autofill-enter {
+  from { opacity: .55; transform: translateY(3px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes autofill-spin {
+  to { transform: rotate(1turn); }
+}
+
+@media (max-width: 58rem) {
+  .autofill-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .autofill-nav {
+    position: static;
+    padding-bottom: .55rem;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .autofill-nav ul {
+    display: flex;
+    flex-wrap: wrap;
+  }
+
+  .autofill-nav .autofill-nav-save {
+    display: inline-flex;
+    gap: .55rem;
+    margin-top: .15rem;
+    border: 0;
+  }
+}
+
+@media (max-width: 43rem) {
+  .autofill-fields > :is(.autofill-wide, .autofill-narrow) {
+    grid-column: span 3;
+  }
+}
+
+@media (max-width: 33rem) {
+  .autofill-fields > .field,
+  .autofill-fields > :is(.autofill-wide, .autofill-narrow) {
+    grid-column: 1 / -1;
+  }
+
+  .autofill-comparison-row dl {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .autofill-save-bar .button,
+  .autofill-upload-actions .button {
+    width: 100%;
+  }
 }
 
 .field input[aria-invalid="true"] {

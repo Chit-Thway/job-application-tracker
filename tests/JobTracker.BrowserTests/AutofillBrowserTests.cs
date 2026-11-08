@@ -114,6 +114,7 @@ public sealed class AutofillBrowserTests(BrowserJourneyFixture fixture)
         await page.GetByRole(AriaRole.Button, new() { Name = "Sign in", Exact = true }).ClickAsync();
         await page.WaitForURLAsync("**/dashboard");
         await page.GotoAsync(new Uri(fixture.BaseAddress, "/extension/profile").AbsoluteUri);
+        await page.GetByRole(AriaRole.Button, new() { Name = "Use essential cookies" }).ClickAsync();
         var resume = new PdfDocumentBuilder();
         var font = resume.AddStandard14Font(Standard14Font.Helvetica);
         var resumePage = resume.AddPage(PageSize.A4);
@@ -138,14 +139,52 @@ public sealed class AutofillBrowserTests(BrowserJourneyFixture fixture)
         {
             resumePage.AddText(lines[index], 12, new PdfPoint(50, 780 - index * 22), font);
         }
-        await page.GetByLabel("Résumé file").SetInputFilesAsync(new FilePayload
+        var upload = page.GetByLabel("Résumé file");
+        await upload.SetInputFilesAsync(new FilePayload
+        {
+            Name = "invalid.txt",
+            MimeType = "text/plain",
+            Buffer = "Synthetic invalid file"u8.ToArray(),
+        });
+        await Expect(upload).ToHaveAttributeAsync("aria-invalid", "true");
+        await Expect(page.Locator("#resume-upload-error")).ToBeVisibleAsync();
+        await upload.SetInputFilesAsync(new FilePayload
         {
             Name = "synthetic-resume.pdf",
             MimeType = "application/pdf",
             Buffer = resume.Build(),
         });
+        await Expect(page.Locator("#resume-upload-error")).ToBeHiddenAsync();
+        await Expect(page.GetByText("File selected. Ready to extract.")).ToBeVisibleAsync();
+        Assert.True(await page.EvaluateAsync<bool>("""
+            () => {
+              const form = document.querySelector("[data-resume-upload]");
+              const submit = form.querySelector("button[type='submit']");
+              form.addEventListener("submit", event => event.preventDefault(), { once: true });
+              form.requestSubmit(submit);
+              const pending = submit.disabled && submit.getAttribute("aria-busy") === "true"
+                && submit.textContent === "Extracting details…";
+              window.dispatchEvent(new PageTransitionEvent("pageshow", { persisted: true }));
+              return pending && !submit.disabled && !submit.hasAttribute("aria-busy");
+            }
+            """));
         await page.GetByRole(AriaRole.Button, new() { Name = "Extract résumé details" }).ClickAsync();
-        await Expect(page.GetByRole(AriaRole.Heading, new() { Name = "Review résumé suggestions" })).ToBeVisibleAsync();
+        var review = page.GetByRole(AriaRole.Heading, new() { Name = "Review résumé suggestions" });
+        await Expect(review).ToBeFocusedAsync();
+        await Expect(upload).ToBeHiddenAsync();
+        await Expect(page.GetByRole(AriaRole.Navigation, new() { Name = "Profile sections" })
+            .GetByRole(AriaRole.Link, new() { Name = "Review suggestions" })).ToHaveAttributeAsync("aria-current", "location");
+        await page.EmulateMediaAsync(new() { ReducedMotion = ReducedMotion.Reduce });
+        Assert.Equal("none", await page.Locator("#resume-review")
+            .EvaluateAsync<string>("panel => getComputedStyle(panel).animationName"));
+        await page.EmulateMediaAsync(new() { ReducedMotion = ReducedMotion.NoPreference });
+
+        await page.SetViewportSizeAsync(390, 844);
+        Assert.True(await page.EvaluateAsync<bool>("document.documentElement.scrollWidth <= window.innerWidth"));
+        await page.SetViewportSizeAsync(1280, 900);
+        await page.GetByRole(AriaRole.Navigation, new() { Name = "Profile sections" })
+            .GetByRole(AriaRole.Link, new() { Name = "Import résumé", Exact = true }).ClickAsync();
+        await Expect(upload).ToBeVisibleAsync();
 
         await CheckImportedAsync("GivenName", "Maya");
         await CheckImportedAsync("FamilyName", "Chen");
@@ -164,6 +203,14 @@ public sealed class AutofillBrowserTests(BrowserJourneyFixture fixture)
         await Expect(Badge("Experience[0].Current")).ToBeVisibleAsync();
         await Expect(Badge("Experience[0].EndMonth")).ToHaveCountAsync(0);
         await Expect(Badge("Availability")).ToHaveCountAsync(0);
+        var experience = page.Locator("#work-experience");
+        var addRole = experience.GetByRole(AriaRole.Button, new() { Name = "Add role" });
+        await addRole.ClickAsync();
+        await Expect(Field("Experience[2].Title")).ToBeFocusedAsync();
+        await Expect(experience.GetByRole(AriaRole.Status).Filter(new() { HasText = "Entry added to the draft." })).ToBeVisibleAsync();
+        await experience.Locator("[data-entry]").Last.GetByRole(AriaRole.Button, new() { Name = "Remove role" }).ClickAsync();
+        await Expect(addRole).ToBeFocusedAsync();
+        await Expect(Field("Experience[2].Title")).ToHaveCountAsync(0);
         await Field("Phone").FillAsync("+61 491 570 007");
         await Expect(Badge("Phone")).ToHaveCountAsync(0);
         await Field("Availability").FillAsync("Immediately");

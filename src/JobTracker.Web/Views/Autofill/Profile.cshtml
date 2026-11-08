@@ -5,157 +5,273 @@
     ViewData["Title"] = "Autofill profile";
     ViewData["Section"] = "extension";
     var review = ViewData["ResumeReview"] as ResumeImportReview;
+    var uploadError = ViewData["ResumeError"] as string;
     ViewDataDictionary Row(string prefix) => new(ViewData) { TemplateInfo = { HtmlFieldPrefix = prefix } };
 }
 
-<section class="workspace-hero">
-    <div class="shell workspace-heading">
+<header class="autofill-hero">
+    <div class="shell autofill-hero-inner">
         <div>
+            <p class="mini-label">Extension settings</p>
             <h1>Autofill profile</h1>
-            <p>Save the information you want to reuse on employer application forms.</p>
+            <p>Keep the details you reuse on job applications in one place.</p>
         </div>
-        <a class="button" asp-controller="Home" asp-action="BrowserExtension">Extension setup</a>
+        <a class="button button-secondary" asp-controller="Home" asp-action="BrowserExtension">Extension setup</a>
     </div>
-</section>
-<section class="workspace-content">
-    <div class="shell autofill-profile">
-        <section class="detail-card" aria-labelledby="resume-import-heading">
-            <h2 id="resume-import-heading">Import résumé</h2>
-            <p>Upload a text PDF or Word (.docx) file up to 5 MB. Import starts from your saved profile, so save any edits before uploading again.</p>
-            @if (ViewData["ResumeError"] is string error)
-            {
-                <p class="validation-summary" role="alert">@error</p>
-            }
+</header>
+
+<div class="shell autofill-layout">
+    <nav class="autofill-nav" aria-label="Profile sections">
+        <p class="mini-label">On this page</p>
+        <ul>
+            <li><a href="#resume-import">Import résumé</a></li>
             @if (review is not null)
             {
-                <div role="status">
-                    <h3>Review résumé suggestions</h3>
-                    <p>Yellow <strong>From résumé</strong> labels mark values added to the draft. Review them and click <strong>Save profile</strong> to keep them.</p>
-                    @if (review.FilledFields.Count > 0)
-                    {
-                        <p><strong>Fields filled</strong> @string.Join(", ", review.FilledFields.Select(field => field.Label))</p>
-                    }
-                    @if (review.RolesAdded + review.EducationAdded + review.CertificatesAdded > 0)
-                    {
-                        <p><strong>Entries added</strong> @review.RolesAdded work, @review.EducationAdded education, @review.CertificatesAdded certification.</p>
-                    }
-                    @if (review.EntriesSkipped > 0)
-                    {
-                        <p>@review.EntriesSkipped résumé entries already match your profile or exceed the section limit.</p>
-                    }
-                    @if (review.FilledFields.Count + review.RolesAdded + review.EducationAdded + review.CertificatesAdded == 0)
-                    {
-                        <p>No new values were added to the draft.</p>
-                    }
+                <li><a href="#resume-review">Review suggestions</a></li>
+            }
+            <li><a href="#contact-details">Contact and address</a></li>
+            <li><a href="#work-experience">Work experience</a></li>
+            <li><a href="#education">Education</a></li>
+            <li><a href="#certifications">Certifications</a></li>
+            <li><a href="#links-and-answers">Links and answers</a></li>
+            <li><a href="#profile-connection">Connection</a></li>
+        </ul>
+        <a class="autofill-nav-save" href="#profile-save">Review and save <span aria-hidden="true">↓</span></a>
+    </nav>
+
+    <div class="autofill-profile">
+        <section class="detail-card autofill-panel" id="resume-import" aria-labelledby="resume-import-heading">
+            <details class="autofill-import-disclosure" open="@(review is null)" data-resume-picker>
+                <summary class="autofill-import-summary">
+                    <h2 id="resume-import-heading">@(review is null ? "Import résumé" : "Import another résumé")</h2>
+                </summary>
+                <p class="autofill-import-intro">Start with a résumé, then review the details we find before saving.</p>
+                <form asp-action="ImportResume" method="post" enctype="multipart/form-data" data-resume-upload>
+                    <div class="field autofill-file-picker">
+                        <label for="resume">Résumé file</label>
+                        <input type="file" id="resume" name="resume" accept=".pdf,.docx" required
+                               aria-describedby="resume-file-hint resume-upload-error"
+                               aria-invalid="@(uploadError is null ? null : "true")" />
+                        <p class="autofill-help" id="resume-file-hint">Text PDF or Word (.docx), up to 5 MB.</p>
+                        <p class="autofill-file-error" id="resume-upload-error" role="alert" hidden="@(uploadError is null)"
+                           tabindex="-1" data-resume-error>@uploadError</p>
+                    </div>
+                    <div class="autofill-actions autofill-upload-actions">
+                        <button class="button button-primary" type="submit" data-pending-label="Extracting details…">Extract résumé details</button>
+                        <span class="autofill-feedback" role="status" data-resume-selection></span>
+                    </div>
+                    <p class="autofill-help">Import starts from your saved profile. Save any edits before choosing another file.</p>
+                </form>
+            </details>
+        </section>
+
+        @if (review is not null)
+        {
+            <section class="detail-card autofill-panel autofill-review" id="resume-review" aria-labelledby="resume-review-heading">
+                <div class="autofill-section-heading">
+                    <div>
+                        <p class="mini-label">Draft ready to review</p>
+                        <h2 id="resume-review-heading" tabindex="-1" data-resume-result>Review résumé suggestions</h2>
+                        <p>Look for <span class="resume-field-badge autofill-legend-badge">From résumé</span> next to the values added to your draft.</p>
+                    </div>
+                    <a class="button button-secondary" asp-action="Profile">Discard import</a>
                 </div>
+                @if (review.FilledFields.Count + review.RolesAdded + review.EducationAdded + review.CertificatesAdded > 0)
+                {
+                    <ul class="autofill-review-counts" aria-label="Suggestions added">
+                        @if (review.FilledFields.Count > 0)
+                        {
+                            <li><strong>@review.FilledFields.Count</strong><span>Profile fields</span></li>
+                        }
+                        @if (review.RolesAdded > 0)
+                        {
+                            <li><strong>@review.RolesAdded</strong><a href="#work-experience">Work @(review.RolesAdded == 1 ? "role" : "roles")</a></li>
+                        }
+                        @if (review.EducationAdded > 0)
+                        {
+                            <li><strong>@review.EducationAdded</strong><a href="#education">Education @(review.EducationAdded == 1 ? "entry" : "entries")</a></li>
+                        }
+                        @if (review.CertificatesAdded > 0)
+                        {
+                            <li><strong>@review.CertificatesAdded</strong><a href="#certifications">@(review.CertificatesAdded == 1 ? "Certification" : "Certifications")</a></li>
+                        }
+                    </ul>
+                }
+                else
+                {
+                    <p class="autofill-help">No new values were added to the draft.</p>
+                }
+                @if (review.EntriesSkipped > 0)
+                {
+                    <p class="autofill-help">@review.EntriesSkipped résumé entries already match your profile or exceed the section limit.</p>
+                }
                 @if (review.Differences.Count > 0)
                 {
-                    <details>
-                        <summary>Compare résumé suggestions with your profile</summary>
-                        <dl>
+                    <details class="autofill-disclosure">
+                        <summary>Compare résumé suggestions with your profile <span class="autofill-count">@review.Differences.Count</span></summary>
+                        <div class="autofill-comparison">
                             @foreach (var difference in review.Differences)
                             {
-                                <dt>@difference.Field</dt>
-                                <dd>Saved value <strong>@(difference.Saved ?? "Empty")</strong></dd>
-                                <dd>Résumé suggestion <strong>@difference.Suggested</strong></dd>
+                                <div class="autofill-comparison-row">
+                                    <h3>@difference.Field</h3>
+                                    <dl>
+                                        <div><dt>Saved profile</dt><dd>@(difference.Saved ?? "Empty")</dd></div>
+                                        <div><dt>Résumé suggestion</dt><dd>@difference.Suggested</dd></div>
+                                    </dl>
+                                </div>
                             }
-                        </dl>
+                        </div>
                     </details>
                 }
-            }
-            <form asp-action="ImportResume" method="post" enctype="multipart/form-data">
-                <div class="field">
-                    <label for="resume">Résumé file</label>
-                    <input type="file" id="resume" name="resume" accept=".pdf,.docx" required />
-                </div>
-                <div class="autofill-actions">
-                    <button class="button button-secondary" type="submit">Extract résumé details</button>
-                    @if (review is not null)
-                    {
-                        <a class="button" asp-action="Profile">Discard import</a>
-                    }
-                </div>
-            </form>
-        </section>
-        <form asp-action="Save" method="post"
-              data-resume-fields="@(review is null ? null : string.Join(",", review.FilledFields.Select(field => field.Name)))">
-            <div asp-validation-summary="All" class="validation-summary"></div>
-            <section class="detail-card">
-                <h2>Contact and address</h2>
-                <div class="autofill-fields">
-                    <div class="field"><label asp-for="FullName">Full name</label><input asp-for="FullName" /></div>
-                    <div class="field"><label asp-for="PreferredName">Preferred name</label><input asp-for="PreferredName" /></div>
-                    <div class="field"><label asp-for="GivenName">Given name</label><input asp-for="GivenName" /></div>
-                    <div class="field"><label asp-for="FamilyName">Family name</label><input asp-for="FamilyName" /></div>
-                    <div class="field"><label asp-for="Email">Application email</label><input asp-for="Email" /></div>
-                    <div class="field"><label asp-for="Phone">Phone</label><input asp-for="Phone" type="tel" /></div>
-                    <div class="field"><label asp-for="AddressLine1">Street address</label><input asp-for="AddressLine1" /></div>
-                    <div class="field"><label asp-for="AddressLine2">Address line 2</label><input asp-for="AddressLine2" /></div>
-                    <div class="field"><label asp-for="City">Suburb or city</label><input asp-for="City" /></div>
-                    <div class="field"><label asp-for="Region">State or territory</label><input asp-for="Region" /></div>
-                    <div class="field"><label asp-for="Postcode">Postcode</label><input asp-for="Postcode" /></div>
-                    <div class="field"><label asp-for="Country">Country</label><input asp-for="Country" /></div>
-                </div>
             </section>
-            <section class="detail-card" data-entry-list data-resume-added="@review?.RolesAdded">
-                <h2>Work experience</h2>
-                <p>Order roles most recent first. Copy role gives you a text version for forms that need manual entry.</p>
-                <div data-entries>
+        }
+
+        <form asp-action="Save" method="post" class="autofill-editor"
+              data-resume-fields="@(review is null ? null : string.Join(",", review.FilledFields.Select(field => field.Name)))">
+            <div asp-validation-summary="All" class="validation-summary" tabindex="-1" data-profile-validation></div>
+            <section class="detail-card autofill-panel" id="contact-details" aria-labelledby="contact-heading">
+                <div class="autofill-section-heading">
+                    <div>
+                        <h2 id="contact-heading">Contact and address</h2>
+                        <p>Use the name, email and address you want employers to see.</p>
+                    </div>
+                </div>
+                <fieldset class="autofill-group">
+                    <legend>Name</legend>
+                    <div class="autofill-fields">
+                        <div class="field"><label asp-for="FullName">Full name</label><input asp-for="FullName" autocomplete="name" /></div>
+                        <div class="field"><label asp-for="PreferredName">Preferred name</label><input asp-for="PreferredName" autocomplete="nickname" /></div>
+                        <div class="field"><label asp-for="GivenName">Given name</label><input asp-for="GivenName" autocomplete="given-name" /></div>
+                        <div class="field"><label asp-for="FamilyName">Family name</label><input asp-for="FamilyName" autocomplete="family-name" /></div>
+                    </div>
+                </fieldset>
+                <fieldset class="autofill-group">
+                    <legend>Contact details</legend>
+                    <div class="autofill-fields">
+                        <div class="field autofill-wide"><label asp-for="Email">Application email</label><input asp-for="Email" autocomplete="email" /></div>
+                        <div class="field autofill-narrow"><label asp-for="Phone">Phone</label><input asp-for="Phone" type="tel" autocomplete="tel" /></div>
+                    </div>
+                </fieldset>
+                <fieldset class="autofill-group">
+                    <legend>Mailing address</legend>
+                    <div class="autofill-fields">
+                        <div class="field autofill-wide"><label asp-for="AddressLine1">Street address</label><input asp-for="AddressLine1" autocomplete="address-line1" /></div>
+                        <div class="field autofill-narrow"><label asp-for="AddressLine2">Address line 2</label><input asp-for="AddressLine2" autocomplete="address-line2" /></div>
+                        <div class="field autofill-narrow"><label asp-for="City">Suburb or city</label><input asp-for="City" autocomplete="address-level2" /></div>
+                        <div class="field autofill-narrow"><label asp-for="Region">State or territory</label><input asp-for="Region" autocomplete="address-level1" /></div>
+                        <div class="field autofill-narrow"><label asp-for="Postcode">Postcode</label><input asp-for="Postcode" autocomplete="postal-code" /></div>
+                        <div class="field"><label asp-for="Country">Country</label><input asp-for="Country" autocomplete="country-name" /></div>
+                    </div>
+                </fieldset>
+            </section>
+
+            <section class="detail-card autofill-panel" id="work-experience" aria-labelledby="experience-heading"
+                     data-entry-list data-resume-added="@review?.RolesAdded">
+                <div class="autofill-section-heading">
+                    <div>
+                        <h2 id="experience-heading">Work experience</h2>
+                        <p>List your most recent roles first.</p>
+                    </div>
+                    <button type="button" class="button button-secondary" data-add-entry>Add role</button>
+                </div>
+                <p class="autofill-empty" data-entry-empty hidden="@(Model.Experience.Count > 0)">Add a role manually or import your work history from a résumé.</p>
+                <div class="autofill-entries" data-entries>
                     @for (var index = 0; index < Model.Experience.Count; index++)
                     {
                         <partial name="_Experience" model="Model.Experience[index]" view-data='Row($"Experience[{index}]")' />
                     }
                 </div>
                 <template><partial name="_Experience" model="new ExperienceEntry()" view-data='Row("Experience[__index__]")' /></template>
-                <button type="button" class="button" data-add-entry>Add role</button>
+                <p class="autofill-feedback" role="status" data-entry-status></p>
             </section>
-            <section class="detail-card" data-entry-list data-resume-added="@review?.EducationAdded">
-                <h2>Education</h2>
-                <div data-entries>
+
+            <section class="detail-card autofill-panel" id="education" aria-labelledby="education-heading"
+                     data-entry-list data-resume-added="@review?.EducationAdded">
+                <div class="autofill-section-heading">
+                    <div>
+                        <h2 id="education-heading">Education</h2>
+                        <p>Add qualifications and the institutions you attended.</p>
+                    </div>
+                    <button type="button" class="button button-secondary" data-add-entry>Add education</button>
+                </div>
+                <p class="autofill-empty" data-entry-empty hidden="@(Model.Education.Count > 0)">Education entries will appear here.</p>
+                <div class="autofill-entries" data-entries>
                     @for (var index = 0; index < Model.Education.Count; index++)
                     {
                         <partial name="_Education" model="Model.Education[index]" view-data='Row($"Education[{index}]")' />
                     }
                 </div>
                 <template><partial name="_Education" model="new EducationEntry()" view-data='Row("Education[__index__]")' /></template>
-                <button type="button" class="button" data-add-entry>Add education</button>
+                <p class="autofill-feedback" role="status" data-entry-status></p>
             </section>
-            <section class="detail-card" data-entry-list data-resume-added="@review?.CertificatesAdded">
-                <h2>Certifications</h2>
-                <div data-entries>
+
+            <section class="detail-card autofill-panel" id="certifications" aria-labelledby="certifications-heading"
+                     data-entry-list data-resume-added="@review?.CertificatesAdded">
+                <div class="autofill-section-heading">
+                    <div>
+                        <h2 id="certifications-heading">Certifications</h2>
+                        <p>Add credentials you want to reuse on applications.</p>
+                    </div>
+                    <button type="button" class="button button-secondary" data-add-entry>Add certification</button>
+                </div>
+                <p class="autofill-empty" data-entry-empty hidden="@(Model.Certifications.Count > 0)">Certification entries will appear here.</p>
+                <div class="autofill-entries" data-entries>
                     @for (var index = 0; index < Model.Certifications.Count; index++)
                     {
                         <partial name="_Certification" model="Model.Certifications[index]" view-data='Row($"Certifications[{index}]")' />
                     }
                 </div>
                 <template><partial name="_Certification" model="new CertificationEntry()" view-data='Row("Certifications[__index__]")' /></template>
-                <button type="button" class="button" data-add-entry>Add certification</button>
+                <p class="autofill-feedback" role="status" data-entry-status></p>
             </section>
-            <section class="detail-card">
-                <h2>Links and saved answers</h2>
-                <div class="autofill-fields">
-                    <div class="field"><label asp-for="LinkedIn">LinkedIn</label><input asp-for="LinkedIn" type="url" /></div>
-                    <div class="field"><label asp-for="GitHub">GitHub</label><input asp-for="GitHub" type="url" /></div>
-                    <div class="field"><label asp-for="Portfolio">Portfolio or personal website</label><input asp-for="Portfolio" type="url" /></div>
-                    <div class="field"><label asp-for="NoticePeriod">Notice period</label><input asp-for="NoticePeriod" /></div>
-                    <div class="field"><label asp-for="Availability">Availability</label><input asp-for="Availability" /></div>
+
+            <section class="detail-card autofill-panel" id="links-and-answers" aria-labelledby="links-heading">
+                <div class="autofill-section-heading">
+                    <div>
+                        <h2 id="links-heading">Links and saved answers</h2>
+                        <p>Keep public links and answers to common application questions handy.</p>
+                    </div>
                 </div>
+                <fieldset class="autofill-group">
+                    <legend>Public links</legend>
+                    <div class="autofill-fields">
+                        <div class="field"><label asp-for="LinkedIn">LinkedIn</label><input asp-for="LinkedIn" type="url" /></div>
+                        <div class="field"><label asp-for="GitHub">GitHub</label><input asp-for="GitHub" type="url" /></div>
+                        <div class="field autofill-full"><label asp-for="Portfolio">Portfolio or personal website</label><input asp-for="Portfolio" type="url" /></div>
+                    </div>
+                </fieldset>
+                <fieldset class="autofill-group">
+                    <legend>Saved answers</legend>
+                    <div class="autofill-fields">
+                        <div class="field"><label asp-for="NoticePeriod">Notice period</label><input asp-for="NoticePeriod" /></div>
+                        <div class="field"><label asp-for="Availability">Availability</label><input asp-for="Availability" /></div>
+                    </div>
+                </fieldset>
             </section>
-            <button class="button button-primary" type="submit">Save profile</button>
-        </form>
-        <section class="detail-card">
-            <h2>Profile and connection</h2>
-            <p>Open the extension to connect. The employer's website can read any values you fill into its form.</p>
-            <div class="autofill-actions">
-                <form asp-action="Disconnect" method="post"><button class="button" type="submit">Disconnect extension</button></form>
-                <details><summary>Delete profile</summary>
-                    <form asp-action="Delete" method="post">
-                        <p>This removes your saved applicant details and revokes extension access.</p>
-                        <button class="button" type="submit">Delete autofill profile</button>
-                    </form>
-                </details>
+            <div class="autofill-save-bar" id="profile-save">
+                <p>@(review is null ? "Save your edits to use them in the extension." : "Review the imported values before saving your profile.")</p>
+                <button class="button button-primary" type="submit" data-pending-label="Saving profile…">Save profile</button>
             </div>
+        </form>
+
+        <section class="detail-card autofill-panel" id="profile-connection" aria-labelledby="connection-heading">
+            <div class="autofill-section-heading">
+                <div>
+                    <h2 id="connection-heading">Profile and connection</h2>
+                    <p>Open the extension to connect. The employer's website can read any values you fill into its form.</p>
+                </div>
+            </div>
+            <form asp-action="Disconnect" method="post">
+                <button class="button button-secondary" type="submit">Disconnect extension</button>
+            </form>
+            <details class="autofill-disclosure">
+                <summary>Delete profile</summary>
+                <form asp-action="Delete" method="post" class="autofill-delete-form">
+                    <p>This removes your saved applicant details and revokes extension access.</p>
+                    <button class="button button-danger" type="submit">Delete autofill profile</button>
+                </form>
+            </details>
         </section>
     </div>
-</section>
+</div>
 <script src="~/js/autofill-profile.js" asp-append-version="true" defer></script>
