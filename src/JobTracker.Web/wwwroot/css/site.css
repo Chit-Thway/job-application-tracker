@@ -1846,6 +1846,25 @@ html[data-theme="dark"] .verification-resend-button:hover {
     display: none;
 }
 
+.resume-field-badge {
+    display: inline-block;
+    margin-inline-start: .45rem;
+    padding: .1rem .4rem;
+    border: 1px solid #d8ab32;
+    border-radius: .35rem;
+    background: #fff2bc;
+    color: #644500;
+    font-size: .72rem;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+html[data-theme="dark"] .resume-field-badge {
+    border-color: #a57b29;
+    background: #4b3712;
+    color: #ffe4a0;
+}
+
 .field input[aria-invalid="true"] {
   border-color: #b42318;
 }

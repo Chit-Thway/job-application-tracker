@@ -52,6 +52,7 @@ public sealed class ResumeImportTests
         Assert.Equal("Maya", draft.GivenName);
         Assert.Equal("Chen", draft.FamilyName);
         Assert.Equal("confirmed@example.test", draft.Email);
+        Assert.DoesNotContain(review.FilledFields, field => field.Name == nameof(ApplicantProfile.Email));
         var difference = Assert.Single(review.Differences);
         Assert.Equal("maya@example.test", difference.Suggested);
         Assert.Equal("+61 491 570 006", draft.Phone);

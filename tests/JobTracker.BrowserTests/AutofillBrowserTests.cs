@@ -117,8 +117,30 @@ public sealed class AutofillBrowserTests(BrowserJourneyFixture fixture)
         var resume = new PdfDocumentBuilder();
         var font = resume.AddStandard14Font(Standard14Font.Helvetica);
         var resumePage = resume.AddPage(PageSize.A4);
-        resumePage.AddText("Maya Chen", 16, new PdfPoint(50, 780), font);
-        resumePage.AddText("maya@example.test", 12, new PdfPoint(50, 755), font);
+        string[] lines =
+        [
+            "Maya Chen",
+            "maya@example.test",
+            "Phone: +61 491 570 006",
+            "Address: 10 Sample Street, Darwin NT 0800, Australia",
+            "LinkedIn: https://www.linkedin.com/in/maya-example",
+            "Notice period: Two weeks",
+            "Professional Experience",
+            "Support Technician | Wattle Systems | Darwin, NT",
+            "Feb 2024 - Present",
+            "Resolve support tickets.",
+            "Service Desk Assistant",
+            "Paperbark IT",
+            "Jul 2022 - Jan 2024",
+            "Education",
+            "Diploma | Example College",
+            "Certifications",
+            "Example Certificate",
+        ];
+        for (var index = 0; index < lines.Length; index++)
+        {
+            resumePage.AddText(lines[index], 12, new PdfPoint(50, 780 - index * 22), font);
+        }
         await page.GetByLabel("Résumé file").SetInputFilesAsync(new FilePayload
         {
             Name = "synthetic-resume.pdf",
@@ -127,32 +149,39 @@ public sealed class AutofillBrowserTests(BrowserJourneyFixture fixture)
         });
         await page.GetByRole(AriaRole.Button, new() { Name = "Extract résumé details" }).ClickAsync();
         await Expect(page.GetByRole(AriaRole.Heading, new() { Name = "Review résumé suggestions" })).ToBeVisibleAsync();
-        await Expect(page.GetByLabel("Given name")).ToHaveValueAsync("Maya");
-        await Expect(page.GetByLabel("Family name")).ToHaveValueAsync("Chen");
-        await Expect(page.GetByLabel("Application email")).ToHaveValueAsync("maya@example.test");
-        await page.GetByLabel("Postcode").FillAsync("0800");
-        await page.GetByLabel("State or territory").FillAsync("Northern Territory");
-        await page.GetByLabel("Country", new() { Exact = true }).FillAsync("Australia");
-        await page.GetByLabel("Suburb or city").FillAsync("Darwin");
-        await page.GetByLabel("LinkedIn").FillAsync("https://www.linkedin.com/in/maya-example");
-        await page.GetByLabel("Notice period").FillAsync("Two weeks");
-        await page.GetByLabel("Availability").FillAsync("Immediately");
-        await page.GetByRole(AriaRole.Button, new() { Name = "Add role" }).ClickAsync();
-        await page.GetByLabel("Employer").FillAsync("Wattle Systems");
-        await page.GetByLabel("Job title").FillAsync("Support Technician");
-        await page.GetByLabel("Start month").FillAsync("2024-02");
-        await page.GetByLabel("I currently work here").CheckAsync();
-        await page.GetByRole(AriaRole.Button, new() { Name = "Add role" }).ClickAsync();
-        await page.GetByLabel("Employer").Last.FillAsync("Paperbark IT");
-        await page.GetByLabel("Job title").Last.FillAsync("Service Desk Assistant");
-        await page.GetByLabel("End month").Last.FillAsync("2024-01");
-        await page.GetByRole(AriaRole.Button, new() { Name = "Add education" }).ClickAsync();
-        await page.GetByLabel("Institution").FillAsync("Example College");
-        await page.GetByLabel("Qualification", new() { Exact = true }).FillAsync("Diploma");
-        await page.GetByRole(AriaRole.Button, new() { Name = "Add certification" }).ClickAsync();
-        await page.GetByLabel("Certification name").FillAsync("Example Certificate");
+
+        await CheckImportedAsync("GivenName", "Maya");
+        await CheckImportedAsync("FamilyName", "Chen");
+        await CheckImportedAsync("Email", "maya@example.test");
+        await CheckImportedAsync("Phone", "+61 491 570 006");
+        await CheckImportedAsync("Postcode", "0800");
+        await CheckImportedAsync("Experience[0].Employer", "Wattle Systems");
+        await CheckImportedAsync("Experience[0].Title", "Support Technician");
+        await CheckImportedAsync("Experience[0].Responsibilities", "Resolve support tickets.");
+        await CheckImportedAsync("Experience[1].Employer", "Paperbark IT");
+        await CheckImportedAsync("Experience[1].EndMonth", "2024-01");
+        await CheckImportedAsync("Education[0].Institution", "Example College");
+        await CheckImportedAsync("Certifications[0].Name", "Example Certificate");
+        await Expect(Badge("Email")).ToHaveCSSAsync("background-color", "rgb(255, 242, 188)");
+        await Expect(Field("Experience[0].Current")).ToBeCheckedAsync();
+        await Expect(Badge("Experience[0].Current")).ToBeVisibleAsync();
+        await Expect(Badge("Experience[0].EndMonth")).ToHaveCountAsync(0);
+        await Expect(Badge("Availability")).ToHaveCountAsync(0);
+        await Field("Phone").FillAsync("+61 491 570 007");
+        await Expect(Badge("Phone")).ToHaveCountAsync(0);
+        await Field("Availability").FillAsync("Immediately");
         await page.GetByRole(AriaRole.Button, new() { Name = "Save profile" }).ClickAsync();
         await Expect(page.GetByText("Autofill profile saved.", new() { Exact = true })).ToBeVisibleAsync();
+        await Expect(page.Locator(".resume-field-badge")).ToHaveCountAsync(0);
+
+        ILocator Field(string name) => page.Locator($"[name='{name}']");
+        ILocator Badge(string name) => Field(name).Locator("xpath=..").Locator(".resume-field-badge");
+
+        async Task CheckImportedAsync(string name, string value)
+        {
+            await Expect(Field(name)).ToHaveValueAsync(value);
+            await Expect(Badge(name)).ToBeVisibleAsync();
+        }
     }
 
     private string PrepareExtension(string destination)

@@ -64,13 +64,13 @@ public sealed class ResumeImportService : IDisposable
 
     private static ResumeImportReview Merge(ApplicantProfile draft, ApplicantProfile source)
     {
-        var fields = new List<string>();
+        var fields = new List<ResumeFilledField>();
         var differences = new List<ResumeFieldDifference>();
         var matchedFields = 0;
         var nameConflict = Different(draft.FullName, source.FullName)
             || Different(draft.GivenName, source.GivenName) || Different(draft.FamilyName, source.FamilyName);
 
-        void Import(string label, string? saved, string? suggested, Action<string> set, bool keepBlank = false)
+        void Import(string name, string label, string? saved, string? suggested, Action<string> set, bool keepBlank = false)
         {
             if (string.IsNullOrWhiteSpace(suggested))
             {
@@ -80,7 +80,7 @@ public sealed class ResumeImportService : IDisposable
             if (string.IsNullOrWhiteSpace(saved) && !keepBlank)
             {
                 set(suggested);
-                fields.Add(label);
+                fields.Add(new ResumeFilledField(name, label));
             }
             else if (!Same(saved, suggested))
             {
@@ -88,23 +88,23 @@ public sealed class ResumeImportService : IDisposable
             }
         }
 
-        Import("Full name", draft.FullName, source.FullName, value => draft.FullName = value, nameConflict);
-        Import("Given name", draft.GivenName, source.GivenName, value => draft.GivenName = value, nameConflict);
-        Import("Family name", draft.FamilyName, source.FamilyName, value => draft.FamilyName = value, nameConflict);
-        Import("Preferred name", draft.PreferredName, source.PreferredName, value => draft.PreferredName = value, nameConflict);
-        Import("Application email", draft.Email, source.Email, value => draft.Email = value);
-        Import("Phone", draft.Phone, source.Phone, value => draft.Phone = value);
-        Import("Street address", draft.AddressLine1, source.AddressLine1, value => draft.AddressLine1 = value);
-        Import("Address line 2", draft.AddressLine2, source.AddressLine2, value => draft.AddressLine2 = value);
-        Import("Suburb or city", draft.City, source.City, value => draft.City = value);
-        Import("State or territory", draft.Region, source.Region, value => draft.Region = value);
-        Import("Postcode", draft.Postcode, source.Postcode, value => draft.Postcode = value);
-        Import("Country", draft.Country, source.Country, value => draft.Country = value);
-        Import("LinkedIn", draft.LinkedIn, source.LinkedIn, value => draft.LinkedIn = value);
-        Import("GitHub", draft.GitHub, source.GitHub, value => draft.GitHub = value);
-        Import("Portfolio", draft.Portfolio, source.Portfolio, value => draft.Portfolio = value);
-        Import("Notice period", draft.NoticePeriod, source.NoticePeriod, value => draft.NoticePeriod = value);
-        Import("Availability", draft.Availability, source.Availability, value => draft.Availability = value);
+        Import(nameof(draft.FullName), "Full name", draft.FullName, source.FullName, value => draft.FullName = value, nameConflict);
+        Import(nameof(draft.GivenName), "Given name", draft.GivenName, source.GivenName, value => draft.GivenName = value, nameConflict);
+        Import(nameof(draft.FamilyName), "Family name", draft.FamilyName, source.FamilyName, value => draft.FamilyName = value, nameConflict);
+        Import(nameof(draft.PreferredName), "Preferred name", draft.PreferredName, source.PreferredName, value => draft.PreferredName = value, nameConflict);
+        Import(nameof(draft.Email), "Application email", draft.Email, source.Email, value => draft.Email = value);
+        Import(nameof(draft.Phone), "Phone", draft.Phone, source.Phone, value => draft.Phone = value);
+        Import(nameof(draft.AddressLine1), "Street address", draft.AddressLine1, source.AddressLine1, value => draft.AddressLine1 = value);
+        Import(nameof(draft.AddressLine2), "Address line 2", draft.AddressLine2, source.AddressLine2, value => draft.AddressLine2 = value);
+        Import(nameof(draft.City), "Suburb or city", draft.City, source.City, value => draft.City = value);
+        Import(nameof(draft.Region), "State or territory", draft.Region, source.Region, value => draft.Region = value);
+        Import(nameof(draft.Postcode), "Postcode", draft.Postcode, source.Postcode, value => draft.Postcode = value);
+        Import(nameof(draft.Country), "Country", draft.Country, source.Country, value => draft.Country = value);
+        Import(nameof(draft.LinkedIn), "LinkedIn", draft.LinkedIn, source.LinkedIn, value => draft.LinkedIn = value);
+        Import(nameof(draft.GitHub), "GitHub", draft.GitHub, source.GitHub, value => draft.GitHub = value);
+        Import(nameof(draft.Portfolio), "Portfolio", draft.Portfolio, source.Portfolio, value => draft.Portfolio = value);
+        Import(nameof(draft.NoticePeriod), "Notice period", draft.NoticePeriod, source.NoticePeriod, value => draft.NoticePeriod = value);
+        Import(nameof(draft.Availability), "Availability", draft.Availability, source.Availability, value => draft.Availability = value);
 
         var roles = AppendNew(draft.Experience, source.Experience, (left, right) =>
             Same(left.Employer, right.Employer) && Same(left.Title, right.Title)
@@ -146,8 +146,10 @@ public sealed class ResumeImportService : IDisposable
 
 public sealed record ResumeFieldDifference(string Field, string? Saved, string Suggested);
 
+public sealed record ResumeFilledField(string Name, string Label);
+
 public sealed record ResumeImportReview(
-    IReadOnlyList<string> FilledFields,
+    IReadOnlyList<ResumeFilledField> FilledFields,
     IReadOnlyList<ResumeFieldDifference> Differences,
     int RolesAdded,
     int EducationAdded,

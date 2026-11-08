@@ -1,4 +1,20 @@
 (() => {
+  function markFromResume(field) {
+    const label = field?.labels?.[0];
+    if (!label || (field.type === "checkbox" ? !field.checked : !field.value.trim())) return;
+
+    const badge = document.createElement("span");
+    badge.className = "resume-field-badge";
+    badge.textContent = "From résumé";
+    label.append(" ", badge);
+    field.addEventListener("input", () => badge.remove(), { once: true });
+  }
+
+  const profile = document.querySelector("form[data-resume-fields]");
+  for (const name of (profile?.dataset.resumeFields ?? "").split(",").filter(Boolean)) {
+    markFromResume(profile.elements.namedItem(name));
+  }
+
   for (const list of document.querySelectorAll("[data-entry-list]")) {
     const entries = list.querySelector("[data-entries]");
     const add = list.querySelector("[data-add-entry]");
@@ -57,5 +73,14 @@
       }
     });
     reindex();
+
+    const importedCount = Number(list.dataset.resumeAdded);
+    if (importedCount > 0) {
+      for (const entry of [...entries.children].slice(-importedCount)) {
+        for (const field of entry.querySelectorAll("input, textarea, select")) {
+          markFromResume(field);
+        }
+      }
+    }
   }
 })();

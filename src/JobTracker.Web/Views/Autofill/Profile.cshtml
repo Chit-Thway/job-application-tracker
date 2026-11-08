@@ -30,10 +30,10 @@
             {
                 <div role="status">
                     <h3>Review résumé suggestions</h3>
-                    <p>Check the draft below and click Save profile to keep it. Review names, dates and any gaps.</p>
+                    <p>Yellow <strong>From résumé</strong> labels mark values added to the draft. Review them and click <strong>Save profile</strong> to keep them.</p>
                     @if (review.FilledFields.Count > 0)
                     {
-                        <p><strong>Fields filled</strong> @string.Join(", ", review.FilledFields)</p>
+                        <p><strong>Fields filled</strong> @string.Join(", ", review.FilledFields.Select(field => field.Label))</p>
                     }
                     @if (review.RolesAdded + review.EducationAdded + review.CertificatesAdded > 0)
                     {
@@ -77,7 +77,8 @@
                 </div>
             </form>
         </section>
-        <form asp-action="Save" method="post">
+        <form asp-action="Save" method="post"
+              data-resume-fields="@(review is null ? null : string.Join(",", review.FilledFields.Select(field => field.Name)))">
             <div asp-validation-summary="All" class="validation-summary"></div>
             <section class="detail-card">
                 <h2>Contact and address</h2>
@@ -96,7 +97,7 @@
                     <div class="field"><label asp-for="Country">Country</label><input asp-for="Country" /></div>
                 </div>
             </section>
-            <section class="detail-card" data-entry-list>
+            <section class="detail-card" data-entry-list data-resume-added="@review?.RolesAdded">
                 <h2>Work experience</h2>
                 <p>Order roles most recent first. Copy role gives you a text version for forms that need manual entry.</p>
                 <div data-entries>
@@ -108,7 +109,7 @@
                 <template><partial name="_Experience" model="new ExperienceEntry()" view-data='Row("Experience[__index__]")' /></template>
                 <button type="button" class="button" data-add-entry>Add role</button>
             </section>
-            <section class="detail-card" data-entry-list>
+            <section class="detail-card" data-entry-list data-resume-added="@review?.EducationAdded">
                 <h2>Education</h2>
                 <div data-entries>
                     @for (var index = 0; index < Model.Education.Count; index++)
@@ -119,7 +120,7 @@
                 <template><partial name="_Education" model="new EducationEntry()" view-data='Row("Education[__index__]")' /></template>
                 <button type="button" class="button" data-add-entry>Add education</button>
             </section>
-            <section class="detail-card" data-entry-list>
+            <section class="detail-card" data-entry-list data-resume-added="@review?.CertificatesAdded">
                 <h2>Certifications</h2>
                 <div data-entries>
                     @for (var index = 0; index < Model.Certifications.Count; index++)
