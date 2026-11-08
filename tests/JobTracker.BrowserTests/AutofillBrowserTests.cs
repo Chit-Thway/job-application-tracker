@@ -15,7 +15,7 @@ public sealed class AutofillBrowserTests(BrowserJourneyFixture fixture)
     private const string EmployerOrigin = "https://careers.example.test";
 
     [Fact]
-    public async Task LoadedExtension_PairsAndFillsDistinctEmployerLayouts()
+    public async Task LoadedExtension_FillConnectsAndFillsDistinctEmployerLayouts()
     {
         var extension = Directory.CreateTempSubdirectory("jobtracker-autofill-");
         try
@@ -47,22 +47,15 @@ public sealed class AutofillBrowserTests(BrowserJourneyFixture fixture)
 
             var popup = await context.NewPageAsync();
             await popup.GotoAsync($"chrome-extension://{extensionId}/popup.html");
-            await popup.Locator("#connection summary").ClickAsync();
-            await popup.GetByRole(AriaRole.Button, new() { Name = "Connect to tracker" }).ClickAsync();
-            await Expect(popup.Locator("#connection-status")).ToContainTextAsync("Profile connected.");
-            await popup.ReloadAsync();
-            await Expect(popup.Locator("#connection-summary")).ToHaveTextAsync("Autofill profile connected");
+            await Expect(popup.Locator("#connection-summary")).ToHaveTextAsync("Autofill profile");
+            await Expect(popup.GetByRole(AriaRole.Button, new() { Name = "Connect to tracker", IncludeHidden = true })).ToHaveCountAsync(0);
 
             var employer = await context.NewPageAsync();
             await employer.GotoAsync($"{EmployerOrigin}/apply/contact");
-            await popup.EvaluateAsync("""
-                async () => {
-                  const tab = (await chrome.tabs.query({ url: "https://careers.example.test/*" }))[0];
-                  chrome.tabs.query = async () => [tab];
-                }
-                """);
+            await TargetEmployerTabAsync(popup);
             await popup.Locator("#fill").ClickAsync();
             await Expect(popup.Locator("#fill-status")).ToContainTextAsync("Filled 7 fields.");
+            await Expect(popup.Locator("#connection-summary")).ToHaveTextAsync("Autofill profile connected");
             await Expect(employer.GetByLabel("Full name")).ToHaveValueAsync("Maya Chen");
             await Expect(employer.GetByLabel("Postcode")).ToHaveValueAsync("0800");
             await Expect(employer.GetByLabel("State or territory")).ToHaveValueAsync("NT");
@@ -96,10 +89,8 @@ public sealed class AutofillBrowserTests(BrowserJourneyFixture fixture)
             await Expect(popup.Locator("#fill-status")).ToContainTextAsync("No blank supported fields");
 
             await tracker.GetByRole(AriaRole.Button, new() { Name = "Sign out", Exact = true }).ClickAsync();
-            await popup.Locator("#fill").ClickAsync();
-            await Expect(popup.Locator("#fill-status")).ToContainTextAsync("expired or was revoked");
-            var login = await context.RunAndWaitForPageAsync(async () =>
-                await popup.GetByRole(AriaRole.Button, new() { Name = "Connect to tracker" }).ClickAsync(),
+            await employer.GotoAsync($"{EmployerOrigin}/apply/contact");
+            var login = await context.RunAndWaitForPageAsync(() => popup.Locator("#fill").ClickAsync(),
                 new() { Timeout = 10_000 });
             await login.WaitForURLAsync("**/account/login?ReturnUrl=*");
             await popup.CloseAsync();
@@ -114,12 +105,24 @@ public sealed class AutofillBrowserTests(BrowserJourneyFixture fixture)
             var reopened = await context.NewPageAsync();
             await reopened.GotoAsync($"chrome-extension://{extensionId}/popup.html");
             await Expect(reopened.Locator("#connection-summary")).ToHaveTextAsync("Autofill profile connected");
+            await Expect(employer.GetByLabel("Full name")).ToBeEmptyAsync();
+            await TargetEmployerTabAsync(reopened);
+            await reopened.Locator("#fill").ClickAsync();
+            await Expect(reopened.Locator("#fill-status")).ToContainTextAsync("Filled 7 fields.");
+            await Expect(employer.GetByLabel("Full name")).ToHaveValueAsync("Maya Chen");
         }
         finally
         {
             extension.Delete(recursive: true);
         }
     }
+
+    private static Task TargetEmployerTabAsync(IPage popup) => popup.EvaluateAsync("""
+        async () => {
+          const tab = (await chrome.tabs.query({ url: "https://careers.example.test/*" }))[0];
+          chrome.tabs.query = async () => [tab];
+        }
+        """);
 
     private async Task CreateProfileAsync(IPage page)
     {

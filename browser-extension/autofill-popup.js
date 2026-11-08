@@ -2,14 +2,11 @@ import { planAutofill } from "./autofill-matching.js";
 import { accessApplicationPage } from "./autofill-page.js";
 
 const tokenKey = "autofill:access";
-const connectionResultKey = "autofill:connectionResult";
 const lastFillKey = "autofill:lastFillTab";
 const fill = document.getElementById("fill");
 const undo = document.getElementById("undo-fill");
 const status = document.getElementById("fill-status");
 const connection = document.getElementById("connection");
-const start = document.getElementById("start-connection");
-const connectionStatus = document.getElementById("connection-status");
 const connectionSummary = document.getElementById("connection-summary");
 const profileUrl = new URL("/extension/profile", trackerOrigin);
 document.getElementById("manage-profile").href = profileUrl.href;
@@ -31,78 +28,55 @@ async function runInTab(tabId, operation, input) {
   return result;
 }
 
-function setup(message) {
-  connection.open = true;
-  status.textContent = message;
-}
-
-async function request(path, options) {
-  return fetch(`${profileUrl.href}/${path}`, {
-    ...options,
+function requestProfile(token) {
+  return fetch(`${profileUrl.href}/data`, {
+    headers: { Authorization: `Bearer ${token}` },
     cache: "no-store",
     credentials: "omit",
     redirect: "error",
     signal: AbortSignal.timeout(8000),
+  }).catch(() => {
+    throw new Error("Could not reach the tracker. Make sure it’s running, then choose Fill again.");
   });
 }
 
 async function refreshConnection() {
-  const stored = await chrome.storage.session.get([tokenKey, connectionResultKey]);
-  const connected = Boolean(stored[tokenKey]);
-  const result = stored[connectionResultKey];
-  start.hidden = connected;
-  connectionSummary.textContent = connected ? "Autofill profile connected" : "Autofill profile and connection";
-  if (connected) {
-    connectionStatus.textContent = "Profile connected. Open an employer application form and choose Fill.";
-    return;
-  }
-  const messages = {
-    working: "Connecting to the tracker. Sign in if prompted.",
-    "profile-required": "Save an autofill profile in the tracker, then try Connect again.",
-    failed: "Could not complete the connection. Choose Connect to try again.",
-  };
-  connectionStatus.textContent = messages[result] ?? "";
-  if (result) connection.open = true;
+  const stored = await chrome.storage.session.get(tokenKey);
+  connectionSummary.textContent = stored[tokenKey] ? "Autofill profile connected" : "Autofill profile";
 }
 
-start.addEventListener("click", async () => {
-  start.disabled = true;
-  connectionStatus.textContent = "Connecting to the tracker. Sign in if prompted.";
-  try {
-    const started = await chrome.runtime.sendMessage({ type: "autofill:connect" });
-    if (!started) throw new Error();
-  } catch {
-    connectionStatus.textContent = "Could not complete the connection. Choose Connect to try again.";
-  } finally {
-    start.disabled = false;
+async function loadProfile() {
+  const stored = await chrome.storage.session.get(tokenKey);
+  let response = stored[tokenKey] && await requestProfile(stored[tokenKey]);
+  if (!response || response.status === 401 || response.status === 403) {
+    if (response) await chrome.storage.session.remove(tokenKey);
+    status.textContent = "Connecting to the tracker. Sign in if prompted.";
+    const result = await chrome.runtime.sendMessage({ type: "autofill:connect" });
+    if (result === "profile-required") {
+      connection.open = true;
+      throw new Error("Save an autofill profile in the tracker, then choose Fill again.");
+    }
+    if (result !== "connected") {
+      throw new Error("Could not connect to the tracker. Make sure it’s running, then choose Fill again.");
+    }
+    const connected = await chrome.storage.session.get(tokenKey);
+    response = await requestProfile(connected[tokenKey]);
   }
-});
+  if (!response.ok) throw new Error("Could not load your saved profile. Try Fill again.");
+  return response.json();
+}
 
 chrome.storage.onChanged.addListener((changes, area) => {
-  if (area === "session" && (changes[tokenKey] || changes[connectionResultKey])) void refreshConnection();
+  if (area === "session" && changes[tokenKey]) void refreshConnection();
 });
 
 fill.addEventListener("click", async () => {
   fill.disabled = true;
   status.textContent = "";
   try {
-    const stored = await chrome.storage.session.get(tokenKey);
-    if (!stored[tokenKey]) {
-      setup("Save your profile and connect the extension before using Fill.");
-      return;
-    }
-
     const tab = await activeTab();
     const scan = await runInTab(tab.id, "scan");
-    const response = await request("data", { headers: { Authorization: `Bearer ${stored[tokenKey]}` } });
-    if (response.status === 401 || response.status === 403) {
-      await chrome.storage.session.remove([tokenKey, connectionResultKey]);
-      setup("Your connection has expired or was revoked. Connect again to fill.");
-      return;
-    }
-    if (!response.ok) throw new Error("Could not load your saved profile. Try again.");
-
-    const plan = planAutofill(scan.fields, await response.json());
+    const plan = planAutofill(scan.fields, await loadProfile());
     const review = [...new Set(plan.review)].slice(0, 3).join(", ");
     const frameMessage = scan.inaccessibleFrames ? " Some embedded sections may need manual entry." : "";
     if (!plan.writes.length) {
@@ -123,7 +97,7 @@ fill.addEventListener("click", async () => {
       undo.hidden = false;
     }
   } catch (error) {
-    status.textContent = error instanceof Error && /^(Open|Could not load)/.test(error.message)
+    status.textContent = error instanceof Error && /^(Open|Save an autofill profile|Could not (load|connect|reach))/.test(error.message)
       ? error.message : "Could not fill this tab. Check the form and try again.";
   } finally {
     fill.disabled = false;

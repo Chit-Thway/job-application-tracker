@@ -1,7 +1,6 @@
 importScripts("tracker-config.js");
 
 const tokenKey = "autofill:access";
-const connectionResultKey = "autofill:connectionResult";
 let pendingConnection;
 
 chrome.runtime.onMessage.addListener((message, sender, respond) => {
@@ -9,18 +8,21 @@ chrome.runtime.onMessage.addListener((message, sender, respond) => {
       || sender.url !== chrome.runtime.getURL("popup.html")) return;
 
   pendingConnection ??= connect().finally(() => { pendingConnection = undefined; });
-  respond(true);
+  pendingConnection.then(respond, () => respond("failed"));
+  return true;
 });
 
-async function connect() {
-  await chrome.storage.session.set({ [connectionResultKey]: "working" });
-  let result = "failed";
+async function openTrackerSignIn(url) {
   try {
-    result = await authorizeProfile();
+    return await chrome.identity.launchWebAuthFlow({
+      url,
+      interactive: false,
+      abortOnLoadForNonInteractive: false,
+      timeoutMsForNonInteractive: 2000,
+    });
   } catch {
-    // Chrome also rejects this request when the sign-in window is closed.
+    return chrome.identity.launchWebAuthFlow({ url, interactive: true });
   }
-  await chrome.storage.session.set({ [connectionResultKey]: result });
 }
 
 function randomToken() {
@@ -28,7 +30,7 @@ function randomToken() {
   return btoa(String.fromCharCode(...random)).replaceAll("+", "-").replaceAll("/", "_").replace(/=+$/, "");
 }
 
-async function authorizeProfile() {
+async function connect() {
   const state = randomToken();
   const verifier = randomToken();
   const hash = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(verifier));
@@ -39,7 +41,7 @@ async function authorizeProfile() {
   request.searchParams.set("state", state);
 
   const expected = new URL(chrome.identity.getRedirectURL("autofill"));
-  const callback = new URL(await chrome.identity.launchWebAuthFlow({ url: request.href, interactive: true }));
+  const callback = new URL(await openTrackerSignIn(request.href));
   if (callback.origin !== expected.origin || callback.pathname !== expected.pathname || callback.search) return "failed";
   const result = new URLSearchParams(callback.hash.slice(1));
   if (result.get("state") !== state) return "failed";
