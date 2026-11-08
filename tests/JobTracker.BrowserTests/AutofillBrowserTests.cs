@@ -48,15 +48,10 @@ public sealed class AutofillBrowserTests(BrowserJourneyFixture fixture)
             var popup = await context.NewPageAsync();
             await popup.GotoAsync($"chrome-extension://{extensionId}/popup.html");
             await popup.Locator("#connection summary").ClickAsync();
-            var pairingPage = await context.RunAndWaitForPageAsync(async () =>
-                await popup.GetByRole(AriaRole.Button, new() { Name = "Get connection code" }).ClickAsync());
-            await pairingPage.GetByRole(AriaRole.Button, new() { Name = "Create connection code" }).ClickAsync();
-            var pairingCode = await pairingPage.GetByLabel("Connection code").InputValueAsync();
+            await popup.GetByRole(AriaRole.Button, new() { Name = "Connect to tracker" }).ClickAsync();
+            await Expect(popup.Locator("#connection-status")).ToContainTextAsync("Profile connected.");
             await popup.ReloadAsync();
-            await popup.GetByLabel("One-time code from the tracker").FillAsync(pairingCode);
-            await popup.GetByRole(AriaRole.Button, new() { Name = "Connect", Exact = true }).ClickAsync();
-            await Expect(popup.Locator("#fill-status")).ToContainTextAsync("Profile connected.");
-            await pairingPage.CloseAsync();
+            await Expect(popup.Locator("#connection-summary")).ToHaveTextAsync("Autofill profile connected");
 
             var employer = await context.NewPageAsync();
             await employer.GotoAsync($"{EmployerOrigin}/apply/contact");
@@ -99,6 +94,26 @@ public sealed class AutofillBrowserTests(BrowserJourneyFixture fixture)
             await Expect(employer.Locator("#second-end")).ToHaveValueAsync("2024-01");
             await popup.Locator("#fill").ClickAsync();
             await Expect(popup.Locator("#fill-status")).ToContainTextAsync("No blank supported fields");
+
+            await tracker.GetByRole(AriaRole.Button, new() { Name = "Sign out", Exact = true }).ClickAsync();
+            await popup.Locator("#fill").ClickAsync();
+            await Expect(popup.Locator("#fill-status")).ToContainTextAsync("expired or was revoked");
+            var login = await context.RunAndWaitForPageAsync(async () =>
+                await popup.GetByRole(AriaRole.Button, new() { Name = "Connect to tracker" }).ClickAsync(),
+                new() { Timeout = 10_000 });
+            await login.WaitForURLAsync("**/account/login?ReturnUrl=*");
+            await popup.CloseAsync();
+            await login.GetByLabel("Email").FillAsync(BrowserJourneyFixture.Email);
+            await login.GetByLabel("Password", new() { Exact = true }).FillAsync(BrowserJourneyFixture.Password);
+            var loginClosed = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            login.Close += (_, _) => loginClosed.TrySetResult();
+            // Chrome closes the sign-in window during the callback navigation.
+            await login.GetByRole(AriaRole.Button, new() { Name = "Sign in", Exact = true })
+                .EvaluateAsync("button => { setTimeout(() => button.click(), 0); }");
+            await loginClosed.Task.WaitAsync(TimeSpan.FromSeconds(8));
+            var reopened = await context.NewPageAsync();
+            await reopened.GotoAsync($"chrome-extension://{extensionId}/popup.html");
+            await Expect(reopened.Locator("#connection-summary")).ToHaveTextAsync("Autofill profile connected");
         }
         finally
         {

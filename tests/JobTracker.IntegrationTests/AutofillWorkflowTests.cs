@@ -42,11 +42,36 @@ public sealed partial class ApplicationWorkflowTests
 
         var verifier = WebEncoders.Base64UrlEncode(RandomNumberGenerator.GetBytes(32));
         var challenge = Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(verifier)));
-        var approve = await owner.PostAsync($"{route}/connect",
-            Form(("__RequestVerificationToken", csrf), ("challenge", challenge)));
-        approve.EnsureSuccessStatusCode();
-        var document = await new HtmlParser().ParseDocumentAsync(await approve.Content.ReadAsStringAsync());
-        var code = document.QuerySelector("#connection-code")?.GetAttribute("value");
+        var state = WebEncoders.Base64UrlEncode(RandomNumberGenerator.GetBytes(32));
+        var extensionId = new string('a', 32);
+        var authorizeUrl = QueryHelpers.AddQueryString($"{route}/authorize", new Dictionary<string, string?>
+        {
+            ["extensionId"] = extensionId,
+            ["challenge"] = challenge,
+            ["state"] = state,
+        });
+        var login = await anonymous.GetAsync(authorizeUrl);
+        Assert.Equal(HttpStatusCode.Redirect, login.StatusCode);
+        Assert.Equal("/account/login", login.Headers.Location?.AbsolutePath);
+        Assert.Equal(authorizeUrl, QueryHelpers.ParseQuery(login.Headers.Location!.Query)["ReturnUrl"].ToString());
+
+        var unavailable = await other.GetAsync(authorizeUrl);
+        var unavailableCallback = await ReadConnectionCallbackAsync(unavailable);
+        Assert.Equal("profile_required",
+            QueryHelpers.ParseQuery(unavailableCallback.Fragment[1..])["error"].ToString());
+        using var foreignNavigation = new HttpRequestMessage(HttpMethod.Get, authorizeUrl);
+        foreignNavigation.Headers.Add("Sec-Fetch-Site", "cross-site");
+        Assert.Equal(HttpStatusCode.BadRequest, (await owner.SendAsync(foreignNavigation)).StatusCode);
+        var invalidId = authorizeUrl.Replace(extensionId, "example.test", StringComparison.Ordinal);
+        Assert.Equal(HttpStatusCode.BadRequest, (await owner.GetAsync(invalidId)).StatusCode);
+
+        var approve = await owner.GetAsync(authorizeUrl);
+        var callback = await ReadConnectionCallbackAsync(approve);
+        Assert.Equal($"https://{extensionId}.chromiumapp.org/autofill", callback.GetLeftPart(UriPartial.Path));
+        Assert.Empty(callback.Query);
+        var values = QueryHelpers.ParseQuery(callback.Fragment[1..]);
+        Assert.Equal(state, values["state"].ToString());
+        var code = Assert.Single(values["code"]);
         Assert.NotNull(code);
         var invalid = await anonymous.PostAsJsonAsync($"{route}/exchange", new { code, verifier = new string('A', 43) });
         Assert.Equal(HttpStatusCode.Unauthorized, invalid.StatusCode);
@@ -77,5 +102,16 @@ public sealed partial class ApplicationWorkflowTests
         var stored = await database.AutofillProfiles.SingleAsync();
         Assert.DoesNotContain("Wattle Systems", stored.ProtectedProfile);
         Assert.Null(stored.AccessHash);
+    }
+
+    private static async Task<Uri> ReadConnectionCallbackAsync(HttpResponseMessage response)
+    {
+        response.EnsureSuccessStatusCode();
+        Assert.True(response.Headers.CacheControl?.NoStore);
+        var document = await new HtmlParser().ParseDocumentAsync(await response.Content.ReadAsStringAsync());
+        var url = document.QuerySelector("a")?.GetAttribute("href");
+        Assert.NotNull(url);
+        Assert.Equal($"0; url={url}", document.QuerySelector("meta[http-equiv=refresh]")?.GetAttribute("content"));
+        return new Uri(url);
     }
 }

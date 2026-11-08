@@ -18,16 +18,17 @@ public sealed class BrowserExtensionManifestTests
             .ToArray();
 
         Assert.Equal(3, root.GetProperty("manifest_version").GetInt32());
-        Assert.Equal("1.1.0", root.GetProperty("version").GetString());
-        Assert.Equal("106", root.GetProperty("minimum_chrome_version").GetString());
+        Assert.Equal("1.2.0", root.GetProperty("version").GetString());
+        Assert.Equal("116", root.GetProperty("minimum_chrome_version").GetString());
         Assert.Equal(
             "https://myjobtracker.com.au/extension",
             root.GetProperty("homepage_url").GetString());
-        Assert.Equal(new[] { "activeTab", "scripting", "storage" }, permissions);
+        Assert.Equal(new[] { "activeTab", "scripting", "storage", "identity" }, permissions);
         Assert.Equal("https://myjobtracker.com.au/*",
             Assert.Single(root.GetProperty("host_permissions").EnumerateArray()).GetString());
         Assert.False(root.TryGetProperty("content_scripts", out _));
-        Assert.False(root.TryGetProperty("background", out _));
+        Assert.Equal("autofill-connection.js", root.GetProperty("background").GetProperty("service_worker").GetString());
+        Assert.False(root.TryGetProperty("externally_connectable", out _));
     }
 
     [Fact]

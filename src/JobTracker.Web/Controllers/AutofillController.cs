@@ -14,7 +14,9 @@ namespace JobTracker.Web.Controllers;
 public sealed class AutofillController(
     AutofillProfileService profiles,
     ResumeImportService resumes,
-    UserManager<ApplicationUser> users) : Controller
+    UserManager<ApplicationUser> users,
+    IConfiguration configuration,
+    IWebHostEnvironment environment) : Controller
 {
     [HttpGet("")]
     public async Task<IActionResult> Profile(CancellationToken cancellationToken) =>
@@ -87,6 +89,27 @@ public sealed class AutofillController(
         return View(nameof(Connect), new AutofillConnectionView(challenge ?? string.Empty, code, true));
     }
 
+    [HttpGet("authorize")]
+    [EnableRateLimiting(RateLimitPolicies.AccountActions)]
+    public async Task<IActionResult> AuthorizeConnection(
+        string? extensionId, string? challenge, string? state, CancellationToken cancellationToken)
+    {
+        var navigation = Request.Headers["Sec-Fetch-Site"].ToString();
+        if (navigation is not ("" or "none" or "same-origin")
+            || !IsTrustedExtension(extensionId)
+            || challenge is not { Length: 64 } || !challenge.All(char.IsAsciiHexDigitLower)
+            || state is not { Length: 43 } || !state.All(character => char.IsAsciiLetterOrDigit(character) || character is '-' or '_'))
+        {
+            return BadRequest(new { message = "The tracker could not authorize this extension request." });
+        }
+
+        var user = await users.GetUserAsync(User);
+        var code = user is null ? null : await profiles.CreatePairingCodeAsync(user, challenge, cancellationToken);
+        // End the sign-in form navigation before the browser leaves the tracker origin.
+        var callback = $"https://{extensionId}.chromiumapp.org/autofill#state={state}";
+        return View("CompleteConnection", code is null ? $"{callback}&error=profile_required" : $"{callback}&code={code}");
+    }
+
     [AllowAnonymous]
     [IgnoreAntiforgeryToken]
     [HttpPost("exchange")]
@@ -109,6 +132,22 @@ public sealed class AutofillController(
     }
 
     private string OwnerId => users.GetUserId(User)!;
+
+    private bool IsTrustedExtension(string? id)
+    {
+        if (id is not { Length: 32 } || !id.All(character => character is >= 'a' and <= 'p'))
+        {
+            return false;
+        }
+        if (environment.IsDevelopment() || environment.IsEnvironment("Testing"))
+        {
+            return true;
+        }
+
+        return Uri.TryCreate(configuration["BrowserExtension:ChromeWebStoreUrl"], UriKind.Absolute, out var listing)
+            && listing.Scheme == Uri.UriSchemeHttps && listing.Host == "chromewebstore.google.com"
+            && string.Equals(listing.Segments.Last().TrimEnd('/'), id, StringComparison.Ordinal);
+    }
 }
 
 public sealed record AutofillConnectionView(string Challenge, string? Code = null, bool Attempted = false);

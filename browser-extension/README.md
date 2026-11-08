@@ -13,7 +13,7 @@ Use the development package below to try the autofill build from this branch.
 1. Sign in to [Job Application Tracker](https://myjobtracker.com.au/account/login).
 2. Open a public job ad and choose **Extract** in the extension. Review the extracted details in the private draft before saving it.
 3. Open **Extension → Autofill profile**. Enter your details or upload a text PDF or DOCX résumé up to 5 MB, then review the suggested contact details, work experience, education, certifications and links. Select **Save profile** to use those details in the extension. Use **Copy role** when a form needs manual entry.
-4. Open the extension's connection section, choose **Get connection code**, and approve the connection in the tracker. Paste the code into the extension and choose **Connect**.
+4. Open the extension's connection section and choose **Connect to tracker**. Sign in if prompted. The extension returns connected and can read your saved profile when you choose Fill.
 5. Open an employer application and choose **Fill**. Review the completed fields, enter anything the form still needs, and submit from the employer's site.
 
 If the tracker asks you to sign in, return to the job advertisement after signing in and click the extension again.
@@ -45,13 +45,14 @@ The job-ad reader supports structured `JobPosting` information and several named
 - A pending handoff is encrypted, single-use, and expires after ten minutes.
 - Fill reads your saved profile from the tracker using a revocable connection. The employer's website can read values filled into its form before you submit.
 
-Chrome lists three permissions:
+Chrome lists these permissions:
 
 | Permission | Why it is needed |
 |---|---|
 | `activeTab` | Temporarily read the page where the user clicked the extension |
 | `scripting` | Run Extract or Fill after that click |
 | `storage` | Hold the pending capture and profile connection in browser-session memory |
+| `identity` | Open tracker sign-in and return the connection to the extension |
 | Tracker origin | Retrieve the connected profile from the tracker |
 
 Read the public [extension privacy page](https://myjobtracker.com.au/extension/privacy) for the full explanation.

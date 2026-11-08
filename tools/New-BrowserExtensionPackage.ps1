@@ -22,7 +22,8 @@ if ($isDevelopment) {
 $destination = (New-Item -ItemType Directory -Path $OutputDirectory).FullName
 $files = @(
     'manifest.json', 'tracker-config.js', 'popup.html', 'popup.css', 'popup.js',
-    'handoff.html', 'handoff.js', 'autofill-popup.js', 'autofill-matching.js', 'autofill-page.js', 'icons'
+    'handoff.html', 'handoff.js', 'autofill-popup.js', 'autofill-connection.js',
+    'autofill-matching.js', 'autofill-page.js', 'icons'
 )
 foreach ($file in $files) {
     Copy-Item -LiteralPath (Join-Path $source $file) -Destination $destination -Recurse

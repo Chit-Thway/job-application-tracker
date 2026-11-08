@@ -2,15 +2,15 @@ import { planAutofill } from "./autofill-matching.js";
 import { accessApplicationPage } from "./autofill-page.js";
 
 const tokenKey = "autofill:access";
-const verifierKey = "autofill:verifier";
+const connectionResultKey = "autofill:connectionResult";
 const lastFillKey = "autofill:lastFillTab";
 const fill = document.getElementById("fill");
 const undo = document.getElementById("undo-fill");
 const status = document.getElementById("fill-status");
 const connection = document.getElementById("connection");
 const start = document.getElementById("start-connection");
-const connect = document.getElementById("connect-form");
-const code = document.getElementById("connection-code");
+const connectionStatus = document.getElementById("connection-status");
+const connectionSummary = document.getElementById("connection-summary");
 const profileUrl = new URL("/extension/profile", trackerOrigin);
 document.getElementById("manage-profile").href = profileUrl.href;
 document.getElementById("privacy-link").href = new URL("/extension/privacy", trackerOrigin).href;
@@ -46,60 +46,40 @@ async function request(path, options) {
   });
 }
 
-async function beginConnection() {
-  const random = crypto.getRandomValues(new Uint8Array(32));
-  const verifier = btoa(String.fromCharCode(...random)).replaceAll("+", "-").replaceAll("/", "_").replace(/=+$/, "");
-  const hash = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(verifier));
-  const challenge = [...new Uint8Array(hash)].map(byte => byte.toString(16).padStart(2, "0")).join("");
-  await chrome.storage.session.set({ [verifierKey]: verifier });
-  const url = new URL(`${profileUrl.href}/connect`);
-  url.searchParams.set("challenge", challenge);
-  await chrome.tabs.create({ url: url.href });
+async function refreshConnection() {
+  const stored = await chrome.storage.session.get([tokenKey, connectionResultKey]);
+  const connected = Boolean(stored[tokenKey]);
+  const result = stored[connectionResultKey];
+  start.hidden = connected;
+  connectionSummary.textContent = connected ? "Autofill profile connected" : "Autofill profile and connection";
+  if (connected) {
+    connectionStatus.textContent = "Profile connected. Open an employer application form and choose Fill.";
+    return;
+  }
+  const messages = {
+    working: "Connecting to the tracker. Sign in if prompted.",
+    "profile-required": "Save an autofill profile in the tracker, then try Connect again.",
+    failed: "Could not complete the connection. Choose Connect to try again.",
+  };
+  connectionStatus.textContent = messages[result] ?? "";
+  if (result) connection.open = true;
 }
 
 start.addEventListener("click", async () => {
   start.disabled = true;
+  connectionStatus.textContent = "Connecting to the tracker. Sign in if prompted.";
   try {
-    await beginConnection();
+    const started = await chrome.runtime.sendMessage({ type: "autofill:connect" });
+    if (!started) throw new Error();
   } catch {
-    setup("Could not open the tracker. Try getting a new connection code.");
+    connectionStatus.textContent = "Could not complete the connection. Choose Connect to try again.";
   } finally {
     start.disabled = false;
   }
 });
 
-connect.addEventListener("submit", async event => {
-  event.preventDefault();
-  const submit = connect.querySelector("button");
-  submit.disabled = true;
-  try {
-    const stored = await chrome.storage.session.get(verifierKey);
-    if (!stored[verifierKey]) {
-      setup("Get a new connection code first.");
-      return;
-    }
-    const response = await request("exchange", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ code: code.value.trim(), verifier: stored[verifierKey] }),
-    });
-    if (!response.ok) {
-      setup("That code could not be used. Check it or get a new code.");
-      return;
-    }
-    const { token } = await response.json();
-    if (typeof token !== "string" || !/^[A-Za-z0-9_-]{43}$/.test(token)) throw new Error();
-    await chrome.storage.session.set({ [tokenKey]: token });
-    await chrome.storage.session.remove(verifierKey);
-    code.value = "";
-    connect.hidden = true;
-    connection.open = false;
-    status.textContent = "Profile connected. Open an employer application form and choose Fill.";
-  } catch {
-    setup("Could not connect to the tracker. Try again.");
-  } finally {
-    submit.disabled = false;
-  }
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area === "session" && (changes[tokenKey] || changes[connectionResultKey])) void refreshConnection();
 });
 
 fill.addEventListener("click", async () => {
@@ -116,7 +96,7 @@ fill.addEventListener("click", async () => {
     const scan = await runInTab(tab.id, "scan");
     const response = await request("data", { headers: { Authorization: `Bearer ${stored[tokenKey]}` } });
     if (response.status === 401 || response.status === 403) {
-      await chrome.storage.session.remove(tokenKey);
+      await chrome.storage.session.remove([tokenKey, connectionResultKey]);
       setup("Your connection has expired or was revoked. Connect again to fill.");
       return;
     }
@@ -170,8 +150,7 @@ undo.addEventListener("click", async () => {
   }
 });
 
-chrome.storage.session.get([verifierKey, lastFillKey]).then(stored => {
-  connect.hidden = !stored[verifierKey];
-  if (!connect.hidden) connection.open = true;
+void refreshConnection();
+chrome.storage.session.get(lastFillKey).then(stored => {
   undo.hidden = !stored[lastFillKey];
 });
