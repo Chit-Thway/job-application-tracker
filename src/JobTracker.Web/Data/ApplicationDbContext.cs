@@ -17,6 +17,7 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
     public DbSet<RetentionRun> RetentionRuns => Set<RetentionRun>();
     public DbSet<AdminAuditEntry> AdminAuditEntries => Set<AdminAuditEntry>();
     public DbSet<ExtensionCaptureHandoff> ExtensionCaptureHandoffs => Set<ExtensionCaptureHandoff>();
+    public DbSet<AutofillProfile> AutofillProfiles => Set<AutofillProfile>();
     public DbSet<EmailVerificationMonthlyUsage> EmailVerificationMonthlyUsages
         => Set<EmailVerificationMonthlyUsage>();
 
@@ -79,6 +80,20 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
             entity.Property(handoff => handoff.ConcurrencyStamp).IsConcurrencyToken();
             entity.HasIndex(handoff => handoff.TokenHash).IsUnique();
             entity.HasIndex(handoff => handoff.ExpiresAt);
+        });
+
+        builder.Entity<AutofillProfile>(entity =>
+        {
+            entity.HasKey(profile => profile.OwnerId);
+            entity.Property(profile => profile.ProtectedProfile).IsRequired();
+            entity.Property(profile => profile.PairingHash).HasMaxLength(64);
+            entity.Property(profile => profile.PairingChallenge).HasMaxLength(64);
+            entity.Property(profile => profile.AccessHash).HasMaxLength(64);
+            entity.HasIndex(profile => profile.PairingHash).IsUnique();
+            entity.HasIndex(profile => profile.AccessHash).IsUnique();
+            entity.HasOne<ApplicationUser>().WithOne()
+                .HasForeignKey<AutofillProfile>(profile => profile.OwnerId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         ConfigureOwnedEntity<Company>(builder);

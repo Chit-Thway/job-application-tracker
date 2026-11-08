@@ -22,6 +22,9 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\JobTracker.Web\JobTracker.Web.csproj" />
+    <None Include="..\..\browser-extension\**\*"
+          Link="BrowserExtension\%(RecursiveDir)%(Filename)%(Extension)"
+          CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>

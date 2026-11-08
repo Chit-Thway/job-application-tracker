@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Capture this job</title>
+  <title>Job Application Tracker</title>
   <link rel="stylesheet" href="popup.css">
 </head>
 <body>
@@ -12,32 +12,34 @@
       <span class="mark" aria-hidden="true">JT</span>
       <div>
         <p class="eyebrow">Job Application Tracker</p>
-        <h1>Capture this job</h1>
+        <h1>Extract or fill</h1>
       </div>
     </header>
 
-    <p class="intro">Read the job advertisement you have open and create an editable review draft. Nothing is saved automatically.</p>
-
-    <aside class="data-disclosure" aria-labelledby="data-disclosure-title">
-      <strong id="data-disclosure-title">What this click shares</strong>
-      <p>The extension reads this tab's page URL and visible job content, then sends that capture over HTTPS to your private tracker for review.</p>
-    </aside>
+    <p class="reminder">Make sure the full job description is visible. Click “See more” before capturing.</p>
 
     <form id="capture-form">
-      <details class="tracker-settings">
-        <summary>Advanced tracker address</summary>
-        <div class="tracker-settings-fields">
-          <label for="tracker-url">Tracker address</label>
-          <input id="tracker-url" name="tracker-url" type="url" value="https://myjobtracker.com.au" required spellcheck="false">
-          <small>Change this only when using a different HTTPS deployment or localhost.</small>
-        </div>
-      </details>
-      <button type="submit">Capture this tab and review</button>
+      <button class="secondary" type="submit">Extract <small>Job ad to a private review draft</small></button>
+      <button id="fill" type="button">Fill <small>Saved profile to this form</small></button>
     </form>
 
     <p id="status" class="status" role="status" aria-live="polite"></p>
-    <p class="privacy">Runs only when clicked · active tab only · <a href="https://myjobtracker.com.au/extension/privacy" target="_blank" rel="noreferrer">Privacy details</a></p>
+    <p id="fill-status" class="status" role="status"></p>
+    <button id="undo-fill" class="text-button" type="button" hidden>Undo last fill</button>
+    <details id="connection">
+      <summary>Autofill profile and connection</summary>
+      <p><a id="manage-profile" target="_blank" rel="noreferrer">Manage your autofill profile</a></p>
+      <button id="start-connection" class="secondary" type="button">Get connection code</button>
+      <form id="connect-form" hidden>
+        <label for="connection-code">One-time code from the tracker</label>
+        <input id="connection-code" autocomplete="off" required spellcheck="false">
+        <button type="submit">Connect</button>
+      </form>
+    </details>
+    <p class="privacy">Active tab only · <a id="privacy-link" target="_blank" rel="noreferrer">Privacy details</a></p>
   </main>
+  <script src="tracker-config.js"></script>
   <script src="popup.js"></script>
+  <script type="module" src="autofill-popup.js"></script>
 </body>
 </html>

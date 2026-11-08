@@ -1,0 +1,30 @@
+@model JobTracker.Web.Controllers.AutofillConnectionView
+@{
+    ViewData["Title"] = "Connect extension";
+    ViewData["Section"] = "extension";
+}
+
+<section class="workspace-content">
+    <div class="shell">
+        <article class="detail-card">
+            <h1>Connect the extension</h1>
+            @if (Model.Code is not null)
+            {
+                <p>Copy this one-time code. Reopen the extension, paste it into the connection field, and select Connect. The code expires in five minutes.</p>
+                <div class="field"><label for="connection-code">Connection code</label><input id="connection-code" value="@Model.Code" readonly autocomplete="off" /></div>
+            }
+            else if (Model.Attempted)
+            {
+                <p>Save your <a asp-action="Profile">autofill profile</a>, then start a new connection from the extension.</p>
+            }
+            else
+            {
+                <p>Allow the extension to read your saved applicant profile when you choose Fill. Connecting again replaces the previous connection.</p>
+                <form asp-action="Approve" method="post">
+                    <input type="hidden" name="challenge" value="@Model.Challenge" />
+                    <button class="button button-primary" type="submit">Create connection code</button>
+                </form>
+            }
+        </article>
+    </div>
+</section>

@@ -1803,6 +1803,49 @@ html[data-theme="dark"] .verification-resend-button:hover {
   font: inherit;
 }
 
+.autofill-profile,
+.autofill-profile > form,
+.autofill-fields {
+    display: grid;
+    gap: 1rem;
+}
+
+.autofill-profile > form > button {
+    justify-self: start;
+}
+
+.autofill-fields {
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 13rem), 1fr));
+}
+
+.autofill-entry {
+    min-width: 0;
+    margin: 0 0 1rem;
+    padding: 1rem;
+    border: 1px solid currentColor;
+    border-radius: .65rem;
+}
+
+.autofill-wide {
+    grid-column: 1 / -1;
+}
+
+.autofill-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: .75rem;
+    margin-top: .75rem;
+}
+
+.autofill-entry .field input[type="checkbox"] {
+    width: auto;
+}
+
+.autofill-entry [hidden] {
+    display: none;
+}
+
 .field input[aria-invalid="true"] {
   border-color: #b42318;
 }

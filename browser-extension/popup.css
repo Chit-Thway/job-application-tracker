@@ -50,32 +50,14 @@ h1 {
   font-size: 20px;
 }
 
-.intro {
-  margin: 16px 0;
-  color: #4e5a78;
-  font-size: 13px;
-  line-height: 1.5;
-}
-
-.data-disclosure {
-  margin: 0 0 14px;
+.reminder {
+  margin: 14px 0 8px;
   padding: 12px;
   color: #273455;
   background: #e9efff;
   border-radius: 10px;
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1.45;
-}
-
-.data-disclosure strong {
-  display: block;
-  margin-bottom: 3px;
-  color: #2745b4;
-  font-size: 11px;
-}
-
-.data-disclosure p {
-  margin: 0;
 }
 
 form {
@@ -88,20 +70,20 @@ label {
   font-weight: 750;
 }
 
-.tracker-settings {
+#connection {
+  margin-top: 12px;
   color: #4e5a78;
-  font-size: 11px;
+  font-size: 12px;
 }
 
-.tracker-settings summary {
+#connection summary {
   cursor: pointer;
   font-weight: 750;
 }
 
-.tracker-settings-fields {
-  display: grid;
-  gap: 7px;
-  margin-top: 9px;
+[hidden],
+.status:empty {
+  display: none;
 }
 
 input {
@@ -121,9 +103,12 @@ button:focus-visible {
   outline-offset: 2px;
 }
 
-small {
-  color: #65708d;
-  font-size: 10px;
+button small {
+  display: block;
+  margin-top: 2px;
+  color: inherit;
+  font-size: 11px;
+  font-weight: 500;
 }
 
 button {
@@ -143,15 +128,32 @@ button:hover {
   background: #2f51c5;
 }
 
+.secondary {
+  background: white;
+  color: #2849bc;
+  border: 1px solid #3e63dd;
+}
+
+.secondary:hover {
+  background: #e9efff;
+}
+
+.text-button,
+.text-button:hover {
+  padding: 4px 0;
+  color: #2849bc;
+  background: transparent;
+  text-decoration: underline;
+}
+
 button:disabled {
   cursor: wait;
   opacity: 0.65;
 }
 
 .status {
-  min-height: 18px;
   margin: 12px 0 0;
-  color: #8d1b13;
+  color: #273455;
   font-size: 12px;
   line-height: 1.4;
 }

@@ -1,0 +1,101 @@
+@using JobTracker.Web.Autofill
+@using Microsoft.AspNetCore.Mvc.ViewFeatures
+@model ApplicantProfile
+@{
+    ViewData["Title"] = "Autofill profile";
+    ViewData["Section"] = "extension";
+    ViewDataDictionary Row(string prefix) => new(ViewData) { TemplateInfo = { HtmlFieldPrefix = prefix } };
+}
+
+<section class="workspace-hero">
+    <div class="shell workspace-heading">
+        <div>
+            <h1>Autofill profile</h1>
+            <p>Save the information you want to reuse on employer application forms.</p>
+        </div>
+        <a class="button" asp-controller="Home" asp-action="BrowserExtension">Extension setup</a>
+    </div>
+</section>
+<section class="workspace-content">
+    <div class="shell autofill-profile">
+        <form asp-action="Save" method="post">
+            <div asp-validation-summary="All" class="validation-summary"></div>
+            <section class="detail-card">
+                <h2>Contact and address</h2>
+                <div class="autofill-fields">
+                    <div class="field"><label asp-for="FullName">Full name</label><input asp-for="FullName" /></div>
+                    <div class="field"><label asp-for="PreferredName">Preferred name</label><input asp-for="PreferredName" /></div>
+                    <div class="field"><label asp-for="GivenName">Given name</label><input asp-for="GivenName" /></div>
+                    <div class="field"><label asp-for="FamilyName">Family name</label><input asp-for="FamilyName" /></div>
+                    <div class="field"><label asp-for="Email">Application email</label><input asp-for="Email" /></div>
+                    <div class="field"><label asp-for="Phone">Phone</label><input asp-for="Phone" type="tel" /></div>
+                    <div class="field"><label asp-for="AddressLine1">Street address</label><input asp-for="AddressLine1" /></div>
+                    <div class="field"><label asp-for="AddressLine2">Address line 2</label><input asp-for="AddressLine2" /></div>
+                    <div class="field"><label asp-for="City">Suburb or city</label><input asp-for="City" /></div>
+                    <div class="field"><label asp-for="Region">State or territory</label><input asp-for="Region" /></div>
+                    <div class="field"><label asp-for="Postcode">Postcode</label><input asp-for="Postcode" /></div>
+                    <div class="field"><label asp-for="Country">Country</label><input asp-for="Country" /></div>
+                </div>
+            </section>
+            <section class="detail-card" data-entry-list>
+                <h2>Work experience</h2>
+                <p>Order roles most recent first. Copy role gives you a text version for forms that need manual entry.</p>
+                <div data-entries>
+                    @for (var index = 0; index < Model.Experience.Count; index++)
+                    {
+                        <partial name="_Experience" model="Model.Experience[index]" view-data='Row($"Experience[{index}]")' />
+                    }
+                </div>
+                <template><partial name="_Experience" model="new ExperienceEntry()" view-data='Row("Experience[__index__]")' /></template>
+                <button type="button" class="button" data-add-entry>Add role</button>
+            </section>
+            <section class="detail-card" data-entry-list>
+                <h2>Education</h2>
+                <div data-entries>
+                    @for (var index = 0; index < Model.Education.Count; index++)
+                    {
+                        <partial name="_Education" model="Model.Education[index]" view-data='Row($"Education[{index}]")' />
+                    }
+                </div>
+                <template><partial name="_Education" model="new EducationEntry()" view-data='Row("Education[__index__]")' /></template>
+                <button type="button" class="button" data-add-entry>Add education</button>
+            </section>
+            <section class="detail-card" data-entry-list>
+                <h2>Certifications</h2>
+                <div data-entries>
+                    @for (var index = 0; index < Model.Certifications.Count; index++)
+                    {
+                        <partial name="_Certification" model="Model.Certifications[index]" view-data='Row($"Certifications[{index}]")' />
+                    }
+                </div>
+                <template><partial name="_Certification" model="new CertificationEntry()" view-data='Row("Certifications[__index__]")' /></template>
+                <button type="button" class="button" data-add-entry>Add certification</button>
+            </section>
+            <section class="detail-card">
+                <h2>Links and saved answers</h2>
+                <div class="autofill-fields">
+                    <div class="field"><label asp-for="LinkedIn">LinkedIn</label><input asp-for="LinkedIn" type="url" /></div>
+                    <div class="field"><label asp-for="GitHub">GitHub</label><input asp-for="GitHub" type="url" /></div>
+                    <div class="field"><label asp-for="Portfolio">Portfolio or personal website</label><input asp-for="Portfolio" type="url" /></div>
+                    <div class="field"><label asp-for="NoticePeriod">Notice period</label><input asp-for="NoticePeriod" /></div>
+                    <div class="field"><label asp-for="Availability">Availability</label><input asp-for="Availability" /></div>
+                </div>
+            </section>
+            <button class="button button-primary" type="submit">Save profile</button>
+        </form>
+        <section class="detail-card">
+            <h2>Profile and connection</h2>
+            <p>Open the extension to connect. The employer's website can read any values you fill into its form.</p>
+            <div class="autofill-actions">
+                <form asp-action="Disconnect" method="post"><button class="button" type="submit">Disconnect extension</button></form>
+                <details><summary>Delete profile</summary>
+                    <form asp-action="Delete" method="post">
+                        <p>This removes your saved applicant details and revokes extension access.</p>
+                        <button class="button" type="submit">Delete autofill profile</button>
+                    </form>
+                </details>
+            </div>
+        </section>
+    </div>
+</section>
+<script src="~/js/autofill-profile.js" asp-append-version="true" defer></script>

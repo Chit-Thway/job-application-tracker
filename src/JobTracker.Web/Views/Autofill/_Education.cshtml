@@ -1,0 +1,12 @@
+@model JobTracker.Web.Autofill.EducationEntry
+<fieldset class="autofill-entry" data-entry>
+    <legend>Qualification</legend>
+    <div class="autofill-fields">
+        <div class="field"><label asp-for="Institution">Institution</label><input asp-for="Institution" /></div>
+        <div class="field"><label asp-for="Qualification">Qualification</label><input asp-for="Qualification" /></div>
+        <div class="field"><label asp-for="FieldOfStudy">Field of study</label><input asp-for="FieldOfStudy" /></div>
+        <div class="field"><label asp-for="StartMonth">Start month</label><input asp-for="StartMonth" type="month" /></div>
+        <div class="field"><label asp-for="EndMonth">End month</label><input asp-for="EndMonth" type="month" /></div>
+    </div>
+    <button type="button" class="button" data-remove-entry>Remove education</button>
+</fieldset>

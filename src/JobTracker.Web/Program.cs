@@ -6,6 +6,7 @@ using JobTracker.Web.Extraction;
 using JobTracker.Web.Demo;
 using JobTracker.Web.Diagnostics;
 using JobTracker.Web.Admin;
+using JobTracker.Web.Autofill;
 using Azure.Communication.Email;
 using Azure.Identity;
 using System.Net;
@@ -226,6 +227,7 @@ builder.Services.AddScoped<ExtractionDraftService>();
 builder.Services.AddScoped<JobPostingUrlImportService>();
 builder.Services.AddScoped<BrowserExtensionImportService>();
 builder.Services.AddScoped<ExtensionCaptureHandoffService>();
+builder.Services.AddScoped<AutofillProfileService>();
 builder.Services.AddHealthChecks()
     .AddCheck(
         "self",
