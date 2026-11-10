@@ -1,5 +1,6 @@
 import { planAutofill } from "./autofill-matching.js";
 import { accessApplicationPage } from "./autofill-page.js";
+import { enableDocumentPicker } from "./autofill-documents.js";
 
 const tokenKey = "autofill:access";
 const lastFillKey = "autofill:lastFillTab";
@@ -8,6 +9,13 @@ const undo = document.getElementById("undo-fill");
 const status = document.getElementById("fill-status");
 const connection = document.getElementById("connection");
 const connectionSummary = document.getElementById("connection-summary");
+const reviewPanel = document.getElementById("fill-review");
+const answerSuggestions = document.getElementById("answer-suggestions");
+const unfilled = document.getElementById("unfilled-fields");
+const refereePanel = document.getElementById("referee-picker");
+const refereeSelect = document.getElementById("referee-select");
+const refereeFields = document.getElementById("referee-fields");
+const refereeStatus = document.getElementById("referee-status");
 const profileUrl = new URL("/extension/profile", trackerOrigin);
 document.getElementById("manage-profile").href = profileUrl.href;
 document.getElementById("privacy-link").href = new URL("/extension/privacy", trackerOrigin).href;
@@ -66,6 +74,92 @@ async function loadProfile() {
   return response.json();
 }
 
+async function recordFill(tabId) {
+  await chrome.storage.session.set({ [lastFillKey]: tabId });
+  undo.hidden = false;
+}
+
+function showReview(plan, tabId, scanId) {
+  unfilled.replaceChildren(...[...new Set(plan.review)].map(label => {
+    const item = document.createElement("li");
+    item.textContent = label;
+    return item;
+  }));
+  answerSuggestions.replaceChildren(...plan.suggestions.map(suggestion => {
+    const row = document.createElement("div");
+    row.className = "review-answer";
+    const label = document.createElement("label");
+    label.textContent = suggestion.label;
+    const answer = document.createElement(suggestion.editable ? "textarea" : "p");
+    if (suggestion.editable) {
+      answer.id = `suggestion-${suggestion.index}`;
+      label.htmlFor = answer.id;
+      answer.rows = 3;
+      answer.value = suggestion.value;
+      if (suggestion.maxLength > 0) answer.maxLength = suggestion.maxLength;
+    } else {
+      answer.textContent = suggestion.display;
+    }
+    const use = document.createElement("button");
+    use.type = "button";
+    use.className = "text-button";
+    use.textContent = "Use answer";
+    use.setAttribute("aria-label", `Use answer for ${suggestion.label}`);
+    use.addEventListener("click", async () => {
+      const value = suggestion.editable ? answer.value.trim() : suggestion.value;
+      if (value === "") {
+        status.textContent = "Enter an answer before applying it.";
+        return;
+      }
+      use.disabled = true;
+      try {
+        const tab = await activeTab();
+        if (tab.id !== tabId) throw new Error();
+        const result = await runInTab(tabId, "write", { scanId, writes: [{ index: suggestion.index, value }] });
+        if (!result.filled) throw new Error();
+        await recordFill(tabId);
+        status.textContent = "Answer added to the form.";
+        row.remove();
+        reviewPanel.hidden = !answerSuggestions.children.length && !unfilled.children.length;
+      } catch {
+        status.textContent = "Could not apply the answer. Review the form and choose Fill again.";
+      } finally {
+        use.disabled = false;
+      }
+    });
+    row.append(label, answer, use);
+    return row;
+  }));
+  reviewPanel.hidden = !plan.review.length && !plan.suggestions.length;
+}
+
+function showReferees(referees) {
+  refereePanel.hidden = !referees.length;
+  refereeSelect.replaceChildren(...referees.map((referee, index) => new Option(referee.name, index)));
+  function showFields() {
+    refereeStatus.textContent = "";
+    const referee = referees[Number(refereeSelect.value)];
+    refereeFields.replaceChildren(...["name", "relationship", "phone", "email"]
+      .filter(field => referee?.[field]).map(field => {
+        const copy = document.createElement("button");
+        copy.type = "button";
+        copy.className = "text-button";
+        copy.textContent = `Copy ${field}`;
+        copy.addEventListener("click", async () => {
+          try {
+            await navigator.clipboard.writeText(referee[field]);
+            refereeStatus.textContent = `${referee.name}: ${field} copied.`;
+          } catch {
+            refereeStatus.textContent = "Clipboard unavailable. Open your profile to copy the details.";
+          }
+        });
+        return copy;
+      }));
+  }
+  refereeSelect.onchange = showFields;
+  showFields();
+}
+
 chrome.storage.onChanged.addListener((changes, area) => {
   if (area === "session" && changes[tokenKey]) void refreshConnection();
 });
@@ -73,14 +167,18 @@ chrome.storage.onChanged.addListener((changes, area) => {
 fill.addEventListener("click", async () => {
   fill.disabled = true;
   status.textContent = "";
+  reviewPanel.hidden = true;
+  refereePanel.hidden = true;
   try {
     const tab = await activeTab();
     const scan = await runInTab(tab.id, "scan");
-    const plan = planAutofill(scan.fields, await loadProfile());
-    const review = [...new Set(plan.review)].slice(0, 3).join(", ");
+    const profile = await loadProfile();
+    const plan = planAutofill(scan.fields, profile);
+    showReferees(profile.referees ?? []);
     const frameMessage = scan.inaccessibleFrames ? " Some embedded sections may need manual entry." : "";
     if (!plan.writes.length) {
-      status.textContent = (plan.reason ?? (review ? `Review manually: ${review}.` : "No blank supported fields to fill.")) + frameMessage;
+      showReview(plan, tab.id, scan.scanId);
+      status.textContent = (plan.reason ?? (plan.review.length || plan.suggestions.length ? "Review the remaining questions below." : "No blank supported fields to fill.")) + frameMessage;
       return;
     }
     const result = await runInTab(tab.id, "write", { scanId: scan.scanId, writes: plan.writes });
@@ -88,14 +186,11 @@ fill.addEventListener("click", async () => {
       status.textContent = "The form changed. Review the page and try Fill again.";
       return;
     }
+    showReview(plan, tab.id, scan.scanId);
     const message = [`Filled ${result.filled} ${result.filled === 1 ? "field" : "fields"}.`];
     if (result.failed) message.push(`${result.failed} did not retain a value.`);
-    if (review) message.push(`Review manually: ${review}.`);
     status.textContent = message.join(" ") + frameMessage;
-    if (result.filled) {
-      await chrome.storage.session.set({ [lastFillKey]: tab.id });
-      undo.hidden = false;
-    }
+    if (result.filled) await recordFill(tab.id);
   } catch (error) {
     status.textContent = error instanceof Error && /^(Open|Save an autofill profile|Could not (load|connect|reach))/.test(error.message)
       ? error.message : "Could not fill this tab. Check the form and try again.";
@@ -125,6 +220,7 @@ undo.addEventListener("click", async () => {
 });
 
 void refreshConnection();
+enableDocumentPicker(activeTab, runInTab);
 chrome.storage.session.get(lastFillKey).then(stored => {
   undo.hidden = !stored[lastFillKey];
 });

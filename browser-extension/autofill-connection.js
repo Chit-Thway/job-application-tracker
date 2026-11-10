@@ -3,6 +3,8 @@ importScripts("tracker-config.js");
 const tokenKey = "autofill:access";
 let pendingConnection;
 
+chrome.storage.local.setAccessLevel({ accessLevel: "TRUSTED_CONTEXTS" });
+
 chrome.runtime.onMessage.addListener((message, sender, respond) => {
   if (message?.type !== "autofill:connect" || sender.id !== chrome.runtime.id
       || sender.url !== chrome.runtime.getURL("popup.html")) return;

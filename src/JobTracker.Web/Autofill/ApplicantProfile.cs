@@ -23,9 +23,38 @@ public sealed class ApplicantProfile
     [StringLength(500), Url] public string? Portfolio { get; set; }
     [StringLength(160)] public string? NoticePeriod { get; set; }
     [StringLength(160)] public string? Availability { get; set; }
+    [StringLength(160)] public string? SalaryExpectation { get; set; }
+    public bool? OpenToRelocation { get; set; }
+    public bool? OpenToHybridWork { get; set; }
+    [MaxLength(20)] public List<WorkPermission> WorkPermissions { get; set; } = [];
+    [MaxLength(20)] public List<SavedApplicationAnswer> SavedAnswers { get; set; } = [];
+    [MaxLength(20)] public List<ApplicantReferee> Referees { get; set; } = [];
     [MaxLength(20)] public List<ExperienceEntry> Experience { get; set; } = [];
     [MaxLength(20)] public List<EducationEntry> Education { get; set; } = [];
     [MaxLength(20)] public List<CertificationEntry> Certifications { get; set; } = [];
+}
+
+public sealed class WorkPermission
+{
+    [Required, StringLength(2), RegularExpression("^[A-Z]{2}$")]
+    public string? CountryCode { get; set; }
+    public bool? Authorized { get; set; }
+    public bool? SponsorshipNow { get; set; }
+    public bool? SponsorshipLater { get; set; }
+}
+
+public sealed class SavedApplicationAnswer
+{
+    [Required, StringLength(180)] public string? Question { get; set; }
+    [Required, StringLength(2500)] public string? Answer { get; set; }
+}
+
+public sealed class ApplicantReferee
+{
+    [Required, StringLength(150)] public string? Name { get; set; }
+    [StringLength(180)] public string? Relationship { get; set; }
+    [StringLength(40)] public string? Phone { get; set; }
+    [StringLength(254), EmailAddress] public string? Email { get; set; }
 }
 
 public sealed class ExperienceEntry : IValidatableObject
@@ -62,6 +91,7 @@ public sealed class CertificationEntry
     [Required, StringLength(180)] public string? Name { get; set; }
     [StringLength(180)] public string? Issuer { get; set; }
     [StringLength(140)] public string? CredentialId { get; set; }
+    [StringLength(80)] public string? LicenceClass { get; set; }
     [StringLength(500), Url] public string? CredentialUrl { get; set; }
     [RegularExpression(ApplicantProfile.MonthPattern)] public string? IssuedMonth { get; set; }
     [RegularExpression(ApplicantProfile.MonthPattern)] public string? ExpiryMonth { get; set; }

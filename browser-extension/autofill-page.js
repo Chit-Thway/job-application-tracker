@@ -1,11 +1,18 @@
 // This function is serialized by Chrome and runs in the active tab's isolated world.
 export async function accessApplicationPage(operation, request = {}) {
-  const supported = "input,select,textarea";
-  const inputTypes = ["text", "email", "tel", "url", "number", "month", "date", "checkbox"];
+  const supported = "input,select,textarea,button[role=combobox],button[aria-haspopup=listbox]";
+  const inputTypes = ["text", "email", "tel", "url", "number", "month", "date", "checkbox", "radio", "file"];
   const stateKey = "__jobTrackerAutofillV1";
   const state = globalThis[stateKey] ??= {};
   const text = value => String(value ?? "").replace(/\s+/g, " ").trim().slice(0, 180);
-  const valueOf = field => field.type === "checkbox" ? field.checked : field.value;
+  const checkable = field => field.type === "checkbox" || field.type === "radio";
+  const valueOf = field => checkable(field) ? field.checked : field.value;
+
+  function radioGroup(field) {
+    if (!field.name) return [];
+    return [...field.getRootNode().querySelectorAll(`input[type=radio][name="${CSS.escape(field.name)}"]`)]
+      .filter(option => option.form === field.form);
+  }
 
   function visible(field) {
     if (!field.isConnected || field.matches(":disabled, [readonly], [aria-disabled=true], [multiple]")
@@ -20,7 +27,14 @@ export async function accessApplicationPage(operation, request = {}) {
     }
   }
 
+  function availableFile(field) {
+    return visible(field) || (field.isConnected && !field.matches(":disabled, [multiple], [aria-disabled=true]") &&
+      !field.closest("[inert]") && [...(field.labels ?? [])].some(visible));
+  }
+
   function blank(field) {
+    if (field.tagName === "BUTTON") return /^(?:select|choose|please select)(?: (?:one|an option))?\s*[…\.]*$/i.test(text(field.textContent));
+    if (field.type === "radio") return radioGroup(field).every(option => !option.checked);
     if (field.type === "checkbox") return !field.checked;
     if (field.tagName === "SELECT") {
       const selected = field.selectedOptions[0];
@@ -73,7 +87,7 @@ export async function accessApplicationPage(operation, request = {}) {
     return { group, context: headings.join(" / ") };
   }
 
-  function discovery() {
+  function discovery(forAttachment) {
     const fields = [];
     const references = [];
     const ids = new Map();
@@ -95,25 +109,31 @@ export async function accessApplicationPage(operation, request = {}) {
       for (const field of root.querySelectorAll(supported)) {
         if (fields.length >= 350) break;
         if (field.tagName === "INPUT" && !inputTypes.includes(field.type)) continue;
-        if (!visible(field)) continue;
+        if (field.type === "file" ? !availableFile(field) : !visible(field)) continue;
         const form = field.form ?? field.closest("[role=form]") ?? root;
         const { group, context } = sectionContext(field, form);
         const applicationSection = /\b(applicant|candidate|application|personal information|contact details)\b/i.test(context);
         const label = fieldLabel(field);
+        const radioContainer = field.type === "radio" ? field.closest("fieldset, [role=radiogroup]") : null;
+        const radioQuestion = text(radioContainer?.getAttribute("aria-label") ||
+          radioContainer?.querySelector(":scope > legend")?.textContent ||
+          field.getRootNode().getElementById(radioContainer?.getAttribute("aria-labelledby") ?? "")?.textContent);
         const isBlank = blank(field);
         const anchor = group && /^(employer|company( name)?|employer name|job title|position|title|school|institution|university|qualification|degree|certification( name)?|issuer)\s*\*?$/i.test(label);
         fields.push({
           index: references.length,
           tag: field.tagName,
           type: field.type,
-          label,
+          label: radioContainer ? radioQuestion : label,
+          radioChoice: radioQuestion && field.name && /^(yes|no)$/i.test(label) &&
+            radioGroup(field).filter(option => fieldLabel(option).toLowerCase() === label.toLowerCase()).length === 1 ? label : "",
           context,
           name: text(field.name),
           id: text(field.id),
           autocomplete: text(field.getAttribute("autocomplete")),
           placeholder: text(field.getAttribute("placeholder")),
           maxLength: field.maxLength,
-          customPicker: field.tagName !== "SELECT" &&
+          customPicker: field.tagName === "BUTTON" || field.tagName !== "SELECT" &&
             (field.getAttribute("role") === "combobox" || field.hasAttribute("aria-autocomplete")),
           blank: isBlank,
           anchorValue: anchor && !isBlank ? text(field.value) : "",
@@ -143,7 +163,7 @@ export async function accessApplicationPage(operation, request = {}) {
       }
     }
     const scanId = [...crypto.getRandomValues(new Uint32Array(4))].join("-");
-    state.scan = { scanId, references };
+    state[forAttachment ? "attachmentScan" : "scan"] = { scanId, references };
     return { scanId, fields, inaccessibleFrames };
   }
 
@@ -151,13 +171,13 @@ export async function accessApplicationPage(operation, request = {}) {
     const window = field.ownerDocument.defaultView;
     const prototype = field.tagName === "SELECT" ? window.HTMLSelectElement.prototype :
       field.tagName === "TEXTAREA" ? window.HTMLTextAreaElement.prototype : window.HTMLInputElement.prototype;
-    const property = field.type === "checkbox" ? "checked" : "value";
+    const property = checkable(field) ? "checked" : "value";
     Object.getOwnPropertyDescriptor(prototype, property).set.call(field, value);
     field.dispatchEvent(new window.Event("input", { bubbles: true, composed: true }));
     field.dispatchEvent(new window.Event("change", { bubbles: true }));
   }
 
-  if (operation === "scan") return discovery();
+  if (operation === "scan") return discovery(request.forAttachment);
   if (operation === "undo") {
     const last = state.lastWrites ?? [];
     state.lastWrites = [];
@@ -173,16 +193,40 @@ export async function accessApplicationPage(operation, request = {}) {
     return { undone };
   }
 
-  const scan = state.scan;
-  state.scan = null;
-  if (operation !== "write" || !scan || scan.scanId !== request.scanId) return { stale: true };
+  const scan = operation === "attach" ? state.attachmentScan : state.scan;
+  if (!scan || scan.scanId !== request.scanId) return { stale: true };
+
+  if (operation === "attach") {
+    state.attachmentScan = null;
+    const record = scan.references[request.index];
+    if (!record || record.type !== "file" || !availableFile(record.field) || !blank(record.field)
+        || record.field.type !== "file" || record.field.form !== record.associatedForm
+        || fieldLabel(record.field) !== record.label || sectionContext(record.field, record.form).context !== record.context) {
+      return { stale: true };
+    }
+    const { field } = record;
+    const { name, mime, data } = request.document;
+    const extension = name.slice(name.lastIndexOf(".")).toLowerCase();
+    const accepted = field.accept.toLowerCase().split(",").map(value => value.trim()).filter(Boolean);
+    if (accepted.length && !accepted.some(value => value === extension || value === mime)) return { unsupported: true };
+    const window = field.ownerDocument.defaultView;
+    const transfer = new window.DataTransfer();
+    transfer.items.add(new window.File([Uint8Array.from(atob(data), character => character.charCodeAt(0))], name, { type: mime }));
+    field.files = transfer.files;
+    field.dispatchEvent(new window.Event("input", { bubbles: true, composed: true }));
+    field.dispatchEvent(new window.Event("change", { bubbles: true }));
+    await new Promise(resolve => setTimeout(resolve, 80));
+    return { attached: field.files[0]?.name === name };
+  }
+
+  if (operation !== "write") return { stale: true };
 
   const changed = [];
   for (const { index, value } of request.writes) {
     const record = scan.references[index];
     if (!record) continue;
     const { field, label, form, associatedForm, type, before, groupNode, context } = record;
-    if (!visible(field) || !blank(field) || field.form !== associatedForm || field.type !== type
+    if (type === "file" || field.tagName === "BUTTON" || !visible(field) || !blank(field) || field.form !== associatedForm || field.type !== type
         || fieldLabel(field) !== label || valueOf(field) !== before) continue;
     const current = sectionContext(field, form);
     if (current.context !== context || current.group?.node !== groupNode) continue;

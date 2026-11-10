@@ -76,7 +76,8 @@ label {
   font-size: 12px;
 }
 
-#connection summary {
+#connection summary,
+.popup-panel summary {
   cursor: pointer;
   font-weight: 750;
 }
@@ -86,7 +87,9 @@ label {
   display: none;
 }
 
-input {
+input,
+select,
+textarea {
   width: 100%;
   padding: 11px 12px;
   color: #111a33;
@@ -98,10 +101,31 @@ input {
 }
 
 input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
 button:focus-visible {
   outline: 3px solid #aebfff;
   outline-offset: 2px;
 }
+
+.popup-panel {
+  margin-top: 10px;
+  padding: 10px 12px;
+  border: 1px solid #dce1ee;
+  border-radius: 9px;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.popup-panel h2 { margin: 0 0 6px; font-size: 14px; }
+.popup-panel form, .popup-panel summary + label { margin-top: 8px; }
+.popup-panel label { display: block; }
+.popup-panel ul { margin: 8px 0 0; padding-left: 17px; }
+.popup-panel ul:empty { display: none; }
+.popup-panel textarea { margin-top: 4px; resize: vertical; }
+.review-answer + .review-answer { margin-top: 10px; }
+.review-answer p { margin: 4px 0; }
+#referee-fields { display: flex; gap: 8px; flex-wrap: wrap; }
 
 button small {
   display: block;

@@ -34,6 +34,9 @@
             <li><a href="#education">Education</a></li>
             <li><a href="#certifications">Certifications</a></li>
             <li><a href="#links-and-answers">Links and answers</a></li>
+            <li><a href="#screening">Screening questions</a></li>
+            <li><a href="#saved-written-answers">Saved written answers</a></li>
+            <li><a href="#referees">Referees</a></li>
             <li><a href="#profile-connection">Connection</a></li>
         </ul>
         <a class="autofill-nav-save" href="#profile-save">Review and save <span aria-hidden="true">↓</span></a>
@@ -209,8 +212,8 @@
                      data-entry-list data-resume-added="@review?.CertificatesAdded">
                 <div class="autofill-section-heading">
                     <div>
-                        <h2 id="certifications-heading">Certifications</h2>
-                        <p>Add credentials you want to reuse on applications.</p>
+                        <h2 id="certifications-heading">Certifications and licences</h2>
+                        <p>Add credentials you want to reuse on applications, such as a driver’s licence class or professional registration.</p>
                     </div>
                     <button type="button" class="button button-secondary" data-add-entry>Add certification</button>
                 </div>
@@ -247,6 +250,61 @@
                         <div class="field"><label asp-for="Availability">Availability</label><input asp-for="Availability" /></div>
                     </div>
                 </fieldset>
+            </section>
+            <section class="detail-card autofill-panel" id="screening" aria-labelledby="screening-heading" data-entry-list>
+                <div class="autofill-section-heading">
+                    <div><h2 id="screening-heading">Screening questions</h2><p>Set work rights by country. Review salary and workplace preferences for each role.</p></div>
+                    <button type="button" class="button button-secondary" data-add-entry>Add country</button>
+                </div>
+                <p class="autofill-empty" data-entry-empty>No countries added.</p>
+                <div class="autofill-entries" data-entries>
+                    @for (var index = 0; index < Model.WorkPermissions.Count; index++)
+                    {
+                        <partial name="_WorkPermission" model="Model.WorkPermissions[index]" view-data='Row($"WorkPermissions[{index}]")' />
+                    }
+                </div>
+                <template><partial name="_WorkPermission" model="new WorkPermission()" view-data='Row("WorkPermissions[__index__]")' /></template>
+                <fieldset class="autofill-group">
+                    <legend>Preferences</legend>
+                    <div class="autofill-fields">
+                        <div class="field"><label asp-for="SalaryExpectation">Salary expectation</label><input asp-for="SalaryExpectation" placeholder="e.g. AUD 90,000 base per year" /></div>
+                        <div class="field"><label asp-for="OpenToRelocation">Open to relocation</label><select asp-for="OpenToRelocation"><option value="">Leave blank</option><option value="true">Yes</option><option value="false">No</option></select></div>
+                        <div class="field"><label asp-for="OpenToHybridWork">Open to hybrid work</label><select asp-for="OpenToHybridWork"><option value="">Leave blank</option><option value="true">Yes</option><option value="false">No</option></select></div>
+                    </div>
+                </fieldset>
+                <p class="autofill-feedback" role="status" data-entry-status></p>
+            </section>
+
+            <section class="detail-card autofill-panel" id="saved-written-answers" aria-labelledby="saved-answers-heading" data-entry-list>
+                <div class="autofill-section-heading">
+                    <div><h2 id="saved-answers-heading">Saved written answers</h2><p>Save a question and answer to review and reuse when the same question appears.</p></div>
+                    <button type="button" class="button button-secondary" data-add-entry>Add answer</button>
+                </div>
+                <p class="autofill-empty" data-entry-empty>No written answers added.</p>
+                <div class="autofill-entries" data-entries>
+                    @for (var index = 0; index < Model.SavedAnswers.Count; index++)
+                    {
+                        <partial name="_SavedApplicationAnswer" model="Model.SavedAnswers[index]" view-data='Row($"SavedAnswers[{index}]")' />
+                    }
+                </div>
+                <template><partial name="_SavedApplicationAnswer" model="new SavedApplicationAnswer()" view-data='Row("SavedAnswers[__index__]")' /></template>
+                <p class="autofill-feedback" role="status" data-entry-status></p>
+            </section>
+
+            <section class="detail-card autofill-panel" id="referees" aria-labelledby="referees-heading" data-entry-list>
+                <div class="autofill-section-heading">
+                    <div><h2 id="referees-heading">Referees</h2><p>Keep contact details for people who have agreed to be a referee. Choose who to share in the extension.</p></div>
+                    <button type="button" class="button button-secondary" data-add-entry>Add referee</button>
+                </div>
+                <p class="autofill-empty" data-entry-empty>No referees added.</p>
+                <div class="autofill-entries" data-entries>
+                    @for (var index = 0; index < Model.Referees.Count; index++)
+                    {
+                        <partial name="_ApplicantReferee" model="Model.Referees[index]" view-data='Row($"Referees[{index}]")' />
+                    }
+                </div>
+                <template><partial name="_ApplicantReferee" model="new ApplicantReferee()" view-data='Row("Referees[__index__]")' /></template>
+                <p class="autofill-feedback" role="status" data-entry-status></p>
             </section>
             <div class="autofill-save-bar" id="profile-save">
                 <p>@(review is null ? "Save your edits to use them in the extension." : "Review the imported values before saving your profile.")</p>

@@ -109,7 +109,7 @@
       entry.dataset.newEntry = "";
       entries.append(entry);
       reindex();
-      entry.querySelector("input").focus();
+      entry.querySelector("input, select, textarea").focus();
       feedback.textContent = "Entry added to the draft.";
     });
 

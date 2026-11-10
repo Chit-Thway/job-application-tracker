@@ -59,6 +59,7 @@ const historyFields = {
     name: "name|certification|certification name|certificate name|licence name|license name",
     issuer: "issuer|issuing organization|issuing organisation|issuing authority",
     credentialId: "credential id|certificate number|license number|licence number",
+    licenceClass: "licence class|license class|licence category|license category|driver s licence class|driver s license class",
     credentialUrl: "credential url|certificate url",
     issuedMonth: "issued date|issue date|issued month|date issued",
     expiryMonth: "expiry date|expiration date|expiry month|expiration month",
@@ -73,22 +74,82 @@ const regions = [
 const monthNames = ["January", "February", "March", "April", "May", "June",
   "July", "August", "September", "October", "November", "December"];
 
-function matchedKey(field) {
-  const label = normalize(field.label.replace(/\((?:required|optional|\s*(?:mm|yyyy)\s*[-/]\s*(?:mm|yyyy)\s*)\)/gi, ""))
+function questionLabel(label) {
+  return normalize(label.replace(/\((?:required|optional|\s*(?:mm|yyyy)\s*[-/]\s*(?:mm|yyyy)\s*)\)/gi, ""))
     .replace(/\s+(?:required|optional)$/, "");
+}
+
+function restricted(field) {
+  const context = normalize(`${field.label} ${field.context}`);
+  return /\b(referees?|references?|emergency contacts?|login|sign in|sign up|newsletter|billing|shipping|consent|declaration|gender|pronouns|ethnicity|race|sexual orientation|disability|veteran|criminal|police check|verification|password|captcha|payment|passport)\b/.test(context) ||
+    field.autocomplete.toLowerCase().split(/\s+/).some(token => ["shipping", "billing", "username", "one-time-code"].includes(token));
+}
+
+function matchedKey(field) {
+  const label = questionLabel(field.label);
   if (field.customPicker) return null;
-  const context = normalize(field.context);
   const autocomplete = field.autocomplete.toLowerCase().split(/\s+/);
-  if (/\b(referees?|references?|emergency contacts?|login|sign in|sign up|newsletter|billing|shipping|consent|declaration|gender|disability|verification|password|captcha|payment)\b/.test(`${label} ${context}`)
-      || autocomplete.some(token => ["shipping", "billing", "username", "one-time-code"].includes(token))) {
-    return null;
-  }
+  if (restricted(field) || field.type === "file") return null;
 
   const mapping = field.group ? historyFields[field.group] : contactFields;
   const metadata = [field.name.split(/[.\[\]]/).filter(Boolean).at(-1), field.id];
   const names = [label, ...metadata.map(normalize)];
   const semantic = field.group ? null : autocomplete.map(token => autocompleteKeys.get(token)).find(Boolean);
   return mapping.get(label) ?? semantic ?? names.map(name => mapping.get(name)).find(Boolean) ?? null;
+}
+
+const workCountries = [
+  ["AU", /\baustralia\b/], ["NZ", /\bnew zealand\b/], ["CA", /\bcanada\b/],
+  ["GB", /\b(?:united kingdom|uk)\b/], ["US", /\b(?:united states|usa|u s a|u s)\b/],
+];
+
+function screeningAnswer(label, profile) {
+  const countries = workCountries.filter(([, pattern]) => pattern.test(label));
+  if (countries.length !== 1 || /\b(without|unrestricted|restricted|not|citizen|residency|conditions|limitations|full time|part time)\b/.test(label)) return null;
+  const rows = (profile.workPermissions ?? []).filter(row => row.countryCode === countries[0][0]);
+  if (rows.length !== 1) return null;
+  const { authorized, sponsorshipNow, sponsorshipLater } = rows[0];
+  const target = label.replace(countries[0][1], "country");
+  if (/\bsponsorship\b/.test(target)) {
+    if (!/^(?:do you(?: now or will you in the future| now| currently)?|will you(?: in the future)?) (?:require|need) (?:(?:visa|employment visa|employer) )?sponsorship(?: for employment visa status)? (?:to work )?(?:in|for) (?:the )?country(?: now| currently| in the future)?$/.test(target)) return null;
+    if (/\b(later|future)\b/.test(label)) {
+      if (!/\b(now|currently|today)\b/.test(label)) return sponsorshipLater;
+      if (sponsorshipNow === true || sponsorshipLater === true) return true;
+      return sponsorshipNow === false && sponsorshipLater === false ? false : null;
+    }
+    return /\b(now|currently|today)\b/.test(label) ? sponsorshipNow : null;
+  }
+  if (/^(?:do you (?:currently )?have (?:the )?(?:legal )?(?:right|authorization|authorisation) to work|are you (?:currently )?(?:legally )?(?:authorized|authorised|eligible) to work) (?:in|within) (?:the )?country$/.test(target)) return authorized;
+  return null;
+}
+
+function yesNoValue(field, answer) {
+  if (typeof answer !== "boolean") return null;
+  const choice = answer ? "yes" : "no";
+  if (field.type === "radio") return normalize(field.radioChoice) === choice ? true : null;
+  return field.tag === "SELECT" ? equivalentSelect(field, [choice]) : null;
+}
+
+export function attachmentKind(field) {
+  if (field.type !== "file" || restricted(field)) return null;
+  const label = questionLabel(field.label);
+  if (/^(?:(?:attach|upload) (?:your |a )?)?(?:r[ée]sum[ée]|cv|curriculum vitae)$/.test(label)) return "resume";
+  if (/^(?:(?:attach|upload) (?:your |a )?)?cover letter$/.test(label)) return "coverLetter";
+  if (/^(?:(?:attach|upload) (?:your |a )?)?portfolio(?: file)?$/.test(label)) return "portfolio";
+  return null;
+}
+
+function suggestedAnswer(field, label, profile) {
+  if (field.tag === "SELECT" || field.type === "radio") {
+    if (/\b(?:open to|willing to) relocat/.test(label)) return yesNoValue(field, profile.openToRelocation);
+    if (/\b(?:open to|willing to) (?:working in (?:a )?|work in (?:a )?)?hybrid\b/.test(label)) return yesNoValue(field, profile.openToHybridWork);
+  }
+  if (field.tag !== "TEXTAREA" && field.type !== "text") return null;
+  if (/\bsalary (?:expectation|expectations)\b/.test(label) && !/\b(current|previous)\b/.test(label)) {
+    return profile.salaryExpectation || null;
+  }
+  const saved = (profile.savedAnswers ?? []).filter(entry => questionLabel(entry.question ?? "") === label);
+  return saved.length === 1 ? saved[0].answer : null;
 }
 
 function equivalentSelect(field, values) {
@@ -99,6 +160,7 @@ function equivalentSelect(field, values) {
 }
 
 function formattedValue(field, key, value, country) {
+  if (field.type === "file" || field.type === "radio") return null;
   if (typeof value === "boolean") {
     return key === "current" && field.type === "checkbox" && value ? true : null;
   }
@@ -160,7 +222,11 @@ export function planAutofill(fields, profile) {
   const forms = new Map();
   for (const field of fields) {
     const entries = forms.get(field.formKey) ?? [];
-    entries.push({ field, key: matchedKey(field) });
+    const label = questionLabel(field.label);
+    const eligible = !field.group && !field.customPicker && !restricted(field) && label;
+    const screen = eligible ? yesNoValue(field, screeningAnswer(label, profile)) : null;
+    const suggestion = eligible ? suggestedAnswer(field, label, profile) : null;
+    entries.push({ field, key: matchedKey(field), screen, suggestion });
     forms.set(field.formKey, entries);
   }
 
@@ -170,12 +236,14 @@ export function planAutofill(fields, profile) {
     const contactPair = keys.includes("email") && keys.some(key => ["givenName", "familyName", "fullName"].includes(key));
     const distinctContactFields = new Set(keys.filter(Boolean)).size;
     return contactPair || entries.some(({ field, key }) => key && (field.group || field.applicationSection
-      || field.applicationContext && (field.focused || distinctContactFields >= 2)));
+      || field.applicationContext && (field.focused || distinctContactFields >= 2))) ||
+      entries.some(({ field, screen, suggestion }) => field.applicationContext &&
+        (screen !== null || suggestion !== null || attachmentKind(field) !== null));
   });
   const focused = candidates.filter(entries => entries.some(({ field }) => field.focused));
   const selected = focused.length === 1 ? focused[0] : candidates.length === 1 ? candidates[0] : null;
   if (!selected) {
-    return { writes: [], review: [], reason: candidates.length ? "Click a field in the application, then try Fill again." : "No supported application fields found." };
+    return { writes: [], review: [], suggestions: [], attachments: [], reason: candidates.length ? "Click a field in the application, then try Fill again." : "No supported application fields found." };
   }
 
   const groups = new Map();
@@ -212,17 +280,33 @@ export function planAutofill(fields, profile) {
   const splitAddress = selected.some(({ key }) => ["city", "region", "postcode"].includes(key));
   const writes = [];
   const review = [];
-  for (const { field, key } of selected) {
+  const suggestions = [];
+  const attachments = [];
+  const coveredRadioQuestions = new Set(selected.filter(({ field, screen }) => field.type === "radio" && screen !== null).map(({ field }) => field.label));
+  for (const { field, key, screen, suggestion } of selected) {
     if (!field.blank) continue;
+    const kind = attachmentKind(field);
+    if (kind) attachments.push({ kind, index: field.index });
+    if (screen !== null) {
+      writes.push({ index: field.index, value: screen });
+      continue;
+    }
+    if (suggestion !== null && (typeof suggestion !== "string" || field.maxLength < 1 || suggestion.length <= field.maxLength || field.tag === "SELECT")) {
+      const editable = field.type === "text" || field.tag === "TEXTAREA";
+      const display = field.type === "radio" ? field.radioChoice : field.tag === "SELECT" ? field.options.find(option => option.value === suggestion)?.label : suggestion;
+      suggestions.push({ index: field.index, label: field.label, value: suggestion, display, editable, maxLength: field.maxLength });
+      continue;
+    }
     const source = field.group ? groupSources.get(field.groupKey) : profile;
     const value = key && source
       ? formattedValue(field, key, field.group ? source[key] : contactValue(key, source, splitAddress), profile.country)
       : null;
     if (value !== null) {
       writes.push({ index: field.index, value });
-    } else if (field.label && field.type !== "checkbox") {
+    } else if (field.label && field.type !== "checkbox" && !coveredRadioQuestions.has(field.label)) {
       review.push(field.label);
     }
   }
-  return { writes, review };
+  const suggestedLabels = new Set(suggestions.map(suggestion => suggestion.label));
+  return { writes, review: review.filter(label => !suggestedLabels.has(label)), suggestions, attachments };
 }

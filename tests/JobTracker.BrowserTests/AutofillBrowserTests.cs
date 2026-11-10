@@ -30,9 +30,13 @@ public sealed class AutofillBrowserTests(BrowserJourneyFixture fixture)
                 });
             await context.RouteAsync($"{EmployerOrigin}/apply/**", route => route.FulfillAsync(new()
             {
-                ContentType = "text/html",
-                Body = route.Request.Url.EndsWith("/history", StringComparison.Ordinal)
-                    ? HistoryForm : ContactForm,
+                ContentType = "text/html; charset=utf-8",
+                Body = new Uri(route.Request.Url).AbsolutePath switch
+                {
+                    "/apply/history" => HistoryForm,
+                    "/apply/screening" => ScreeningForm,
+                    _ => ContactForm,
+                },
             }));
             var tracker = await context.NewPageAsync();
             await CreateProfileAsync(tracker);
@@ -74,12 +78,13 @@ public sealed class AutofillBrowserTests(BrowserJourneyFixture fixture)
 
             await employer.GotoAsync($"{EmployerOrigin}/apply/history");
             await popup.Locator("#fill").ClickAsync();
-            await Expect(popup.Locator("#fill-status")).ToContainTextAsync("Filled 6 fields.");
+            await Expect(popup.Locator("#fill-status")).ToContainTextAsync("Filled 7 fields.");
             await Expect(employer.Locator("#first-company")).ToHaveValueAsync("Wattle Systems");
             await Expect(employer.Locator("#first-start")).ToHaveValueAsync("02/2024");
             await Expect(employer.Locator("#second-company")).ToBeEmptyAsync();
             await Expect(employer.GetByLabel("School")).ToHaveValueAsync("Example College");
             await Expect(employer.GetByLabel("Certification name")).ToHaveValueAsync("Example Certificate");
+            await Expect(employer.GetByLabel("Licence class")).ToHaveValueAsync("C");
             await employer.GetByText("Open employment 2", new() { Exact = true }).ClickAsync();
             await popup.Locator("#fill").ClickAsync();
             await Expect(popup.Locator("#fill-status")).ToContainTextAsync("Filled 3 fields.");
@@ -87,6 +92,45 @@ public sealed class AutofillBrowserTests(BrowserJourneyFixture fixture)
             await Expect(employer.Locator("#second-end")).ToHaveValueAsync("2024-01");
             await popup.Locator("#fill").ClickAsync();
             await Expect(popup.Locator("#fill-status")).ToContainTextAsync("No blank supported fields");
+
+            await employer.GotoAsync($"{EmployerOrigin}/apply/screening");
+            await popup.Locator("#fill").ClickAsync();
+            await Expect(popup.Locator("#fill-status")).ToContainTextAsync("Filled 2 fields.");
+            await Expect(employer.Locator("#work-rights")).ToHaveValueAsync("y");
+            await Expect(employer.Locator("#sponsorship-no")).ToBeCheckedAsync();
+            await Expect(employer.Locator("#unrestricted")).ToHaveValueAsync("");
+            await Expect(employer.Locator("#already-answered")).ToHaveValueAsync("no");
+            await Expect(popup.Locator("#fill-review")).ToContainTextAsync("unrestricted work rights");
+            await Expect(popup.Locator("#fill-review")).ToContainTextAsync("working in a hybrid setup");
+            await Expect(employer.Locator("#project")).ToBeEmptyAsync();
+            await Expect(employer.Locator("#salary")).ToBeEmptyAsync();
+            await Expect(employer.Locator("#relocation")).ToHaveValueAsync("");
+            await Expect(employer.Locator("#referee-email")).ToBeEmptyAsync();
+            await Expect(employer.Locator("#consent")).Not.ToBeCheckedAsync();
+
+            await popup.Locator("#application-documents summary").ClickAsync();
+            await popup.Locator("#document-file").SetInputFilesAsync(new FilePayload
+            {
+                Name = "example.pdf", MimeType = "application/pdf", Buffer = "%PDF-1.7\nExample"u8.ToArray(),
+            });
+            await Expect(popup.Locator("#selected-document")).ToContainTextAsync("example.pdf");
+            await Expect(employer.Locator("#resume")).ToBeEmptyAsync();
+            await popup.Locator("#attach-document").ClickAsync();
+            await Expect(popup.Locator("#document-status")).ToContainTextAsync("Added example.pdf");
+            Assert.Equal("example.pdf", await employer.Locator("#resume").EvaluateAsync<string>("field => field.files[0]?.name"));
+            await Expect(employer.Locator("#cover-letter")).ToBeEmptyAsync();
+
+            await popup.GetByRole(AriaRole.Textbox, new() { Name = "Describe a project you led?", Exact = true })
+                .FillAsync("I led an updated project example.");
+            await popup.GetByRole(AriaRole.Button, new() { Name = "Use answer for Describe a project you led?" }).ClickAsync();
+            await Expect(employer.Locator("#project")).ToHaveValueAsync("I led an updated project example.");
+            await popup.GetByRole(AriaRole.Button, new() { Name = "Use answer for What are your minimum salary expectations for this role?" }).ClickAsync();
+            await Expect(employer.Locator("#salary")).ToHaveValueAsync("AUD 90,000 base per year");
+            await popup.GetByRole(AriaRole.Button, new() { Name = "Use answer for Are you open to relocating for this position?" }).ClickAsync();
+            await Expect(employer.Locator("#relocation")).ToHaveValueAsync("no");
+            await popup.Locator("#referee-picker summary").ClickAsync();
+            await Expect(popup.Locator("#referee-select")).ToContainTextAsync("Alex Sample");
+            await Expect(popup.GetByRole(AriaRole.Button, new() { Name = "Copy email" })).ToBeVisibleAsync();
 
             await tracker.GetByRole(AriaRole.Button, new() { Name = "Sign out", Exact = true }).ClickAsync();
             await employer.GotoAsync($"{EmployerOrigin}/apply/contact");
@@ -110,6 +154,10 @@ public sealed class AutofillBrowserTests(BrowserJourneyFixture fixture)
             await reopened.Locator("#fill").ClickAsync();
             await Expect(reopened.Locator("#fill-status")).ToContainTextAsync("Filled 7 fields.");
             await Expect(employer.GetByLabel("Full name")).ToHaveValueAsync("Maya Chen");
+            await reopened.Locator("#application-documents summary").ClickAsync();
+            await Expect(reopened.Locator("#selected-document")).ToContainTextAsync("example.pdf");
+            await reopened.Locator("#forget-document").ClickAsync();
+            await Expect(reopened.Locator("#selected-document")).ToContainTextAsync("No file saved");
         }
         finally
         {
@@ -232,6 +280,20 @@ public sealed class AutofillBrowserTests(BrowserJourneyFixture fixture)
         await Field("Phone").FillAsync("+61 491 570 007");
         await Expect(Badge("Phone")).ToHaveCountAsync(0);
         await Field("Availability").FillAsync("Immediately");
+        await Field("Certifications[0].LicenceClass").FillAsync("C");
+        await page.GetByRole(AriaRole.Button, new() { Name = "Add country" }).ClickAsync();
+        await Field("WorkPermissions[0].CountryCode").SelectOptionAsync("AU");
+        await Field("WorkPermissions[0].Authorized").SelectOptionAsync("true");
+        await Field("WorkPermissions[0].SponsorshipNow").SelectOptionAsync("false");
+        await Field("WorkPermissions[0].SponsorshipLater").SelectOptionAsync("false");
+        await Field("SalaryExpectation").FillAsync("AUD 90,000 base per year");
+        await Field("OpenToRelocation").SelectOptionAsync("false");
+        await page.GetByRole(AriaRole.Button, new() { Name = "Add answer" }).ClickAsync();
+        await Field("SavedAnswers[0].Question").FillAsync("Describe a project you led?");
+        await Field("SavedAnswers[0].Answer").FillAsync("I led a synthetic example project.");
+        await page.GetByRole(AriaRole.Button, new() { Name = "Add referee" }).ClickAsync();
+        await Field("Referees[0].Name").FillAsync("Alex Sample");
+        await Field("Referees[0].Email").FillAsync("alex@example.test");
         await page.GetByRole(AriaRole.Button, new() { Name = "Save profile" }).ClickAsync();
         await Expect(page.GetByText("Autofill profile saved.", new() { Exact = true })).ToBeVisibleAsync();
         await Expect(page.Locator(".resume-field-badge")).ToHaveCountAsync(0);
@@ -291,6 +353,32 @@ public sealed class AutofillBrowserTests(BrowserJourneyFixture fixture)
         </script>
         """;
 
+    private const string ScreeningForm = """
+        <h1>Application questions</h1>
+        <form>
+          <label>Do you currently have the right to work in Australia?
+            <select id="work-rights"><option value=""></option><option value="y">Yes</option><option value="n">No</option></select></label>
+          <fieldset><legend>Do you now, or will you in the future, require sponsorship for employment visa status to work in Australia?</legend>
+            <label><input type="radio" name="sponsorship" value="y">Yes</label>
+            <label><input type="radio" name="sponsorship" value="n" id="sponsorship-no">No</label>
+          </fieldset>
+          <label>Do you have unrestricted work rights in Australia?
+            <select id="unrestricted"><option value=""></option><option value="yes">Yes</option><option value="no">No</option></select></label>
+          <label>Are you legally authorised to work in Australia?
+            <select id="already-answered"><option value=""></option><option value="yes">Yes</option><option value="no" selected>No</option></select></label>
+          <label>Are you open to relocating for this position?
+            <select id="relocation"><option value=""></option><option value="yes">Yes</option><option value="no">No</option></select></label>
+          <label>Describe a project you led?<textarea id="project"></textarea></label>
+          <label>What are your minimum salary expectations for this role?<input id="salary"></label>
+          <label id="hybrid-question">Are you open to working in a hybrid setup?</label>
+          <button type="button" role="combobox" aria-labelledby="hybrid-question" aria-expanded="false">Select One</button>
+          <label>Résumé<input id="resume" type="file" accept=".pdf" style="display:none"></label>
+          <label>Cover letter<input id="cover-letter" type="file"></label>
+          <fieldset><legend>Referees</legend><label>Email<input id="referee-email" type="email"></label></fieldset>
+          <label>I consent to follow-up emails<input id="consent" type="checkbox"></label>
+        </form>
+        """;
+
     private const string HistoryForm = """
         <h1>My Experience</h1>
         <div role="form" aria-label="Application">
@@ -307,7 +395,7 @@ public sealed class AutofillBrowserTests(BrowserJourneyFixture fixture)
             <label>End date<input type="month" id="second-end"></label>
           </details>
           <fieldset><legend>Education 1</legend><label>School<input></label></fieldset>
-          <fieldset><legend>Certification 1</legend><label>Certification name<input></label></fieldset>
+          <fieldset><legend>Certification 1</legend><label>Certification name<input></label><label>Licence class<input></label></fieldset>
         </div>
         """;
 }
