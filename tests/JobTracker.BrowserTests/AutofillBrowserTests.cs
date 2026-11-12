@@ -111,7 +111,9 @@ public sealed class AutofillBrowserTests(BrowserJourneyFixture fixture)
             await popup.Locator("#application-documents summary").ClickAsync();
             await popup.Locator("#document-file").SetInputFilesAsync(new FilePayload
             {
-                Name = "example.pdf", MimeType = "application/pdf", Buffer = "%PDF-1.7\nExample"u8.ToArray(),
+                Name = "example.pdf",
+                MimeType = "application/pdf",
+                Buffer = "%PDF-1.7\nExample"u8.ToArray(),
             });
             await Expect(popup.Locator("#selected-document")).ToContainTextAsync("example.pdf");
             await Expect(employer.Locator("#resume")).ToBeEmptyAsync();
