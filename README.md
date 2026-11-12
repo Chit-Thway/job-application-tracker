@@ -8,14 +8,14 @@ I built this project to solve a problem I experienced during a real job search: 
 
 ## Architecture and technology stack
 
-The tracker is a server-rendered, layered monolith: one ASP.NET Core MVC application deployed to Azure App Service, with separate areas for presentation, business logic, accounts, and data access. PostgreSQL and account email run in managed services outside the web application.
+The tracker is a server-rendered, layered monolith: one ASP.NET Core MVC application deployed to Azure Container Apps, with separate areas for presentation, business logic, accounts, and data access. PostgreSQL and account email run in managed services outside the web application.
 
 ```mermaid
 flowchart TB
     Browser["Browser / frontend<br/>HTML, CSS, vanilla JavaScript"]
     Extension["Chrome / Edge extension<br/>HTML, CSS, JavaScript"]
 
-    subgraph App["Web application — C# / .NET 10 — Azure App Service"]
+    subgraph App["Web application — C# / .NET 10 — Azure Container Apps"]
         MVC["ASP.NET Core MVC<br/>Controllers handle requests<br/>Razor views render pages"]
         Services["Business logic / services<br/>Applications, companies, workflows<br/>Dashboards, retention, imports"]
         Identity["ASP.NET Core Identity<br/>Accounts, sessions, permissions"]
@@ -46,7 +46,7 @@ For example, saving an application goes from a browser form to an MVC controller
 | Data | Entity Framework Core, Npgsql, and PostgreSQL | Relational storage with migrations and account ownership enforced in the data model |
 | Database hosting | Supabase PostgreSQL | Managed production database; authentication remains inside the application |
 | Email | Azure Communication Services Email | Verification and password-reset messages |
-| Delivery | GitHub Actions and Azure App Service | Repeatable checks and production hosting |
+| Delivery | GitHub Actions and Azure Container Apps | Repeatable checks and usage-based production hosting |
 | Testing | xUnit and Playwright for .NET | Unit, integration, security, and real-browser coverage |
 
 ## Applications and tracked jobs

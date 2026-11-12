@@ -1,0 +1,23 @@
+@model JobTracker.Web.Autofill.ExperienceEntry
+<fieldset class="autofill-entry" data-entry>
+    <legend>Role <span data-entry-number></span></legend>
+    <div class="autofill-fields">
+        <div class="field"><label asp-for="Title">Job title</label><input asp-for="Title" /></div>
+        <div class="field"><label asp-for="Employer">Employer</label><input asp-for="Employer" /></div>
+        <div class="field autofill-full"><label asp-for="Location">Location</label><input asp-for="Location" /></div>
+        <div class="field"><label asp-for="StartMonth">Start month</label><input asp-for="StartMonth" type="month" /></div>
+        <div class="field" data-end-month hidden="@Model.Current"><label asp-for="EndMonth">End month</label><input asp-for="EndMonth" type="month" /></div>
+        <div class="field autofill-full">
+            <label class="autofill-checkbox">
+                <input type="checkbox" name="@Html.NameFor(role => role.Current)" value="true" checked="@Model.Current" data-current-role />
+                <span>I currently work here</span>
+            </label>
+        </div>
+        <div class="field autofill-full"><label asp-for="Responsibilities">Responsibilities</label><textarea asp-for="Responsibilities" rows="3"></textarea></div>
+    </div>
+    <div class="autofill-actions autofill-entry-actions">
+        <button type="button" class="button button-secondary" data-copy-role>Copy role</button>
+        <span class="autofill-feedback" role="status" data-copy-status></span>
+        <button type="button" class="autofill-remove" data-remove-entry>Remove role</button>
+    </div>
+</fieldset>

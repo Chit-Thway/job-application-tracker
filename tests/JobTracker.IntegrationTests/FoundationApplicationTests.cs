@@ -77,7 +77,7 @@ public sealed class FoundationApplicationTests : IClassFixture<JobTrackerWebAppl
     }
 
     [Theory]
-    [InlineData("/", "/extension", "Install extension")]
+    [InlineData("/", "/extension", ">Extension</a>")]
     [InlineData("/demo", "/demo/extension", "Extension Demo")]
     public async Task PublicHeaders_LinkToRelevantExtensionPage(
         string route,

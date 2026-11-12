@@ -1,0 +1,11 @@
+@model JobTracker.Web.Autofill.ApplicantReferee
+<fieldset class="autofill-entry" data-entry>
+    <legend>Referee <span data-entry-number></span></legend>
+    <div class="autofill-fields">
+        <div class="field"><label asp-for="Name">Referee name</label><input asp-for="Name" /></div>
+        <div class="field"><label asp-for="Relationship">Relationship or role</label><input asp-for="Relationship" /></div>
+        <div class="field"><label asp-for="Phone">Referee phone</label><input asp-for="Phone" type="tel" /></div>
+        <div class="field"><label asp-for="Email">Referee email</label><input asp-for="Email" /></div>
+    </div>
+    <div class="autofill-actions autofill-entry-actions"><button type="button" class="autofill-remove" data-remove-entry>Remove referee</button></div>
+</fieldset>

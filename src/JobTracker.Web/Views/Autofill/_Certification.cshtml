@@ -1,0 +1,16 @@
+@model JobTracker.Web.Autofill.CertificationEntry
+<fieldset class="autofill-entry" data-entry>
+    <legend>Certification <span data-entry-number></span></legend>
+    <div class="autofill-fields">
+        <div class="field"><label asp-for="Name">Certification name</label><input asp-for="Name" /></div>
+        <div class="field"><label asp-for="Issuer">Issuer</label><input asp-for="Issuer" /></div>
+        <div class="field"><label asp-for="IssuedMonth">Issued month</label><input asp-for="IssuedMonth" type="month" /></div>
+        <div class="field"><label asp-for="ExpiryMonth">Expiry month</label><input asp-for="ExpiryMonth" type="month" /></div>
+        <div class="field"><label asp-for="LicenceClass">Licence class or category</label><input asp-for="LicenceClass" /></div>
+        <div class="field autofill-narrow"><label asp-for="CredentialId">Credential ID</label><input asp-for="CredentialId" /></div>
+        <div class="field autofill-wide"><label asp-for="CredentialUrl">Credential URL</label><input asp-for="CredentialUrl" type="url" /></div>
+    </div>
+    <div class="autofill-actions autofill-entry-actions">
+        <button type="button" class="autofill-remove" data-remove-entry>Remove certification</button>
+    </div>
+</fieldset>

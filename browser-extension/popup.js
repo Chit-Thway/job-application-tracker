@@ -1,17 +1,11 @@
 (() => {
   "use strict";
 
-  const DEFAULT_TRACKER_URL = "https://myjobtracker.com.au";
   const MINIMUM_CAPTURED_SOURCE_TEXT_LENGTH = 20;
   const CAPTURE_STORAGE_KEY_PREFIX = "capture:";
   const captureForm = document.getElementById("capture-form");
-  const trackerUrlInput = document.getElementById("tracker-url");
   const statusMessage = document.getElementById("status");
   const submitButton = captureForm.querySelector("button[type='submit']");
-
-  chrome.storage.local.get({ trackerBaseUrl: DEFAULT_TRACKER_URL }, values => {
-    trackerUrlInput.value = values.trackerBaseUrl;
-  });
 
   captureForm.addEventListener("submit", async event => {
     event.preventDefault();
@@ -30,12 +24,9 @@
   });
 
   async function captureCurrentJob() {
-    const trackerBaseUrl = normalizeTrackerUrl(trackerUrlInput.value);
-    await chrome.storage.local.set({ trackerBaseUrl });
-
     const activeTab = await getActiveWebPageTab();
     const capturedJob = await captureJobFromTab(activeTab.id);
-    const storageKey = await storeCapture(capturedJob, trackerBaseUrl);
+    const storageKey = await storeCapture(capturedJob, trackerOrigin);
     await openHandoffTab(storageKey);
   }
 
@@ -84,26 +75,6 @@
       await chrome.storage.session.remove(storageKey);
       throw error;
     }
-  }
-
-  function normalizeTrackerUrl(value) {
-    let url;
-    try {
-      url = new URL(value.trim());
-    } catch {
-      throw new Error("Enter a complete tracker address.");
-    }
-
-    if (url.username || url.password || url.search || url.hash) {
-      throw new Error("Use the tracker address without credentials, a query, or a fragment.");
-    }
-
-    const localHosts = new Set(["localhost", "127.0.0.1", "[::1]"]);
-    if (url.protocol !== "https:" && !(url.protocol === "http:" && localHosts.has(url.hostname))) {
-      throw new Error("Use HTTPS for a tracker that is not running on localhost.");
-    }
-
-    return `${url.origin}${url.pathname.replace(/\/$/, "")}`;
   }
 
   function captureJobPage() {

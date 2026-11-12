@@ -10,7 +10,7 @@
     <div class="shell workspace-heading">
         <div>
             <h1>Browser extension</h1>
-            <p>Capture the advertisement already open in your active tab without copying text or granting permanent access to every website.</p>
+            <p>Extract a job advertisement for review or fill an application using your saved applicant profile.</p>
         </div>
         @if (isPublished)
         {
@@ -25,12 +25,20 @@
 
 <section class="workspace-content extension-workspace">
     <div class="shell extension-layout">
+        @if (User.Identity?.IsAuthenticated == true)
+        {
+            <article class="detail-card">
+                <h2>Autofill profile</h2>
+                <p>Save your contact details, work history and qualifications for supported application forms.</p>
+                <a class="button button-primary" asp-controller="Autofill" asp-action="Profile">Manage autofill profile</a>
+            </article>
+        }
         <article class="detail-card extension-overview">
             <p class="mini-label">One deliberate click</p>
             <h2>Capture first. Confirm later.</h2>
             <ol class="extension-steps">
                 <li><strong>Open a job advertisement.</strong><span>Keep the job page visible in the active Chrome tab.</span></li>
-                <li><strong>Choose Capture this tab and review.</strong><span>The popup tells you exactly what will be read and sent.</span></li>
+                <li><strong>Choose Extract.</strong><span>Extract the job ad into a private review draft.</span></li>
                 <li><strong>Check every suggested field.</strong><span>The tracker creates a private 24-hour draft and never saves an application automatically.</span></li>
             </ol>
         </article>
@@ -39,12 +47,12 @@
             <article class="detail-card">
                 <p class="mini-label">Minimal permissions</p>
                 <h2>Only the tab you choose</h2>
-                <p>The extension requests temporary active-tab access, permission to run its deterministic reader after your click, and local storage for the tracker address.</p>
+                <p>The extension accesses the active tab when you choose an action. A connection to the tracker lets it read your saved profile when you choose Fill.</p>
             </article>
             <article class="detail-card">
                 <p class="mini-label">No hidden activity</p>
                 <h2>No background browsing</h2>
-                <p>There are no broad host permissions, background workers, advertising trackers, remote code, or AI service calls.</p>
+                <p>Extract and Fill run from the popup. When you fill a form, the employer's page can read the values placed into it.</p>
             </article>
             <article class="detail-card">
                 <p class="mini-label">Review boundary</p>

@@ -1,4 +1,5 @@
 using JobTracker.Web.Data;
+using JobTracker.Web.Autofill;
 using JobTracker.Web.Configuration;
 using JobTracker.Web.Identity;
 using JobTracker.Web.Models;
@@ -17,6 +18,7 @@ public sealed class AccountController(
     SignInManager<ApplicationUser> signInManager,
     IAccountEmailSender emailSender,
     EmailVerificationService emailVerification,
+    AutofillProfileService autofill,
     TimeProvider timeProvider,
     ILogger<AccountController> logger) : Controller
 {
@@ -146,6 +148,11 @@ public sealed class AccountController(
     [HttpPost("/account/logout")]
     public async Task<IActionResult> Logout()
     {
+        var ownerId = userManager.GetUserId(User);
+        if (ownerId is not null)
+        {
+            await autofill.RevokeAsync(ownerId, HttpContext.RequestAborted);
+        }
         await signInManager.SignOutAsync();
         return RedirectToAction("Index", "Home");
     }

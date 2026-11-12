@@ -1,0 +1,9 @@
+@model JobTracker.Web.Autofill.SavedApplicationAnswer
+<fieldset class="autofill-entry" data-entry>
+    <legend>Saved answer <span data-entry-number></span></legend>
+    <div class="autofill-fields">
+        <div class="field autofill-full"><label asp-for="Question">Application question</label><input asp-for="Question" /></div>
+        <div class="field autofill-full"><label asp-for="Answer">Your answer</label><textarea asp-for="Answer" rows="4"></textarea></div>
+    </div>
+    <div class="autofill-actions autofill-entry-actions"><button type="button" class="autofill-remove" data-remove-entry>Remove answer</button></div>
+</fieldset>

@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Capture this job</title>
+  <title>Job Application Tracker</title>
   <link rel="stylesheet" href="popup.css">
 </head>
 <body>
@@ -12,32 +12,54 @@
       <span class="mark" aria-hidden="true">JT</span>
       <div>
         <p class="eyebrow">Job Application Tracker</p>
-        <h1>Capture this job</h1>
+        <h1>Extract or fill</h1>
       </div>
     </header>
 
-    <p class="intro">Read the job advertisement you have open and create an editable review draft. Nothing is saved automatically.</p>
-
-    <aside class="data-disclosure" aria-labelledby="data-disclosure-title">
-      <strong id="data-disclosure-title">What this click shares</strong>
-      <p>The extension reads this tab's page URL and visible job content, then sends that capture over HTTPS to your private tracker for review.</p>
-    </aside>
+    <p class="reminder">Make sure the full job description is visible. Click “See more” before capturing.</p>
 
     <form id="capture-form">
-      <details class="tracker-settings">
-        <summary>Advanced tracker address</summary>
-        <div class="tracker-settings-fields">
-          <label for="tracker-url">Tracker address</label>
-          <input id="tracker-url" name="tracker-url" type="url" value="https://myjobtracker.com.au" required spellcheck="false">
-          <small>Change this only when using a different HTTPS deployment or localhost.</small>
-        </div>
-      </details>
-      <button type="submit">Capture this tab and review</button>
+      <button class="secondary" type="submit">Extract <small>Job ad to a private review draft</small></button>
+      <button id="fill" type="button">Fill <small>Saved profile to this form</small></button>
     </form>
 
     <p id="status" class="status" role="status" aria-live="polite"></p>
-    <p class="privacy">Runs only when clicked · active tab only · <a href="https://myjobtracker.com.au/extension/privacy" target="_blank" rel="noreferrer">Privacy details</a></p>
+    <p id="fill-status" class="status" role="status"></p>
+    <button id="undo-fill" class="text-button" type="button" hidden>Undo last fill</button>
+    <section id="fill-review" class="popup-panel" aria-labelledby="review-heading" hidden>
+      <h2 id="review-heading">Needs review</h2>
+      <div id="answer-suggestions"></div>
+      <ul id="unfilled-fields"></ul>
+    </section>
+    <details id="application-documents" class="popup-panel">
+      <summary>Application documents</summary>
+      <form id="document-picker">
+        <label for="document-kind">Document type</label>
+        <select id="document-kind"><option value="resume">Résumé</option><option value="coverLetter">Cover letter</option><option value="portfolio">Portfolio</option></select>
+        <label for="document-file">Choose a PDF or Word file</label>
+        <input id="document-file" type="file" accept=".pdf,.docx" />
+        <p id="selected-document" class="status"></p>
+        <p class="status">Files up to 2 MB are kept in this browser. Attaching shares the selected file with the employer.</p>
+        <button id="attach-document" type="submit" class="secondary" disabled>Attach selected file</button>
+        <button id="forget-document" type="button" class="text-button" hidden>Remove saved file</button>
+        <p id="document-status" class="status" role="status"></p>
+      </form>
+    </details>
+    <details id="referee-picker" class="popup-panel" hidden>
+      <summary>Referees</summary>
+      <label for="referee-select">Choose a referee to copy</label>
+      <select id="referee-select"></select>
+      <div id="referee-fields"></div>
+      <p id="referee-status" class="status" role="status"></p>
+    </details>
+    <details id="connection">
+      <summary id="connection-summary">Autofill profile</summary>
+      <p><a id="manage-profile" target="_blank" rel="noreferrer">Manage your autofill profile</a></p>
+    </details>
+    <p class="privacy">Active tab only · <a id="privacy-link" target="_blank" rel="noreferrer">Privacy details</a></p>
   </main>
+  <script src="tracker-config.js"></script>
   <script src="popup.js"></script>
+  <script type="module" src="autofill-popup.js"></script>
 </body>
 </html>

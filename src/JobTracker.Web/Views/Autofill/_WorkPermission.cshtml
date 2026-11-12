@@ -1,0 +1,14 @@
+@model JobTracker.Web.Autofill.WorkPermission
+<fieldset class="autofill-entry" data-entry>
+    <legend>Work rights <span data-entry-number></span></legend>
+    <div class="autofill-fields">
+        <div class="field"><label asp-for="CountryCode">Country</label><select asp-for="CountryCode" required>
+            <option value="">Choose a country</option><option value="AU">Australia</option><option value="NZ">New Zealand</option>
+            <option value="CA">Canada</option><option value="GB">United Kingdom</option><option value="US">United States</option>
+        </select></div>
+        <div class="field"><label asp-for="Authorized">Currently authorised to work</label><select asp-for="Authorized"><option value="">Leave blank</option><option value="true">Yes</option><option value="false">No</option></select></div>
+        <div class="field"><label asp-for="SponsorshipNow">Need sponsorship now</label><select asp-for="SponsorshipNow"><option value="">Leave blank</option><option value="true">Yes</option><option value="false">No</option></select></div>
+        <div class="field"><label asp-for="SponsorshipLater">Will need sponsorship in future</label><select asp-for="SponsorshipLater"><option value="">Leave blank</option><option value="true">Yes</option><option value="false">No</option></select></div>
+    </div>
+    <div class="autofill-actions autofill-entry-actions"><button type="button" class="autofill-remove" data-remove-entry>Remove work rights</button></div>
+</fieldset>
