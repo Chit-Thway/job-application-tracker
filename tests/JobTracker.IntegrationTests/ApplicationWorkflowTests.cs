@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Net;
 using System.Text.RegularExpressions;
 using JobTracker.Web.Applications;
@@ -23,8 +24,10 @@ public sealed partial class ApplicationWorkflowTests
     [Fact]
     public async Task AuthenticatedUser_CanCompleteManualApplicationJourney()
     {
+        var appliedOn = DateOnly.FromDateTime(TimeProvider.System.GetUtcNow().UtcDateTime).AddDays(-1);
+        var initialAppliedDate = appliedOn.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+        var editedAppliedDate = appliedOn.AddDays(-1).ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
         var client = await CreateAuthenticatedClientAsync();
-        var appliedOn = DashboardCalendar.Create(TimeProvider.System.GetUtcNow(), "Australia/Perth").Today.AddDays(-2);
 
         var companyPage = await client.GetAsync("/companies/new");
         var companyToken = ExtractAntiforgeryToken(await companyPage.Content.ReadAsStringAsync());
@@ -51,7 +54,7 @@ public sealed partial class ApplicationWorkflowTests
             Form(
                 ("RoleTitle", "Synthetic Platform Engineer"),
                 ("CompanyId", companyId.ToString()),
-                ("AppliedOn", $"{appliedOn:yyyy-MM-dd}"),
+                ("AppliedOn", initialAppliedDate),
                 ("SourceUrl", "https://example.test/jobs/platform"),
                 ("ApplicationPortalUrl", "https://careers.example.test/candidate/platform"),
                 ("DescriptionText", "About the role\n\nBuild reliable synthetic platforms.\n\nWhat you will do\n\n- Write tests\n- Review changes"),
@@ -94,7 +97,7 @@ public sealed partial class ApplicationWorkflowTests
         Assert.Equal(HttpStatusCode.Redirect, saveResponse.StatusCode);
 
         var filtered = await client.GetAsync(
-            $"/applications?Query=Meridian&IsSavedForever=true&AppliedFrom={appliedOn.AddDays(-1):yyyy-MM-dd}&AppliedTo={appliedOn:yyyy-MM-dd}");
+            $"/applications?Query=Meridian&IsSavedForever=true&AppliedFrom={editedAppliedDate}&AppliedTo={initialAppliedDate}");
         var filteredContent = await filtered.Content.ReadAsStringAsync();
         Assert.Equal(HttpStatusCode.OK, filtered.StatusCode);
         Assert.Contains("Synthetic Platform Engineer", filteredContent, StringComparison.Ordinal);
@@ -107,7 +110,7 @@ public sealed partial class ApplicationWorkflowTests
             Form(
                 ("RoleTitle", "Synthetic Senior Platform Engineer"),
                 ("CompanyId", companyId.ToString()),
-                ("AppliedOn", $"{appliedOn.AddDays(-1):yyyy-MM-dd}"),
+                ("AppliedOn", editedAppliedDate),
                 ("SourceUrl", "https://example.test/jobs/platform-senior"),
                 ("ApplicationPortalUrl", "https://careers.example.test/candidate/platform-senior"),
                 ("Notes", "Updated safe notes"),
