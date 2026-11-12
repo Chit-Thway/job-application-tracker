@@ -1,6 +1,6 @@
 # Current production context
 
-Last reviewed: 23 September 2026. This file gives contributors the current product and release context without publishing operator accounts or service identifiers.
+Last reviewed: 13 November 2026. This file gives contributors the current product and release context without publishing operator accounts or service identifiers.
 
 ## Current stage
 
@@ -13,7 +13,7 @@ Last reviewed: 23 September 2026. This file gives contributors the current produ
 
 ## Hosting and configuration
 
-The web application runs on Azure App Service, uses a separate Supabase PostgreSQL database, and sends verification and password-reset messages through Azure Communication Services Email. Production credentials and service identifiers belong in the service settings and the operator's private records, not in this repository. Local development secrets use .NET user secrets.
+The web application runs on Azure Container Apps with usage-based scaling and zero minimum replicas. It uses a separate Supabase PostgreSQL database and sends verification and password-reset messages through Azure Communication Services Email. Production credentials and service identifiers belong in the service settings and the operator's private records, not in this repository. Local development secrets use .NET user secrets.
 
 The domain and application behavior above are public. The operator-only service map is kept outside Git in the ignored `/private/` directory.
 
