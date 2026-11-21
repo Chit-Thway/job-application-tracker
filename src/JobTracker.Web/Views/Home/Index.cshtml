@@ -21,41 +21,44 @@
             <span class="landing-browser-bar" aria-hidden="true">
                 <span class="landing-browser-dots"><i></i><i></i><i></i></span>
             </span>
-            <span class="landing-dashboard-crop">
+            <picture class="landing-dashboard-crop">
+                <source media="(max-width: 40rem)" srcset="@Url.Content("~/images/landing/dashboard-demo-mobile.webp")" type="image/webp" />
+                <source srcset="@Url.Content("~/images/landing/dashboard-demo.webp")" type="image/webp" />
                 <img src="~/images/landing/dashboard-demo.png"
                      asp-append-version="true"
+                     data-landing-dashboard
+                     elementtiming="landing-dashboard"
+                     fetchpriority="high"
                      width="1129"
                      height="851"
                      alt="Colourful application pipeline chart in the read-only demo dashboard" />
-            </span>
+            </picture>
         </a>
     </div>
 </section>
 
 <section class="landing-extension" aria-labelledby="extension-title">
     <div class="shell landing-extension-grid">
-        <div class="landing-extension-visual"
-             data-extension-video
-             role="button"
-             tabindex="0"
-             aria-label="Play browser extension demonstration">
+        <div class="landing-extension-visual" data-extension-video>
             <video aria-label="Job Application Tracker browser extension capture demonstration"
                    data-extension-video-player
                    muted
                    loop
                    playsinline
-                   controls
-                   preload="metadata">
+                   poster="@Url.Content("~/images/landing/extension-demo-poster.webp")"
+                   preload="none">
+            </video>
+            <template>
                 <source src="@Url.Content("~/images/landing/extension-demo.webm")" type="video/webm" />
                 <source src="@Url.Content("~/images/landing/extension-demo.mp4")" type="video/mp4" />
-                Your browser does not support embedded video.
-            </video>
-            <span class="landing-video-play" aria-hidden="true">
-                <svg viewBox="0 0 64 64" focusable="false">
+            </template>
+            <button class="landing-video-play" type="button" aria-label="Play browser extension demonstration" hidden>
+                <svg viewBox="0 0 64 64" aria-hidden="true" focusable="false">
                     <circle cx="32" cy="32" r="30"></circle>
                     <path d="M26 20 46 32 26 44Z"></path>
                 </svg>
-            </span>
+            </button>
+            <p class="landing-video-error" role="status" data-extension-video-error></p>
         </div>
         <div class="landing-extension-copy">
             <div class="landing-extension-heading">
@@ -65,6 +68,7 @@
             <div class="landing-extension-details">
                 <p>Send the job page you are viewing to a private review draft. Nothing is saved until you confirm it.</p>
                 <a class="button button-primary" asp-controller="Home" asp-action="BrowserExtension">Get the extension</a>
+                <noscript><p><a href="@Url.Content("~/images/landing/extension-demo.mp4")">Watch the extension demonstration</a></p></noscript>
             </div>
         </div>
     </div>

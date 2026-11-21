@@ -34,6 +34,7 @@ test-results/
 *.backup
 *.sql.gz
 node_modules/
+/.wrangler/
 
 # Local configuration and secrets
 .env

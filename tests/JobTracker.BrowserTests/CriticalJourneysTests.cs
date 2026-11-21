@@ -16,6 +16,20 @@ public sealed class CriticalJourneysTests(BrowserJourneyFixture fixture)
     {
         await using var context = await fixture.CreateContextAsync(width, height);
         var page = await context.NewPageAsync();
+        await page.AddInitScriptAsync("""
+            window.dashboardPaint = 0;
+            new PerformanceObserver(list => {
+                for (const entry of list.getEntries()) {
+                    if (entry.element?.hasAttribute('data-landing-dashboard')) window.dashboardPaint = entry.startTime;
+                }
+            }).observe({type:'largest-contentful-paint', buffered:true});
+            new MutationObserver((changes, observer) => {
+                if (changes.some(change => change.target.matches?.('[data-extension-video-player]') && change.target.querySelector('source'))) {
+                    window.videoSourcesAdded = performance.now();
+                    observer.disconnect();
+                }
+            }).observe(document, {childList:true, subtree:true});
+            """);
 
         await page.GotoAsync("/");
 
@@ -23,28 +37,77 @@ public sealed class CriticalJourneysTests(BrowserJourneyFixture fixture)
             .ToBeVisibleAsync();
         await Expect(page.GetByRole(AriaRole.Link, new() { Name = "Sign in", Exact = true }).Last)
             .ToBeVisibleAsync();
-        await Expect(page.GetByAltText("Colourful application pipeline chart in the read-only demo dashboard"))
-            .ToBeVisibleAsync();
+        var dashboard = page.GetByAltText("Colourful application pipeline chart in the read-only demo dashboard");
+        await Expect(dashboard).ToBeVisibleAsync();
+        Assert.EndsWith(width == 390 ? "/dashboard-demo-mobile.webp" : "/dashboard-demo.webp",
+            await dashboard.EvaluateAsync<string>("image => new URL(image.currentSrc).pathname"));
         var extensionVideo = page.Locator("video[aria-label='Job Application Tracker browser extension capture demonstration']");
         await Expect(extensionVideo).ToBeVisibleAsync();
-        await page.WaitForTimeoutAsync(1_500);
-        var videoState = await extensionVideo.EvaluateAsync<string>(
-            "video => JSON.stringify({ source: video.currentSrc, duration: video.duration, readyState: video.readyState, networkState: video.networkState, error: video.error?.code ?? null })");
-        Assert.True(
-            await extensionVideo.EvaluateAsync<bool>("video => Number.isFinite(video.duration) && video.duration > 0"),
-            videoState);
+        await Expect(extensionVideo).ToHaveAttributeAsync("poster", new Regex("extension-demo-poster\\.webp$"));
+        await page.WaitForFunctionAsync("""
+            () => document.querySelector('[data-extension-video-player]').readyState >= HTMLMediaElement.HAVE_CURRENT_DATA
+            """);
+        await page.WaitForFunctionAsync("() => window.dashboardPaint > 0");
+        var delayAfterPaint = await page.EvaluateAsync<double>("window.videoSourcesAdded - window.dashboardPaint");
+        Assert.True(delayAfterPaint > 0, $"Video sources were added {delayAfterPaint:0.0} ms after the dashboard paint.");
         Assert.True(await extensionVideo.EvaluateAsync<bool>("video => video.paused"));
-        var videoToggle = page.Locator("[data-extension-video]");
+        var videoToggle = page.GetByRole(AriaRole.Button, new() { Name = "Play browser extension demonstration" });
         await Expect(videoToggle).ToBeVisibleAsync();
-        await Expect(videoToggle).ToHaveAttributeAsync("aria-label", "Play browser extension demonstration");
         await videoToggle.ClickAsync();
-        await Expect(videoToggle).ToHaveClassAsync(new Regex("has-started"));
+        await Expect(videoToggle).ToBeHiddenAsync();
         Assert.False(await extensionVideo.EvaluateAsync<bool>("video => video.paused"));
         await Expect(extensionVideo).ToHaveAttributeAsync("controls", string.Empty);
         await Expect(page.GetByText("Your job search, brought into focus.", new() { Exact = true }))
             .ToHaveCountAsync(0);
         Assert.False(await page.EvaluateAsync<bool>("document.documentElement.scrollWidth > innerWidth"));
         await AssertAccessiblePageStructureAsync(page);
+    }
+
+    [Theory]
+    [InlineData(false, "Enter")]
+    [InlineData(true, "Space")]
+    public async Task PublicLanding_PlayWorksWithKeyboardBeforeBuffering(bool saveData, string key)
+    {
+        await using var context = await fixture.CreateContextAsync();
+        var page = await context.NewPageAsync();
+        var releaseImage = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        if (saveData)
+        {
+            await page.AddInitScriptAsync("Object.defineProperty(navigator.connection, 'saveData', { value: true });");
+        }
+        else
+        {
+            await page.RouteAsync("**/dashboard-demo.webp", async route =>
+            {
+                await releaseImage.Task;
+                await route.ContinueAsync();
+            });
+        }
+
+        try
+        {
+            await page.GotoAsync("/", new() { WaitUntil = saveData ? WaitUntilState.Load : WaitUntilState.DOMContentLoaded });
+            var video = page.Locator("[data-extension-video-player]");
+            if (saveData)
+            {
+                // Give the automatic buffering path time to run, including its paint fallback.
+                await page.WaitForTimeoutAsync(1_000);
+            }
+            else
+            {
+                Assert.False(await page.Locator("[data-landing-dashboard]").EvaluateAsync<bool>("image => image.complete"));
+            }
+            await Expect(video.Locator("source")).ToHaveCountAsync(0);
+            var button = page.GetByRole(AriaRole.Button, new() { Name = "Play browser extension demonstration" });
+            await button.PressAsync(key);
+            await Expect(video).ToHaveAttributeAsync("controls", string.Empty);
+            await Expect(video).ToBeFocusedAsync();
+            Assert.False(await video.EvaluateAsync<bool>("element => element.paused"));
+        }
+        finally
+        {
+            releaseImage.TrySetResult();
+        }
     }
 
     [Fact]

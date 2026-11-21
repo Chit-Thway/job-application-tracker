@@ -55,3 +55,8 @@ jobs:
 
       - name: Validate publish output
         run: dotnet publish src/JobTracker.Web --configuration Release --no-build --output artifacts/publish
+
+      - name: Verify homepage edge package
+        run: |
+          node --test edge/homepage/worker.test.mjs
+          node tools/New-HomepageEdgePackage.mjs artifacts/publish

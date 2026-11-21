@@ -24,8 +24,22 @@ The app listens on port 8080 and uses an HTTP scaling rule with zero minimum rep
 1. Review the change and run the checks selected by the [test strategy](test-strategy.md). GitHub Quality runs the full code checks on the pull request.
 2. Merge the passing pull request into `main`.
 3. If the release includes a schema change, apply its reviewed Entity Framework migration to the production database before deploying code that needs it.
-4. Start the manual `Deploy production` workflow from the merged `main` commit. The workflow restores locked dependencies, checks formatting, builds, tests, publishes the container, and deploys its digest. Use `publish_only` when bootstrapping the Container App and you need the validated image before the target exists.
+4. Start the manual `Deploy production` workflow from the merged `main` commit. The workflow validates and publishes the image, then runs `--initialize-admin` with the production app's database and bootstrap admin settings before deploying the image by digest. The command checks the admin role and provisions the configured account when needed. Use `publish_only` when bootstrapping the Container App and you need the validated image before the target exists. Run the admin setup command with the new app's settings before its first web revision serves traffic.
 5. Confirm `/health/live` and `/health/ready` return Healthy, the public demo loads without sign-in, and the changed user journey works.
+
+## Public homepage preview
+
+The homepage Worker uses the signed-out Razor view from the same published app as the release. Export the view and its allowlisted assets from a fresh publish, then deploy the standalone preview.
+
+```powershell
+dotnet publish src/JobTracker.Web --configuration Release --output artifacts/publish
+node tools/New-HomepageEdgePackage.mjs artifacts/publish
+npx wrangler@4.166.0 deploy --config edge/homepage/wrangler.jsonc
+```
+
+The preview serves the homepage, images, scripts, styles, and video on its `workers.dev` hostname. Its sign-in and other application links take visitors to the production hostname. The Worker checks for the tracker session and temporary message cookies before serving the static homepage. The current production hostname continues to go directly to Azure.
+
+For the same-domain rollout, activate the Cloudflare DNS zone with the existing records, confirm the live Azure hostname works through the proxy with Full (strict) TLS, and use a Worker Route on `myjobtracker.com.au/*`. This lets the Worker pass signed-in and application requests through to the Azure origin with their original hostname. Verify both account states and the video before promoting the route. Remove the Worker Route to restore direct Azure handling if the edge release needs to be rolled back.
 
 ## Recovery
 

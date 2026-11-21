@@ -82,6 +82,7 @@ jobs:
     timeout-minutes: 15
     permissions:
       id-token: write
+      packages: read
     environment:
       name: production
       url: https://myjobtracker.com.au
@@ -93,6 +94,49 @@ jobs:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Verify administrator setup
+        shell: bash
+        env:
+          AZURE_CONTAINER_APP: ${{ vars.AZURE_CONTAINER_APP }}
+          AZURE_RESOURCE_GROUP: ${{ vars.AZURE_RESOURCE_GROUP }}
+          RELEASE_IMAGE: ${{ needs.publish.outputs.image }}
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          : "${AZURE_CONTAINER_APP:?Set the production Container App name}"
+          : "${AZURE_RESOURCE_GROUP:?Set the production resource group}"
+          : "${RELEASE_IMAGE:?The release image digest is missing}"
+          printf '%s' "$GHCR_TOKEN" | docker login ghcr.io --username "$GITHUB_ACTOR" --password-stdin
+          unset GHCR_TOKEN
+
+          settings=$(az containerapp show --name "$AZURE_CONTAINER_APP" --resource-group "$AZURE_RESOURCE_GROUP" \
+            --query "properties.template.containers[0].env[?name=='ConnectionStrings__DefaultConnection' || name=='Admin__BootstrapEmail']" \
+            --only-show-errors --output json)
+
+          read_app_setting() {
+            local setting secret_ref
+            setting=$(jq -c --arg name "$1" 'map(select(.name == $name))[0] // {}' <<< "$settings")
+            secret_ref=$(jq -r '.secretRef // empty' <<< "$setting")
+            if [[ -n "$secret_ref" ]]; then
+              az containerapp secret list --name "$AZURE_CONTAINER_APP" --resource-group "$AZURE_RESOURCE_GROUP" \
+                --show-values --only-show-errors --output json |
+                jq -er --arg name "$secret_ref" 'map(select(.name == $name))[0].value | select(type == "string" and length > 0)'
+            else
+              jq -r '.value // empty' <<< "$setting"
+            fi
+          }
+
+          ConnectionStrings__DefaultConnection=$(read_app_setting ConnectionStrings__DefaultConnection)
+          Admin__BootstrapEmail=$(read_app_setting Admin__BootstrapEmail)
+          : "${ConnectionStrings__DefaultConnection:?The production database connection is missing}"
+          printf '::add-mask::%s\n' "$ConnectionStrings__DefaultConnection"
+          if [[ -n "$Admin__BootstrapEmail" ]]; then
+            printf '::add-mask::%s\n' "$Admin__BootstrapEmail"
+          fi
+          export ConnectionStrings__DefaultConnection Admin__BootstrapEmail
+          docker run --rm --entrypoint dotnet -e ASPNETCORE_ENVIRONMENT=Production \
+            -e ConnectionStrings__DefaultConnection -e Admin__BootstrapEmail \
+            "$RELEASE_IMAGE" JobTracker.Web.dll --initialize-admin
 
       - name: Deploy validated image
         env:

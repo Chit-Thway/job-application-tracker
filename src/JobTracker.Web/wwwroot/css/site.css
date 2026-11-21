@@ -6654,7 +6654,6 @@ html[data-theme="dark"] .demo-card-lock {
   border: 1px solid var(--line);
   border-radius: 1.2rem;
   box-shadow: var(--shadow-lg);
-  cursor: pointer;
 }
 
 .landing-extension-visual video {
@@ -6677,8 +6676,30 @@ html[data-theme="dark"] .demo-card-lock {
   inset: 0;
   display: grid;
   place-items: center;
+  padding: 0;
+  border: 0;
+  cursor: pointer;
   background: rgba(10, 20, 48, 0.24);
-  transition: opacity 180ms ease;
+}
+
+.landing-video-play[hidden],
+.landing-video-error:empty {
+  display: none;
+}
+
+.landing-video-play[aria-busy="true"] {
+  cursor: progress;
+}
+
+.landing-video-error {
+  position: absolute;
+  inset: auto 1rem 1rem;
+  margin: 0;
+  padding: 0.6rem 0.8rem;
+  border-radius: 0.5rem;
+  background: var(--navy);
+  color: #fff;
+  pointer-events: none;
 }
 
 .landing-video-play svg {
@@ -6696,14 +6717,9 @@ html[data-theme="dark"] .demo-card-lock {
   fill: var(--blue);
 }
 
-.landing-extension-visual.has-started .landing-video-play {
-  opacity: 0;
-  pointer-events: none;
-}
-
-.landing-extension-visual:focus-visible {
+.landing-video-play:focus-visible {
   outline: 3px solid var(--blue);
-  outline-offset: 4px;
+  outline-offset: -5px;
 }
 
 .landing-extension-copy {
