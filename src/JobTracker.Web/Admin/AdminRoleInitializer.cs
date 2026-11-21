@@ -12,7 +12,7 @@ public sealed class AdminRoleInitializer(
     IConfiguration configuration,
     ILogger<AdminRoleInitializer> logger)
 {
-    public async Task InitializeAsync(CancellationToken cancellationToken = default)
+    public async Task InitializeAsync(bool requireBootstrapAccount = false)
     {
         if (!await roleManager.RoleExistsAsync(AdminRole.Name))
         {
@@ -34,7 +34,17 @@ public sealed class AdminRoleInitializer(
         }
 
         var user = await userManager.FindByEmailAsync(bootstrapEmail);
-        if (user is null || await userManager.IsInRoleAsync(user, AdminRole.Name))
+        if (user is null)
+        {
+            if (requireBootstrapAccount)
+            {
+                throw new InvalidOperationException("The configured bootstrap administrator account could not be found.");
+            }
+
+            return;
+        }
+
+        if (await userManager.IsInRoleAsync(user, AdminRole.Name))
         {
             return;
         }

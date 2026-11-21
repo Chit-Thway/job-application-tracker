@@ -19,7 +19,8 @@ using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.EntityFrameworkCore;
 using System.Threading.RateLimiting;
 
-var builder = WebApplication.CreateBuilder(args);
+var initializeAdmin = args is ["--initialize-admin"];
+var builder = WebApplication.CreateBuilder(initializeAdmin ? [] : args);
 
 var canonicalOriginValue = builder.Configuration["CanonicalOrigin"]?.Trim();
 Uri? canonicalOrigin = null;
@@ -243,6 +244,16 @@ var app = builder.Build();
 
 var demoPreview = app.Environment.IsDevelopment() && app.Configuration.GetValue<bool>("DemoPreview");
 
+if (initializeAdmin)
+{
+    await using var setupApp = app;
+    await using var setupScope = setupApp.Services.CreateAsyncScope();
+    await setupScope.ServiceProvider.GetRequiredService<AdminRoleInitializer>()
+        .InitializeAsync(requireBootstrapAccount: true);
+    setupApp.Logger.LogInformation("Administrator setup completed.");
+    return;
+}
+
 if (app.Environment.IsDevelopment())
 {
     app.UseDeveloperExceptionPage();
@@ -347,12 +358,7 @@ if (app.Environment.IsDevelopment() && !demoPreview)
     await bootstrapScope.ServiceProvider
         .GetRequiredService<DevelopmentAccountBootstrapper>()
         .InitializeAsync();
-}
-
-if (!demoPreview)
-{
-    await using var adminScope = app.Services.CreateAsyncScope();
-    await adminScope.ServiceProvider
+    await bootstrapScope.ServiceProvider
         .GetRequiredService<AdminRoleInitializer>()
         .InitializeAsync();
 }

@@ -3,8 +3,10 @@ using System.Text.RegularExpressions;
 using JobTracker.Web.Admin;
 using JobTracker.Web.Data;
 using JobTracker.Web.Identity;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace JobTracker.IntegrationTests;
@@ -18,6 +20,34 @@ public sealed partial class AdminManagementTests
     public AdminManagementTests(JobTrackerWebApplicationFactory factory)
     {
         this.factory = factory;
+    }
+
+    [Fact]
+    public async Task AdminSetup_RunsExplicitlyAndCanBeRepeated()
+    {
+        const string bootstrapEmail = "bootstrap-admin@example.test";
+        using var isolated = new JobTrackerWebApplicationFactory();
+        using var configured = isolated.WithWebHostBuilder(builder => builder.ConfigureAppConfiguration((_, configuration) =>
+            configuration.AddInMemoryCollection(new Dictionary<string, string?> { ["Admin:BootstrapEmail"] = bootstrapEmail })));
+        using var client = configured.CreateClient();
+        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/")).StatusCode);
+        await using var scope = configured.Services.CreateAsyncScope();
+        var roles = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
+        var users = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+        var setup = scope.ServiceProvider.GetRequiredService<AdminRoleInitializer>();
+
+        Assert.False(await roles.RoleExistsAsync(AdminRole.Name));
+        await Assert.ThrowsAsync<InvalidOperationException>(() => setup.InitializeAsync(requireBootstrapAccount: true));
+
+        var user = new ApplicationUser { UserName = bootstrapEmail, Email = bootstrapEmail, EmailConfirmed = true };
+        Assert.True((await users.CreateAsync(user, TestPassword)).Succeeded);
+        await setup.InitializeAsync(requireBootstrapAccount: true);
+        await setup.InitializeAsync(requireBootstrapAccount: true);
+
+        Assert.True(await roles.RoleExistsAsync(AdminRole.Name));
+        Assert.True(await users.IsInRoleAsync(user, AdminRole.Name));
+        Assert.Equal(AccountTier.Tier2, user.AccountTier);
+        Assert.Single(await users.GetUsersInRoleAsync(AdminRole.Name));
     }
 
     [Fact]
@@ -247,6 +277,7 @@ public sealed partial class AdminManagementTests
         Assert.True(result.Succeeded, string.Join(", ", result.Errors.Select(error => error.Code)));
         if (admin)
         {
+            await scope.ServiceProvider.GetRequiredService<AdminRoleInitializer>().InitializeAsync();
             var roleResult = await manager.AddToRoleAsync(user, AdminRole.Name);
             Assert.True(roleResult.Succeeded);
         }
