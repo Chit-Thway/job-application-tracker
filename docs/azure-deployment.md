@@ -29,6 +29,8 @@ The app listens on port 8080 and uses an HTTP scaling rule with zero minimum rep
 
 ## Public homepage preview
 
+The [homepage performance release note](homepage-performance.md) records the production and preview timings.
+
 The homepage Worker uses the signed-out Razor view from the same published app as the release. Export the view and its allowlisted assets from a fresh publish, then deploy the standalone preview.
 
 ```powershell
