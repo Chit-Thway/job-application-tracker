@@ -1,0 +1,34 @@
+name: Build cold-start benchmark image
+
+on:
+  push:
+    branches:
+      - 'chris/cold-start-benchmark-*'
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+      - name: Restore locked dependencies
+        run: dotnet restore src/JobTracker.Web --locked-mode
+      - name: Publish benchmark image
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          repository="${GITHUB_REPOSITORY,,}"
+          tag="cold-start-benchmark-${GITHUB_RUN_ID}"
+          printf '%s' "$GHCR_TOKEN" | docker login ghcr.io --username "$GITHUB_ACTOR" --password-stdin
+          dotnet publish src/JobTracker.Web --configuration Release --no-restore /t:PublishContainer \
+            -p:UseAppHost=false -p:ContainerRuntimeIdentifier=linux-x64 \
+            -p:ContainerBaseImage=mcr.microsoft.com/dotnet/aspnet:10.0-noble-chiseled-extra \
+            -p:ContainerRegistry=ghcr.io "-p:ContainerRepository=$repository" "-p:ContainerImageTag=$tag"
+          docker buildx imagetools inspect "ghcr.io/$repository:$tag" --format '{{json .Manifest}}'
