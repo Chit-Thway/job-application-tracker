@@ -19,7 +19,7 @@ The Container App configuration supplies `ASPNETCORE_ENVIRONMENT`, `ConnectionSt
 
 The app listens on port 8080 and uses an HTTP scaling rule with zero minimum replicas. The first request after an idle interval can take longer. HTTPS readiness checks exercise both the app and PostgreSQL. The registry image is built only from the public source tree. Production settings and credentials are supplied separately at runtime.
 
-The release uses the Ubuntu chiseled ASP.NET runtime with ICU and time-zone data. To measure an Azure cold start, confirm the active revision has zero replicas in **Revisions and replicas**, then time one request to an Azure-backed page. Record time to first byte and compare it with the image pull and container start events in **System logs**.
+To measure an Azure cold start, confirm the active revision has zero replicas in **Revisions and replicas**, then time one request to an Azure-backed page. Record time to first byte and compare it with the image pull and container start events in **System logs**.
 
 ## Release sequence
 
@@ -46,15 +46,22 @@ The preview serves the homepage, images, scripts, styles, and video on its `work
 ### Main-domain rollout
 
 1. Bind a publicly trusted SNI certificate for `myjobtracker.com.au` in Azure and verify the certificate directly against Azure ingress using the apex hostname. Use DNS-based validation so future renewals work while Cloudflare proxies the site. The default Azure-managed apex certificate requires a direct DNS record. A publicly trusted certificate also keeps direct access working during rollback. [Azure certificate requirements](https://learn.microsoft.com/en-us/azure/container-apps/custom-domains-managed-certificates) · [Bind an existing certificate](https://learn.microsoft.com/en-us/azure/container-apps/custom-domains-certificates)
-2. Confirm Cloudflare's edge certificate is active and SSL/TLS is **Full (strict)**. Verify that the Azure app uses `ASPNETCORE_FORWARDEDHEADERS_ENABLED=true` so ASP.NET Core sees the original HTTPS scheme when the ingress terminates TLS. Proxy the apex A record and verify the site, sign-in, and readiness through Cloudflare before attaching the Worker. [Cloudflare TLS requirements](https://developers.cloudflare.com/ssl/origin-configuration/ssl-modes/full-strict/)
-3. Use a clean checkout to export the homepage from the same publish output as the live Azure release. Run the command below with `--dry-run` to validate the package. After the proxy checks pass, run it without that flag to attach the route.
-4. Confirm that the signed-out homepage responds with `Server-Timing: homepage;desc="Cloudflare"` while Azure has zero replicas. Verify sign-in, the dashboard with a session cookie, and the video. Check the application's per-IP request limits through the proxy before accepting the rollout.
+2. Set up and validate DNS-based certificate renewal using the workflow below.
+3. Confirm Cloudflare's edge certificate is active and SSL/TLS is **Full (strict)**. Verify that the Azure app uses `ASPNETCORE_FORWARDEDHEADERS_ENABLED=true` so ASP.NET Core sees the original HTTPS scheme when the ingress terminates TLS. Proxy the apex A record and verify the site, sign-in, and readiness through Cloudflare before attaching the Worker. [Cloudflare TLS requirements](https://developers.cloudflare.com/ssl/origin-configuration/ssl-modes/full-strict/)
+4. Use a clean checkout to export the homepage from the same publish output as the live Azure release. Run the command below with `--dry-run` to validate the package. After the proxy checks pass, run it without that flag to attach the route.
+5. Confirm that the signed-out homepage responds with `Server-Timing: homepage;desc="Cloudflare"` while Azure has zero replicas. Verify sign-in, the dashboard with a session cookie, and the video. Check the application's per-IP request limits through the proxy before accepting the rollout.
 
 ```powershell
 npx wrangler@4.166.0 deploy --config edge/homepage/wrangler.jsonc --env production --dry-run
 ```
 
 If the Worker causes a regression, remove the `myjobtracker.com.au/*` Worker Route to restore Azure handling through the proxy. If the proxy itself causes a regression, return the apex A record to DNS only and verify both the homepage and sign-in directly.
+
+### Azure origin certificate renewal
+
+Restrict the GitHub `production` environment to `main`. Add the `CLOUDFLARE_ORIGIN_CERTIFICATE_DNS_TOKEN` environment secret with DNS write access for `myjobtracker.com.au` only. Set `AZURE_ORIGIN_CERTIFICATE_ID` and `AZURE_ORIGIN_ADDRESS` to the bound certificate resource ID and direct ingress address. Grant the Azure deployment identity the **Container Apps ManagedEnvironments Contributor** role scoped to that certificate resource.
+
+Run **Renew Azure origin certificate** with **Validate only** enabled to test DNS validation against Let's Encrypt staging before the cutover. The weekly run renews the certificate when it has 30 days or less remaining and verifies that Azure serves the new certificate. Check failed runs and the origin expiry date when operating the site. GitHub can disable scheduled workflows after 60 days without activity in a public repository. [GitHub schedule behaviour](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#schedule)
 
 ## Recovery
 

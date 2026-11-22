@@ -68,7 +68,6 @@ jobs:
           printf '%s' "$GHCR_TOKEN" | docker login ghcr.io --username "$GITHUB_ACTOR" --password-stdin
           dotnet publish src/JobTracker.Web --configuration Release --no-restore /t:PublishContainer \
             -p:UseAppHost=false -p:ContainerRuntimeIdentifier=linux-x64 \
-            -p:ContainerBaseImage=mcr.microsoft.com/dotnet/aspnet:10.0-noble-chiseled-extra \
             -p:ContainerRegistry=ghcr.io "-p:ContainerRepository=$registry_repository" \
             "-p:ContainerImageTag=$GITHUB_SHA"
           digest=$(docker buildx imagetools inspect "$image" --format '{{json .Manifest}}' | jq -er '.digest')
