@@ -24,6 +24,7 @@ export default {
                 const headers = new Headers(page.headers);
                 headers.set("Cache-Control", "private, no-store");
                 headers.set("Vary", "Cookie, Authorization");
+                headers.append("Server-Timing", 'homepage;desc="Cloudflare"');
                 headers.set("X-Content-Type-Options", "nosniff");
                 headers.set("X-Frame-Options", "DENY");
                 headers.set("Referrer-Policy", "no-referrer");

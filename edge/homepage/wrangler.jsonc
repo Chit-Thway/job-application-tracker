@@ -12,5 +12,24 @@
     "binding": "ASSETS",
     "html_handling": "none",
     "run_worker_first": ["/", "/homepage.html", "/landing-video/*"]
+  },
+  "env": {
+    "production": {
+      "name": "job-tracker-homepage",
+      "workers_dev": false,
+      "preview_urls": false,
+      "routes": [
+        { "pattern": "myjobtracker.com.au/*", "zone_name": "myjobtracker.com.au" }
+      ],
+      "vars": {
+        "PUBLIC_ORIGIN": "https://myjobtracker.com.au"
+      },
+      "assets": {
+        "directory": "../../artifacts/homepage-edge",
+        "binding": "ASSETS",
+        "html_handling": "none",
+        "run_worker_first": ["/", "/homepage.html", "/landing-video/*"]
+      }
+    }
   }
 }

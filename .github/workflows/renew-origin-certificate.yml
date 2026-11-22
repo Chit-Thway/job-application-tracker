@@ -1,0 +1,126 @@
+name: Renew Azure origin certificate
+
+on:
+  schedule:
+    - cron: '23 18 * * 2'
+  workflow_dispatch:
+    inputs:
+      validate_only:
+        description: Validate Cloudflare DNS with Let's Encrypt staging without updating Azure
+        type: boolean
+        default: true
+
+permissions:
+  id-token: write
+
+defaults:
+  run:
+    shell: bash
+
+concurrency:
+  group: production-origin-certificate
+  cancel-in-progress: false
+
+jobs:
+  renew:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    environment: production
+    env:
+      DOMAIN: myjobtracker.com.au
+
+    steps:
+      - name: Sign in to Azure with OpenID Connect
+        if: inputs.validate_only != true
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Check whether renewal is due
+        id: expiry
+        if: inputs.validate_only != true
+        env:
+          CERTIFICATE_ID: ${{ vars.AZURE_ORIGIN_CERTIFICATE_ID }}
+        run: |
+          : "${CERTIFICATE_ID:?Set the Azure origin certificate resource ID}"
+          certificate_url="https://management.azure.com${CERTIFICATE_ID}?api-version=2025-07-01"
+          certificate=$(az rest --method get --url "$certificate_url" --only-show-errors)
+          expires=$(jq -er '.properties.expirationDate' <<< "$certificate")
+          location=$(jq -er '.location' <<< "$certificate")
+          expiry_epoch=$(date -ud "$expires" +%s)
+          renewal_epoch=$(date -ud '+30 days' +%s)
+          due=false
+          if [[ "$expiry_epoch" -le "$renewal_epoch" ]]; then
+            due=true
+          fi
+          printf 'due=%s\nlocation=%s\n' "$due" "$location" >> "$GITHUB_OUTPUT"
+          printf 'Current Azure certificate expires %s\n' "$expires"
+
+      - name: Install Certbot with Cloudflare DNS support
+        if: inputs.validate_only == true || steps.expiry.outputs.due == 'true'
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends certbot python3-certbot-dns-cloudflare
+
+      - name: Issue and verify certificate
+        if: inputs.validate_only == true || steps.expiry.outputs.due == 'true'
+        env:
+          CLOUDFLARE_DNS_TOKEN: ${{ secrets.CLOUDFLARE_ORIGIN_CERTIFICATE_DNS_TOKEN }}
+          CERTIFICATE_ID: ${{ vars.AZURE_ORIGIN_CERTIFICATE_ID }}
+          ORIGIN_ADDRESS: ${{ vars.AZURE_ORIGIN_ADDRESS }}
+          CERTIFICATE_LOCATION: ${{ steps.expiry.outputs.location }}
+          VALIDATE_ONLY: ${{ inputs.validate_only }}
+        run: |
+          : "${CLOUDFLARE_DNS_TOKEN:?Set the zone-scoped Cloudflare DNS token}"
+          umask 077
+          temp_dir=$(mktemp -d "$RUNNER_TEMP/origin-certificate.XXXXXXXX")
+          trap 'rm -rf -- "$temp_dir"' EXIT
+          printf 'dns_cloudflare_api_token = %s\n' "$CLOUDFLARE_DNS_TOKEN" > "$temp_dir/cloudflare.ini"
+          unset CLOUDFLARE_DNS_TOKEN
+
+          certbot_args=(certonly --non-interactive --agree-tos --register-unsafely-without-email
+            --config-dir "$temp_dir/config" --work-dir "$temp_dir/work" --logs-dir "$temp_dir/logs"
+            --dns-cloudflare --dns-cloudflare-credentials "$temp_dir/cloudflare.ini"
+            --dns-cloudflare-propagation-seconds 60 --domain "$DOMAIN")
+          if [[ "$VALIDATE_ONLY" == true ]]; then
+            certbot "${certbot_args[@]}" --dry-run
+            exit 0
+          fi
+
+          : "${ORIGIN_ADDRESS:?Set the direct Azure origin address}"
+          certbot "${certbot_args[@]}"
+          certificate_dir="$temp_dir/config/live/$DOMAIN"
+          openssl verify -verify_hostname "$DOMAIN" -CApath /etc/ssl/certs \
+            -untrusted "$certificate_dir/chain.pem" "$certificate_dir/cert.pem"
+          expected=$(openssl x509 -in "$certificate_dir/cert.pem" -noout -fingerprint -sha256)
+
+          PFX_PASSWORD=$(openssl rand -hex 32)
+          export PFX_PASSWORD
+          openssl pkcs12 -export -in "$certificate_dir/cert.pem" -inkey "$certificate_dir/privkey.pem" \
+            -certfile "$certificate_dir/chain.pem" -out "$temp_dir/origin.pfx" -passout env:PFX_PASSWORD
+          base64 -w0 "$temp_dir/origin.pfx" > "$temp_dir/pfx-value"
+          jq -n --arg location "$CERTIFICATE_LOCATION" --rawfile value "$temp_dir/pfx-value" \
+            '{location:$location,properties:{value:$value,password:env.PFX_PASSWORD}}' > "$temp_dir/import.json"
+          unset PFX_PASSWORD
+          certificate_url="https://management.azure.com${CERTIFICATE_ID}?api-version=2025-07-01"
+          if ! az rest --method put --url "$certificate_url" --body "@$temp_dir/import.json" \
+            --only-show-errors --output none 2> "$temp_dir/import-error"; then
+            echo 'Azure rejected the certificate update. Check Azure activity logs.' >&2
+            exit 1
+          fi
+
+          for attempt in {1..12}; do
+            current=$(timeout 10 openssl s_client -connect "$ORIGIN_ADDRESS:443" -servername "$DOMAIN" \
+              -verify_hostname "$DOMAIN" -verify_return_error </dev/null 2>/dev/null |
+              openssl x509 -noout -fingerprint -sha256 2>/dev/null) || current=
+            if [[ "$current" == "$expected" ]]; then
+              echo 'Azure is serving the renewed certificate.'
+              exit 0
+            fi
+            sleep 10
+          done
+          echo 'The renewed certificate was not observed at the Azure origin.' >&2
+          exit 1
