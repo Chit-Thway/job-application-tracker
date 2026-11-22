@@ -23,6 +23,7 @@ test("anonymous homepage serves its static HTML without calling the app", async 
     assert.equal(page.status, 200);
     assert.equal(page.headers.get("Cache-Control"), "private, no-store");
     assert.equal(page.headers.get("Vary"), "Cookie, Authorization");
+    assert.match(page.headers.get("Server-Timing"), /homepage;desc="Cloudflare"/);
     assert.equal(page.headers.has("Set-Cookie"), false);
     assert.match(await page.text(), /Static homepage/);
     assert.equal(upstream.mock.callCount(), 0);
@@ -47,8 +48,25 @@ test("account requests go to the app with their original cookies, method, and re
         const reply = await worker.fetch(request, { PUBLIC_ORIGIN: publicOrigin });
         assert.equal(reply.status, 302);
         assert.equal(reply.headers.get("Location"), `${publicOrigin}/dashboard`);
+        assert.equal(reply.headers.has("Server-Timing"), false);
     }
     assert.equal(upstream.mock.callCount(), inputs.length);
+});
+
+test("the production route falls back to Azure when homepage HTML is missing", async t => {
+    const request = new Request(publicOrigin);
+    const upstream = t.mock.method(globalThis, "fetch", (incoming, options) => {
+        assert.equal(incoming, request);
+        assert.equal(options.cache, "no-store");
+        return new Response("Azure homepage");
+    });
+    const page = await worker.fetch(request, {
+        PUBLIC_ORIGIN: publicOrigin,
+        ASSETS: { fetch: () => new Response(null, { status: 404 }) },
+    });
+    assert.equal(await page.text(), "Azure homepage");
+    assert.equal(page.headers.has("Server-Timing"), false);
+    assert.equal(upstream.mock.callCount(), 1);
 });
 
 test("preview forwards sign-in navigation and keeps the internal HTML asset private", async () => {
